@@ -1,3 +1,4 @@
+// Completely ChatGPT'd this file lmfao
 package org.firstinspires.ftc.teamcode.Purple;
 
 import android.hardware.usb.UsbDevice;
