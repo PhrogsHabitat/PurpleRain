@@ -228,7 +228,7 @@ public class AutoOp extends LinearOpMode
             vaccum.setState(MotorConfig.MotorState.OFF);
         }
 
-        explosher.Update();
+        explosher.update();
         vaccum.update();
 
         DebugUtil.logAdd("FL: " + powers[0] + ", FR: " + powers[1] + ", BL: " + powers[2] + ", BR: " + powers[3]);

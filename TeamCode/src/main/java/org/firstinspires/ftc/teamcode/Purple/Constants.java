@@ -5,11 +5,8 @@ import com.qualcomm.robotcore.hardware.I2cAddr;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 
-public final class Constants
-{
-    private Constants()
-    {
-    }
+public final class Constants {
+    private Constants() {}
 
     // Motor names
     public static final String FRONT_LEFT_MOTOR = "FL";
@@ -17,30 +14,33 @@ public final class Constants
     public static final String BACK_LEFT_MOTOR = "BL";
     public static final String BACK_RIGHT_MOTOR = "BR";
     public static final String EXPLOSHER_MOTOR = "EXPLOSHER";
-
     public static final String INTAKE_MOTOR = "FE";
     public static final String MIDTAKE_MOTOR = "BE";
-
 
     // Servo names
     public static final String FINGER_SERVO = "FINGER";
 
-    // Default drive power scaling
+    // Drive settings
     public static final double DRIVE_POWER_SCALE = 1.0;
-
-    // Deadzone for joysticks
+    public static final double DRIVE_POWER_BOOST = 2.0;
     public static final double JOYSTICK_DEADZONE = 0.1;
 
-    // I2C address of the GoBuilda Odometry Computer
-    public static final I2cAddr ODOMETRY_COMPUTER_I2C_ADDR = I2cAddr.create7bit(0x31); // Example address
+    // AprilTag alignment
+    public static final double ALIGN_KP = 0.02;
+    public static final double ALIGN_POSITION_TOLERANCE = 2.0; // inches
+    public static final double ALIGN_ANGLE_TOLERANCE = 2.0; // degrees
 
-    // PID gains for path following
-    public static final double PATH_KP = 0.05;
-    public static final double PATH_KI = 0.0;
-    public static final double PATH_KD = 0.02;
-    public static final double PATH_MAX_POWER = 0.1;
-    public static final double PATH_POSITION_TOLERANCE = 2.0; // inches
-    public static final double PATH_HEADING_TOLERANCE = 0.1; // radians
+    // I2C address of the GoBuilda Odometry Computer
+    public static final I2cAddr ODOMETRY_COMPUTER_I2C_ADDR = I2cAddr.create7bit(0x31);
+
+    // Explosher RPM values
+    public static final int EXPLOSHER_CLOSE_SWEET = 240;
+    public static final int EXPLOSHER_FAR_SWEET = 390;
+
+    // Vibration patterns
+    public static final int VIBRATION_TAG_DETECTED = 200;
+    public static final int VIBRATION_ALIGNED = 500;
+    public static final int VIBRATION_IMPACT = 750;
 
     // Motor configurations
     public static final MotorConfig FL_CONFIG = new MotorConfig.Builder(FRONT_LEFT_MOTOR, MotorConfig.Position.FRONT_LEFT)
@@ -78,9 +78,8 @@ public final class Constants
             .runMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER)
             .build();
 
-
     // Servo configurations
-    public static final ServoConfig FINGER_SERVO_CONFIG = new ServoConfig(FINGER_SERVO, 0.0, 1.0, 0.0); // min=0, max=1, initial=0
+    public static final ServoConfig FINGER_SERVO_CONFIG = new ServoConfig(FINGER_SERVO, 0.0, 1.0, 0.0);
 
     // Debug mode toggle
     public static final boolean DEBUG_MODE = true;

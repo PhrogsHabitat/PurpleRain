@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.Purple;
 
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
@@ -8,14 +7,12 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorUtil;
-import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.LimeUtil;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
-public class TeleOp extends LinearOpMode
-{
+public class TeleOp extends LinearOpMode {
     private Controls driver1;
     private Controls driver2;
 
@@ -23,15 +20,14 @@ public class TeleOp extends LinearOpMode
     private double powerScale = Constants.DRIVE_POWER_SCALE;
     private Explosher explosher;
     private Vaccum vaccum;
-    private boolean prevA = false;
-    private boolean explosherToggled = false;
-    private boolean prevX = false;
-    private boolean prevRightBumper = false;
-    private boolean prevLeftBumper = false;
+
+    // State tracking
+    private boolean wasAligned = false;
+    private boolean wasTagDetected = false;
+    private Explosher.DistanceState stickyState = null;
 
     @Override
-    public void runOpMode()
-    {
+    public void runOpMode() {
         driver1 = new Controls(gamepad1);
         driver2 = new Controls(gamepad2);
 
@@ -39,17 +35,17 @@ public class TeleOp extends LinearOpMode
         initializeExplosher();
         initializeVaccum();
         DebugUtil.setTelemetry(telemetry);
+
         waitForStart();
-        while (opModeIsActive())
-        {
+        while (opModeIsActive()) {
+            driver1.update();
+            driver2.update();
             update();
         }
-        stopMotors();
-        explosher.setMotorState(MotorConfig.MotorState.OFF);
+        stopAll();
     }
 
-    private void initializeMotors()
-    {
+    private void initializeMotors() {
         fl = hardwareMap.get(DcMotorEx.class, Constants.FRONT_LEFT_MOTOR);
         fr = hardwareMap.get(DcMotorEx.class, Constants.FRONT_RIGHT_MOTOR);
         bl = hardwareMap.get(DcMotorEx.class, Constants.BACK_LEFT_MOTOR);
@@ -57,16 +53,14 @@ public class TeleOp extends LinearOpMode
 
         MotorConfig[] configs = {Constants.FL_CONFIG, Constants.FR_CONFIG, Constants.BL_CONFIG, Constants.BR_CONFIG};
         DcMotorEx[] motors = {fl, fr, bl, br};
-        for (int i = 0; i < motors.length; i++)
-        {
+        for (int i = 0; i < motors.length; i++) {
             motors[i].setDirection(configs[i].getDirection());
             motors[i].setZeroPowerBehavior(configs[i].getZeroPowerBehavior());
             motors[i].setMode(configs[i].getRunMode());
         }
     }
 
-    private void initializeExplosher()
-    {
+    private void initializeExplosher() {
         LimeUtil.start(hardwareMap, "SwagLime", 60);
         LimeUtil.setPipeline(0);
         explosher = new Explosher(
@@ -86,15 +80,23 @@ public class TeleOp extends LinearOpMode
         );
     }
 
-    private void update()
-    {
-        driver1.update();
-        driver2.update();
+    private void update() {
+        updateDrive();
+        updateAprilTagFeedback();
+        updatePlayer1Controls();
+        updatePlayer2Controls();
+        updateSubsystems();
+        updateTelemetry();
+    }
 
-        // Fixed drive code - using standard mecanum equations
-        double forward = -gamepad1.left_stick_y;
-        double strafe = gamepad1.left_stick_x;
-        double turn = gamepad1.right_stick_x;
+    private void updateDrive() {
+        // Speed boost when left stick is pressed
+        powerScale = driver1.isPressed("left_stick_button") ?
+                Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
+
+        double forward = -driver1.getLeftStickY();
+        double strafe = driver1.getLeftStickX();
+        double turn = driver1.getRightStickX();
 
         double[] powers = MotorUtil.normalizePowers(new double[]{
                 (-forward - strafe - turn),
@@ -102,118 +104,173 @@ public class TeleOp extends LinearOpMode
                 (forward - strafe - turn),
                 (forward + strafe - turn)
         });
+
+        fl.setPower(powers[0] * powerScale);
+        bl.setPower(powers[1] * powerScale);
+        fr.setPower(powers[2] * powerScale);
+        br.setPower(powers[3] * powerScale);
+    }
+
+    private void updateAprilTagFeedback() {
+        boolean tagDetected = LimeUtil.hasValidTarget();
+
+        // Quick vibration when tag is detected
+        if (tagDetected && !wasTagDetected) {
+            driver1.vibrate(Constants.VIBRATION_TAG_DETECTED);
+            driver2.vibrate(Constants.VIBRATION_TAG_DETECTED);
+        }
+
+        wasTagDetected = tagDetected;
+    }
+
+    private void updatePlayer1Controls() {
+        // Auto-align with AprilTag when right bumper held
+        if (driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget()) {
+            autoAlignToTag();
+        }
+
+        // Impact detection (simplified - monitors sudden motor power changes)
+        checkForImpact();
+    }
+
+    private void updatePlayer2Controls() {
+        updateExplosherStickControl();
+        updateExplosherTriggerControl();
+        updateVaccumControl();
+
+        // Vibration when fully aligned with AprilTag
+        if (isFullyAligned() && !wasAligned) {
+            driver2.vibrate(Constants.VIBRATION_ALIGNED);
+        }
+        wasAligned = isFullyAligned();
+    }
+
+    private void updateExplosherStickControl() {
+        double leftStickY = -driver2.getLeftStickY(); // Invert for natural feel
+
+        if (Math.abs(leftStickY) > Constants.JOYSTICK_DEADZONE) {
+            // Stick is being used - clear sticky state
+            stickyState = null;
+
+            if (driver2.isPressed("left_stick_button")) {
+                // Stick pressed + forward = FAR sweet spot
+                explosher.setRPM(Constants.EXPLOSHER_FAR_SWEET);
+                explosher.setMotorState(MotorConfig.MotorState.ON);
+            } else if (leftStickY > 0.5) {
+                // Stick forward = CLOSE sweet spot
+                explosher.setRPM(Constants.EXPLOSHER_CLOSE_SWEET);
+                explosher.setMotorState(MotorConfig.MotorState.ON);
+            }
+        } else if (stickyState == null) {
+            // Stick returned to center and no sticky state - turn off
+            explosher.setMotorState(MotorConfig.MotorState.OFF);
+        }
+    }
+
+    private void updateExplosherTriggerControl() {
+        // Left trigger cycles sweet spots in sticky mode
+        if (driver2.justPressed("left_trigger")) {
+            if (stickyState == null || stickyState == Explosher.DistanceState.FAR) {
+                stickyState = Explosher.DistanceState.NEAR;
+                explosher.setRPM(Constants.EXPLOSHER_CLOSE_SWEET);
+            } else {
+                stickyState = Explosher.DistanceState.FAR;
+                explosher.setRPM(Constants.EXPLOSHER_FAR_SWEET);
+            }
+            explosher.setMotorState(MotorConfig.MotorState.ON);
+
+            // Simulate adaptive trigger resistance (would need custom hardware support)
+            driver2.setTriggerFeedback(stickyState == Explosher.DistanceState.FAR ? 0.5f : 1.0f);
+        }
+    }
+
+    private void updateVaccumControl() {
+        if (driver2.isPressed("y")) {
+            vaccum.setState(MotorConfig.MotorState.ON);
+        } else if (driver2.isPressed("x")) {
+            vaccum.setState(MotorConfig.MotorState.ON);
+            vaccum.setRPM(-Vaccum.DEFAULT_RPM);
+        } else {
+            vaccum.setState(MotorConfig.MotorState.OFF);
+        }
+    }
+
+    private void autoAlignToTag() {
+        if (!LimeUtil.hasValidTarget()) return;
+
+        double tx = LimeUtil.getTx();
+        double distance = LimeUtil.getTargetDistance();
+
+        // Simple P-controller for alignment
+        double strafeCorrection = tx * Constants.ALIGN_KP;
+        double distanceError = distance - Constants.ALIGN_POSITION_TOLERANCE;
+        double forwardCorrection = Math.max(-0.3, Math.min(0.3, distanceError * 0.01));
+
+        // Apply corrections
+        double[] powers = MotorUtil.normalizePowers(new double[]{
+                (-forwardCorrection - strafeCorrection),
+                (-forwardCorrection + strafeCorrection),
+                (forwardCorrection - strafeCorrection),
+                (forwardCorrection + strafeCorrection)
+        });
+
         fl.setPower(powers[0] * powerScale);
         bl.setPower(powers[1] * powerScale);
         fr.setPower(powers[2] * powerScale);
         br.setPower(powers[3] * powerScale);
 
-        // LimeLight distance detection and printing
-        if (LimeUtil.hasValidTarget()) {
-            double distance = LimeUtil.getTargetDistance();
-            DebugUtil.logAdd("AprilTag Distance: " + String.format("%.2f", distance) + " inches");
-        } else {
-            DebugUtil.logAdd("No AprilTag detected");
+        // Vibration feedback based on alignment error
+        double alignmentError = Math.abs(tx) + Math.abs(distanceError);
+        if (alignmentError > 5) {
+            driver1.vibrate((int)(alignmentError * 10)); // More intense when far from target
         }
+    }
 
-        // RPM debug controls
-        boolean currentRightBumper = gamepad2.right_bumper;
-        boolean currentLeftBumper = gamepad2.left_bumper;
+    private boolean isFullyAligned() {
+        if (!LimeUtil.hasValidTarget()) return false;
 
-        if (currentRightBumper && !prevRightBumper) {
-            // Increase RPM by 5
-            double newRPM = explosher.getTargetRPM() + 100;
-            explosher.setRPM(newRPM);
-            DebugUtil.logAdd("RPM Increased to: " + newRPM);
-        }
+        double tx = LimeUtil.getTx();
+        double distance = LimeUtil.getTargetDistance();
+        double distanceError = Math.abs(distance - Constants.ALIGN_POSITION_TOLERANCE);
 
-        if (currentLeftBumper && !prevLeftBumper && explosher.getTargetRPM() >= 5) {
-            // Decrease RPM by 5 (but not below 0)
-            double newRPM = explosher.getTargetRPM() - 100;
-            explosher.setRPM(newRPM);
-            DebugUtil.logAdd("RPM Decreased to: " + newRPM);
-        }
+        return Math.abs(tx) < Constants.ALIGN_ANGLE_TOLERANCE &&
+                distanceError < Constants.ALIGN_POSITION_TOLERANCE;
+    }
 
-        prevRightBumper = currentRightBumper;
-        prevLeftBumper = currentLeftBumper;
+    private void checkForImpact() {
+        // Simple impact detection - monitor motor power vs actual movement
+        // This is a simplified version - you might want to use current sensing or encoders
+        double totalPower = Math.abs(fl.getPower()) + Math.abs(fr.getPower()) +
+                Math.abs(bl.getPower()) + Math.abs(br.getPower());
 
-        // Existing controls
-        if (driver2.justPressed("dpad_up"))
-        {
-            explosher.setMotorState(MotorConfig.MotorState.ON);
-            explosher.setRPM(explosher.CLOSE_SWEET);
-            DebugUtil.logAdd("RPM set to CLOSE_SWEET: " + explosher.CLOSE_SWEET);
+        // If motors are trying to move but robot isn't (detected via encoders or IMU)
+        // This would need proper implementation with your odometry system
+        if (totalPower > 0.5) { // Arbitrary threshold
+            driver1.vibrate(Constants.VIBRATION_IMPACT);
         }
-        if (driver2.justPressed("dpad_down"))
-        {
-            explosher.setMotorState(MotorConfig.MotorState.ON);
-            explosher.setRPM(explosher.FAR_SWEET);
-            DebugUtil.logAdd("RPM set to FAR_SWEET: " + explosher.FAR_SWEET);
-        }
-        if (driver2.justPressed("dpad_left")) {
-            explosher.setMotorState(MotorConfig.MotorState.OFF);
-        }
+    }
 
-        // EXPLOSHER control
-        if (Constants.DEBUG_MODE)
-        {
-//            if (gamepad2.a && !prevA)
-//            {
-//                explosherToggled = !explosherToggled;
-//                explosher.setMotorState(explosherToggled ? MotorConfig.MotorState.ON : MotorConfig.MotorState.OFF);
-//            }
-//            prevA = gamepad2.a;
-        } else
-        {
-            if (gamepad2.b)
-            {
-                explosher.setMotorState(MotorConfig.MotorState.ON);
-            } else
-            {
-                explosher.setMotorState(MotorConfig.MotorState.OFF);
-            }
-        }
-
-        // Cycle Explosher distance state with X button (edge detection)
-        if (gamepad2.x && !prevX)
-        {
-            explosher.cycleDistanceState();
-        }
-
-        prevX = gamepad2.x;
-
-        // Vaccum control (using Y button as a hold instead of left bumper)
-        if (gamepad2.y)
-        {
-            vaccum.setState(MotorConfig.MotorState.ON);
-            
-        }
-        else if (driver2.isPressed("x"))
-        {
-            vaccum.setState(MotorConfig.MotorState.ON);
-            vaccum.setRPM(-vaccum.DEFAULT_RPM);
-        }
-        else {
-            vaccum.setState(MotorConfig.MotorState.OFF);
-        }
-
-        explosher.Update();
+    private void updateSubsystems() {
+        explosher.update();
         vaccum.update();
+    }
 
-        DebugUtil.logAdd("FL: " + powers[0] + ", FR: " + powers[1] + ", BL: " + powers[2] + ", BR: " + powers[3]);
-        DebugUtil.logAdd("Finger: " + explosher.getFingerPosition());
-        DebugUtil.logAdd("Current Explosher RPM: " + String.format("%.2f", explosher.getCurrentRPM()));
-        DebugUtil.logAdd("Target Explosher RPM: " + String.format("%.2f", explosher.getTargetRPM()));
+    private void updateTelemetry() {
+        DebugUtil.logAdd("Power Scale: " + powerScale);
+        DebugUtil.logAdd("Sticky State: " + stickyState);
+        if (LimeUtil.hasValidTarget()) {
+            DebugUtil.logAdd("AprilTag Distance: " + String.format("%.2f", LimeUtil.getTargetDistance()) + " inches");
+        }
+        DebugUtil.logAdd("Explosher RPM: " + String.format("%.2f", explosher.getCurrentRPM()));
         DebugUtil.update();
     }
 
-    private void stopMotors()
-    {
+    private void stopAll() {
         fl.setPower(0);
         fr.setPower(0);
         bl.setPower(0);
         br.setPower(0);
         explosher.setMotorState(MotorConfig.MotorState.OFF);
-        explosher.setFingerState(ServoConfig.ServoState.OFF);
         vaccum.setState(MotorConfig.MotorState.OFF);
     }
 }

@@ -213,7 +213,7 @@ public class Explosher
     /**
      * Update method that should be called regularly to calculate and log RPM.
      */
-    public void Update()
+    public void update()
     {
         // Calculate current RPM for monitoring
         motorConfig.updateRPM(motor.getCurrentPosition());
