@@ -26,6 +26,11 @@ public class TeleOp extends LinearOpMode {
     private boolean wasTagDetected = false;
     private Explosher.DistanceState stickyState = null;
 
+    // Auto-align state
+    private boolean autoAlignActive = false;
+    private long lastTagSeenTime = 0;
+    private static final long TAG_TIMEOUT_MS = 500;
+
     @Override
     public void runOpMode() {
         driver1 = new Controls(gamepad1);
@@ -128,8 +133,12 @@ public class TeleOp extends LinearOpMode {
         if (driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget()) {
             autoAlignToTag();
         }
+        else if (!driver1.isPressed("right_bumper"))
+        {
+            autoAlignActive = false;
+        }
 
-        // Impact detection (simplified - monitors sudden motor power changes)
+        // Impact detection
         checkForImpact();
     }
 
@@ -146,7 +155,7 @@ public class TeleOp extends LinearOpMode {
     }
 
     private void updateExplosherStickControl() {
-        double leftStickY = -driver2.getLeftStickY(); // Invert for natural feel
+        double leftStickY = driver2.getLeftStickY();
 
         if (Math.abs(leftStickY) > Constants.JOYSTICK_DEADZONE) {
             // Stick is being used - clear sticky state
@@ -178,9 +187,6 @@ public class TeleOp extends LinearOpMode {
                 explosher.setRPM(Constants.EXPLOSHER_FAR_SWEET);
             }
             explosher.setMotorState(MotorConfig.MotorState.ON);
-
-            // Simulate adaptive trigger resistance (would need custom hardware support)
-            driver2.setTriggerFeedback(stickyState == Explosher.DistanceState.FAR ? 0.5f : 1.0f);
         }
     }
 
@@ -195,23 +201,49 @@ public class TeleOp extends LinearOpMode {
         }
     }
 
+    private boolean hasRecentTarget() {
+        return LimeUtil.hasValidTarget() &&
+                (System.currentTimeMillis() - lastTagSeenTime) < TAG_TIMEOUT_MS;
+    }
+
     private void autoAlignToTag() {
-        if (!LimeUtil.hasValidTarget()) return;
+        if (!hasRecentTarget()) {
+            // No recent target, disable auto-align and return control to driver
+            autoAlignActive = false;
+            return;
+        }
 
-        double tx = LimeUtil.getTx();
-        double distance = LimeUtil.getTargetDistance();
+        double tx = LimeUtil.getTx(); // Horizontal offset from center (-degrees to +degrees)
+        double distance = LimeUtil.getTargetDistance(); // Distance to target
 
-        // Simple P-controller for alignment
-        double strafeCorrection = tx * Constants.ALIGN_KP;
-        double distanceError = distance - Constants.ALIGN_POSITION_TOLERANCE;
-        double forwardCorrection = Math.max(-0.3, Math.min(0.3, distanceError * 0.01));
+        // Calculate errors
+        double angleError = -tx; // Negative because we want to move opposite to the error
+        double distanceError = Constants.DESIRED_TAG_DISTANCE - distance;
 
-        // Apply corrections
+        // Apply deadzone to prevent jitter
+        if (Math.abs(angleError) < Constants.ALIGN_ANGLE_DEADZONE) {
+            angleError = 0;
+        }
+        if (Math.abs(distanceError) < Constants.ALIGN_DISTANCE_DEADZONE) {
+            distanceError = 0;
+        }
+
+        // Calculate correction powers with clamping
+        double strafePower = clamp(angleError * Constants.ALIGN_ANGLE_KP,
+                -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
+
+        double forwardPower = 0;
+
+        // Allow manual turning during auto-align
+        double turnPower = clamp(-angleError * Constants.ALIGN_ANGLE_KP,
+                -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
+
+        // Apply the corrections - Mecanum wheel calculations
         double[] powers = MotorUtil.normalizePowers(new double[]{
-                (-forwardCorrection - strafeCorrection),
-                (-forwardCorrection + strafeCorrection),
-                (forwardCorrection - strafeCorrection),
-                (forwardCorrection + strafeCorrection)
+                (-forwardPower - strafePower - turnPower),
+                (-forwardPower + strafePower - turnPower),
+                (forwardPower - strafePower - turnPower),
+                (forwardPower + strafePower - turnPower)
         });
 
         fl.setPower(powers[0] * powerScale);
@@ -219,34 +251,42 @@ public class TeleOp extends LinearOpMode {
         fr.setPower(powers[2] * powerScale);
         br.setPower(powers[3] * powerScale);
 
-        // Vibration feedback based on alignment error
-        double alignmentError = Math.abs(tx) + Math.abs(distanceError);
-        if (alignmentError > 5) {
-            driver1.vibrate((int)(alignmentError * 10)); // More intense when far from target
+        // Progressive vibration feedback based on alignment quality
+        double alignmentError = Math.abs(angleError) + Math.abs(distanceError);
+        if (alignmentError < 2.0) {
+            // Fully aligned - continuous gentle vibration
+            driver1.vibrate(50);
+        } else if (alignmentError < 5.0) {
+            // Close - pulsed vibration
+            if ((System.currentTimeMillis() % 500) < 250) {
+                driver1.vibrate(25);
+            }
         }
     }
 
+    private double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
     private boolean isFullyAligned() {
-        if (!LimeUtil.hasValidTarget()) return false;
+        if (!hasRecentTarget()) return false;
 
         double tx = LimeUtil.getTx();
         double distance = LimeUtil.getTargetDistance();
-        double distanceError = Math.abs(distance - Constants.ALIGN_POSITION_TOLERANCE);
+        double distanceError = Math.abs(distance - Constants.DESIRED_TAG_DISTANCE);
 
         return Math.abs(tx) < Constants.ALIGN_ANGLE_TOLERANCE &&
-                distanceError < Constants.ALIGN_POSITION_TOLERANCE;
+                distanceError < Constants.ALIGN_DISTANCE_TOLERANCE;
     }
 
     private void checkForImpact() {
-        // Simple impact detection - monitor motor power vs actual movement
-        // This is a simplified version - you might want to use current sensing or encoders
+        // Simple impact detection
         double totalPower = Math.abs(fl.getPower()) + Math.abs(fr.getPower()) +
                 Math.abs(bl.getPower()) + Math.abs(br.getPower());
 
-        // If motors are trying to move but robot isn't (detected via encoders or IMU)
-        // This would need proper implementation with your odometry system
-        if (totalPower > 0.5) { // Arbitrary threshold
-            driver1.vibrate(Constants.VIBRATION_IMPACT);
+        // This is a placeholder - implement proper impact detection with encoders/IMU
+        if (totalPower > 0.5) {
+            // Potential impact detection logic here
         }
     }
 
@@ -257,11 +297,16 @@ public class TeleOp extends LinearOpMode {
 
     private void updateTelemetry() {
         DebugUtil.logAdd("Power Scale: " + powerScale);
+        DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
         DebugUtil.logAdd("Sticky State: " + stickyState);
         if (LimeUtil.hasValidTarget()) {
-            DebugUtil.logAdd("AprilTag Distance: " + String.format("%.2f", LimeUtil.getTargetDistance()) + " inches");
+            DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTargetDistance()) +
+                    "in, Angle: " + String.format("%.1f", LimeUtil.getTx()) + "°");
+            DebugUtil.logAdd("Aligned: " + (isFullyAligned() ? "YES" : "NO"));
+        } else {
+            DebugUtil.logAdd("AprilTag: No target");
         }
-        DebugUtil.logAdd("Explosher RPM: " + String.format("%.2f", explosher.getCurrentRPM()));
+        DebugUtil.logAdd("Explosher RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
         DebugUtil.update();
     }
 
@@ -272,5 +317,6 @@ public class TeleOp extends LinearOpMode {
         br.setPower(0);
         explosher.setMotorState(MotorConfig.MotorState.OFF);
         vaccum.setState(MotorConfig.MotorState.OFF);
+        autoAlignActive = false;
     }
 }

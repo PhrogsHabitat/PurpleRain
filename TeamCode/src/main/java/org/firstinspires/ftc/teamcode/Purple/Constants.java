@@ -25,10 +25,18 @@ public final class Constants {
     public static final double DRIVE_POWER_BOOST = 2.0;
     public static final double JOYSTICK_DEADZONE = 0.1;
 
-    // AprilTag alignment
-    public static final double ALIGN_KP = 0.02;
-    public static final double ALIGN_POSITION_TOLERANCE = 2.0; // inches
-    public static final double ALIGN_ANGLE_TOLERANCE = 2.0; // degrees
+    public static final double LL_HEIGHT = 14.3;
+    public static final double LL_ANGLE = 6.0;
+    public static final double TARGET_HEIGHT = 29.5;
+
+    public static final double DESIRED_TAG_DISTANCE = 18.0; // inches - adjust based on your needs
+    public static final double ALIGN_ANGLE_KP = 0.02; // Proportional gain for angle correction
+    public static final double ALIGN_DISTANCE_KP = 0.03; // Proportional gain for distance correction
+    public static final double MAX_ALIGN_POWER = 0.4; // Maximum power during auto-align
+    public static final double ALIGN_ANGLE_TOLERANCE = 1.0; // degrees
+    public static final double ALIGN_DISTANCE_TOLERANCE = 1.0; // inches
+    public static final double ALIGN_ANGLE_DEADZONE = 0.5; // degrees - ignore small errors
+    public static final double ALIGN_DISTANCE_DEADZONE = 0.5; // inches - ignore small errors
 
     // I2C address of the GoBuilda Odometry Computer
     public static final I2cAddr ODOMETRY_COMPUTER_I2C_ADDR = I2cAddr.create7bit(0x31);
@@ -38,8 +46,8 @@ public final class Constants {
     public static final int EXPLOSHER_FAR_SWEET = 390;
 
     // Vibration patterns
-    public static final int VIBRATION_TAG_DETECTED = 200;
-    public static final int VIBRATION_ALIGNED = 500;
+    public static final int VIBRATION_TAG_DETECTED = 40;
+    public static final int VIBRATION_ALIGNED = 100;
     public static final int VIBRATION_IMPACT = 750;
 
     // Motor configurations

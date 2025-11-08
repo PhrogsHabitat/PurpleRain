@@ -4,16 +4,13 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.Purple.Constants;
+
 /**
  * FTC Limelight utility: wraps Limelight3A for easy, robust access
  * Consolidated version with static initialization and access methods
  */
 public final class LimeUtil {
-    // Configuration constants
-    public static final double CAMERA_HEIGHT = 13.125; // Inches from floor
-    public static final double TARGET_HEIGHT = 6.5; // Inches (target height)
-    public static final double CAMERA_MOUNT_ANGLE = 45.0; // Degrees
-
     // Limelight instance
     private static Limelight3A limelight = null;
     private static boolean initialized = false;
@@ -141,11 +138,11 @@ public final class LimeUtil {
      * Returns -1 if no valid target
      */
     public static double getTargetDistance() {
-        if (!hasValidTarget()) return -1;
-        double ty = getTy();
-        double angleToTarget = Math.toRadians(ty + CAMERA_MOUNT_ANGLE);
-        if (Math.abs(Math.tan(angleToTarget)) < 1e-6) return -1; // avoid div0
-        return (TARGET_HEIGHT - CAMERA_HEIGHT) / Math.tan(angleToTarget);
+        double angleToGoalDegrees = Constants.LL_ANGLE - getTy();
+        double angleToGoalRadians = angleToGoalDegrees * (3.14159 / 180.0);
+
+        //calculate distance
+        return (Constants.TARGET_HEIGHT - Constants.LL_HEIGHT) / Math.tan(angleToGoalRadians);
     }
 
     /**
@@ -155,8 +152,8 @@ public final class LimeUtil {
         if (!hasValidTarget()) {
             return "Target: NO";
         }
-        return String.format("Target: YES X: %.1f Y: %.1f Area: %.1f%% Dist: %.1f\"",
-                getTx(), getTy(), getTa() * 100, getTargetDistance());
+        return String.format("Target: YES X: %.1f Y: %.1f Area: %.1f%% Dist: %.1f",
+                getTx(), getTy(), getTa(), getTargetDistance());
     }
 
     /**
