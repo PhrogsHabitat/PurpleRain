@@ -138,7 +138,7 @@ public final class LimeUtil {
      * Returns -1 if no valid target
      */
     public static double getTargetDistance() {
-        double angleToGoalDegrees = Constants.LL_ANGLE - getTy();
+        double angleToGoalDegrees = Constants.LL_ANGLE + getTy();
         double angleToGoalRadians = angleToGoalDegrees * (3.14159 / 180.0);
 
         //calculate distance

@@ -1,8 +1,6 @@
 package org.firstinspires.ftc.teamcode.Purple;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
@@ -16,7 +14,7 @@ public class TeleOp extends LinearOpMode {
     private Controls driver1;
     private Controls driver2;
 
-    private DcMotorEx fl, fr, bl, br;
+    private MotorConfig fl, fr, bl, br;
     private double powerScale = Constants.DRIVE_POWER_SCALE;
     private Explosher explosher;
     private Vaccum vaccum;
@@ -29,6 +27,9 @@ public class TeleOp extends LinearOpMode {
     // Auto-align state
     private boolean autoAlignActive = false;
     private long lastTagSeenTime = 0;
+
+    public double swagShitClose = 500;
+    public double swagShitFar = 2300;
     private static final long TAG_TIMEOUT_MS = 500;
 
     @Override
@@ -51,55 +52,64 @@ public class TeleOp extends LinearOpMode {
     }
 
     private void initializeMotors() {
-        fl = hardwareMap.get(DcMotorEx.class, Constants.FRONT_LEFT_MOTOR);
-        fr = hardwareMap.get(DcMotorEx.class, Constants.FRONT_RIGHT_MOTOR);
-        bl = hardwareMap.get(DcMotorEx.class, Constants.BACK_LEFT_MOTOR);
-        br = hardwareMap.get(DcMotorEx.class, Constants.BACK_RIGHT_MOTOR);
-
-        MotorConfig[] configs = {Constants.FL_CONFIG, Constants.FR_CONFIG, Constants.BL_CONFIG, Constants.BR_CONFIG};
-        DcMotorEx[] motors = {fl, fr, bl, br};
-        for (int i = 0; i < motors.length; i++) {
-            motors[i].setDirection(configs[i].getDirection());
-            motors[i].setZeroPowerBehavior(configs[i].getZeroPowerBehavior());
-            motors[i].setMode(configs[i].getRunMode());
-        }
+        fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.8, 312).build();
+        fr = new MotorConfig.Builder(hardwareMap, Names.FRONTRIGHT, MotorConfig.Position.FRONT_RIGHT, 2150.8, 312).build();
+        bl = new MotorConfig.Builder(hardwareMap, Names.BACKLEFT, MotorConfig.Position.BACK_LEFT, 2150.8, 312).build();
+        br = new MotorConfig.Builder(hardwareMap, Names.BACKRIGHT, MotorConfig.Position.BACK_RIGHT, 2150.8, 312).build();
     }
 
     private void initializeExplosher() {
         LimeUtil.start(hardwareMap, "SwagLime", 60);
         LimeUtil.setPipeline(0);
-        explosher = new Explosher(
-                hardwareMap.get(DcMotorEx.class, Constants.EXPLOSHER_MOTOR),
-                Constants.EXPLOSHER_CONFIG,
-                hardwareMap.get(Servo.class, Constants.FINGER_SERVO),
-                Constants.FINGER_SERVO_CONFIG
-        );
+        explosher = new Explosher(hardwareMap, Constants.FINGER_SERVO_CONFIG);
     }
 
     private void initializeVaccum() {
-        vaccum = new Vaccum(
-                hardwareMap.get(DcMotorEx.class, Constants.INTAKE_MOTOR),
-                Constants.INTAKE_CONFIG,
-                hardwareMap.get(DcMotorEx.class, Constants.MIDTAKE_MOTOR),
-                Constants.MIDTAKE_CONFIG
-        );
+        vaccum = new Vaccum(hardwareMap);
     }
 
     private void update() {
-        updateDrive();
         updateAprilTagFeedback();
         updatePlayer1Controls();
         updatePlayer2Controls();
+
+        if (Constants.DEBUG_MODE)
+        {
+            updateDebug();
+        }
+
+        if (autoAlignActive) {
+            autoAlignToTag();
+        } else {
+            updateDrive();
+        }
+
         updateSubsystems();
         updateTelemetry();
     }
+
+
+    // Drive shit
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     private void updateDrive() {
         // Speed boost when left stick is pressed
         powerScale = driver1.isPressed("left_stick_button") ?
                 Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
 
-        double forward = -driver1.getLeftStickY();
+        double forward = driver1.getLeftStickY();
         double strafe = driver1.getLeftStickX();
         double turn = driver1.getRightStickX();
 
@@ -119,6 +129,10 @@ public class TeleOp extends LinearOpMode {
     private void updateAprilTagFeedback() {
         boolean tagDetected = LimeUtil.hasValidTarget();
 
+        if (tagDetected) {
+            lastTagSeenTime = System.currentTimeMillis();
+        }
+
         // Quick vibration when tag is detected
         if (tagDetected && !wasTagDetected) {
             driver1.vibrate(Constants.VIBRATION_TAG_DETECTED);
@@ -130,13 +144,7 @@ public class TeleOp extends LinearOpMode {
 
     private void updatePlayer1Controls() {
         // Auto-align with AprilTag when right bumper held
-        if (driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget()) {
-            autoAlignToTag();
-        }
-        else if (!driver1.isPressed("right_bumper"))
-        {
-            autoAlignActive = false;
-        }
+        autoAlignActive = driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget();
 
         // Impact detection
         checkForImpact();
@@ -146,12 +154,34 @@ public class TeleOp extends LinearOpMode {
         updateExplosherStickControl();
         updateExplosherTriggerControl();
         updateVaccumControl();
+        updateDebug();
 
         // Vibration when fully aligned with AprilTag
         if (isFullyAligned() && !wasAligned) {
             driver2.vibrate(Constants.VIBRATION_ALIGNED);
         }
         wasAligned = isFullyAligned();
+    }
+
+    private void updateDebug()
+    {
+        if (driver2.justPressed("dpad_up"))
+        {
+            swagShitClose += 100;
+        }
+        if (driver2.justPressed("dpad_down"))
+        {
+            swagShitClose -= 100;
+        }
+
+        if (driver2.justPressed("dpad_left"))
+        {
+            swagShitFar += 100;
+        }
+        if (driver2.justPressed("dpad_right"))
+        {
+            swagShitFar -= 100;
+        }
     }
 
     private void updateExplosherStickControl() {
@@ -163,11 +193,11 @@ public class TeleOp extends LinearOpMode {
 
             if (driver2.isPressed("left_stick_button")) {
                 // Stick pressed + forward = FAR sweet spot
-                explosher.setRPM(Constants.EXPLOSHER_FAR_SWEET);
+                explosher.setRPM(swagShitFar);
                 explosher.setMotorState(MotorConfig.MotorState.ON);
             } else if (leftStickY > 0.5) {
                 // Stick forward = CLOSE sweet spot
-                explosher.setRPM(Constants.EXPLOSHER_CLOSE_SWEET);
+                explosher.setRPM(swagShitClose);
                 explosher.setMotorState(MotorConfig.MotorState.ON);
             }
         } else if (stickyState == null) {
@@ -195,7 +225,7 @@ public class TeleOp extends LinearOpMode {
             vaccum.setState(MotorConfig.MotorState.ON);
         } else if (driver2.isPressed("x")) {
             vaccum.setState(MotorConfig.MotorState.ON);
-            vaccum.setRPM(-Vaccum.DEFAULT_RPM);
+            vaccum.setPower(-Vaccum.DEFAULT_POW);
         } else {
             vaccum.setState(MotorConfig.MotorState.OFF);
         }
@@ -280,14 +310,7 @@ public class TeleOp extends LinearOpMode {
     }
 
     private void checkForImpact() {
-        // Simple impact detection
-        double totalPower = Math.abs(fl.getPower()) + Math.abs(fr.getPower()) +
-                Math.abs(bl.getPower()) + Math.abs(br.getPower());
-
         // This is a placeholder - implement proper impact detection with encoders/IMU
-        if (totalPower > 0.5) {
-            // Potential impact detection logic here
-        }
     }
 
     private void updateSubsystems() {
@@ -311,10 +334,10 @@ public class TeleOp extends LinearOpMode {
     }
 
     private void stopAll() {
-        fl.setPower(0);
-        fr.setPower(0);
-        bl.setPower(0);
-        br.setPower(0);
+        fl.stop();
+        fr.stop();
+        bl.stop();
+        br.stop();
         explosher.setMotorState(MotorConfig.MotorState.OFF);
         vaccum.setState(MotorConfig.MotorState.OFF);
         autoAlignActive = false;

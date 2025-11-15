@@ -1,74 +1,61 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Vaccum;
 
-import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
+import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 public class Vaccum {
-    private final DcMotorEx intakeMotor;
-    private final DcMotorEx midtakeMotor;
-    private final MotorConfig intakeMotorConfig;
-    private final MotorConfig midtakeMotorConfig;
+    private final MotorConfig intakeMotor;
+    private final MotorConfig midtakeMotor;
+    private double targetRPM;
 
-    public static final double DEFAULT_RPM = 1500;
+    public static final double DEFAULT_POW = 1.0;
 
-    public Vaccum(DcMotorEx intakeMotor, MotorConfig intakeMotorConfig, DcMotorEx midtakeMotor, MotorConfig midtakeMotorConfig) {
-        this.intakeMotor = intakeMotor;
-        this.intakeMotorConfig = intakeMotorConfig;
-        this.midtakeMotor = midtakeMotor;
-        this.midtakeMotorConfig = midtakeMotorConfig;
-
-        this.intakeMotor.setDirection(intakeMotorConfig.getDirection());
-        this.intakeMotor.setZeroPowerBehavior(intakeMotorConfig.getZeroPowerBehavior());
-        this.intakeMotor.setMode(intakeMotorConfig.getRunMode());
-        intakeMotorConfig.initializeRPMTracking(intakeMotor.getCurrentPosition());
-
-        this.midtakeMotor.setDirection(midtakeMotorConfig.getDirection());
-        this.midtakeMotor.setZeroPowerBehavior(midtakeMotorConfig.getZeroPowerBehavior());
-        this.midtakeMotor.setMode(midtakeMotorConfig.getRunMode());
-        midtakeMotorConfig.initializeRPMTracking(midtakeMotor.getCurrentPosition());
-
+    public Vaccum(HardwareMap hardwareMap) {
+        intakeMotor = new MotorConfig.Builder(hardwareMap, Names.INTAKE, MotorConfig.Position.INTAKE)
+                .useMotorEx()
+                .build();
+        midtakeMotor = new MotorConfig.Builder(hardwareMap, Names.MIDTAKE, MotorConfig.Position.MIDTAKE)
+                .useMotorEx()
+                .build();
 
         setState(MotorConfig.MotorState.OFF);
     }
 
     public void setState(MotorConfig.MotorState state) {
-        intakeMotorConfig.setState(state);
-        midtakeMotorConfig.setState(state);
         if (state == MotorConfig.MotorState.ON) {
-            setRPM(DEFAULT_RPM);
+            setPower(DEFAULT_POW);
         } else {
-            setRPM(0);
+            setPower(0);
         }
     }
 
     public MotorConfig.MotorState getState() {
-        // Assuming both motors will be in the same state
-        return intakeMotorConfig.getState();
+        return intakeMotor.getState();
     }
 
-    public void setRPM(double rpm) {
-        intakeMotorConfig.setRPM(intakeMotor, rpm);
-        midtakeMotorConfig.setRPM(midtakeMotor, rpm);
+    public void setPower(double rpm) {
+        this.targetRPM = rpm;
+        intakeMotor.setPower(rpm / 2);
+        midtakeMotor.setTargetRPM(rpm);
     }
 
     public double getIntakeCurrentRPM() {
-        return intakeMotorConfig.getRPM();
+        return intakeMotor.getVelocity();
     }
 
     public double getMidtakeCurrentRPM() {
-        return midtakeMotorConfig.getRPM();
+        return midtakeMotor.getVelocity();
     }
 
     public double getTargetRPM() {
-        // Assuming both motors will have the same target RPM
-        return intakeMotorConfig.getTargetRPM();
+        return targetRPM;
     }
 
     public void update() {
-        intakeMotorConfig.updateRPM(intakeMotor.getCurrentPosition());
-        midtakeMotorConfig.updateRPM(midtakeMotor.getCurrentPosition());
-
+        // The update logic is now handled within the MotorConfig class
         DebugUtil.logAdd("Intake RPM: " + String.format("%.2f", getIntakeCurrentRPM()) + "/" + String.format("%.2f", getTargetRPM()));
         DebugUtil.logAdd("Midtake RPM: " + String.format("%.2f", getMidtakeCurrentRPM()) + "/" + String.format("%.2f", getTargetRPM()));
     }

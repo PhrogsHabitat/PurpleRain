@@ -1,226 +1,157 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Motors;
 
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.arcrobotics.ftclib.hardware.motors.Motor;
+import com.arcrobotics.ftclib.hardware.motors.MotorEx;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 
-public final class MotorConfig
-{
-    /**
-     * Represents the position of the motor on the robot.
-     */
-    public enum Position
-    {
+public final class MotorConfig {
+    public enum Position {
         FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, EXPLOSHER, INTAKE, MIDTAKE
     }
 
-    /**
-     * Represents the state of the motor (ON/OFF).
-     */
-    public enum MotorState
-    {
+    public enum MotorState {
         ON, OFF
+    }
+
+    public enum ControlMode {
+        RAW_POWER, VELOCITY_CONTROL, POSITION_CONTROL
     }
 
     private final String name;
     private final Position position;
-    private final DcMotor.Direction direction;
-    private final DcMotor.ZeroPowerBehavior zeroPowerBehavior;
-    private final DcMotor.RunMode runMode;
-    private final double ticksPerRevolution;
+    private final Motor motor;
     private MotorState state = MotorState.OFF;
+    private ControlMode currentControlMode = ControlMode.VELOCITY_CONTROL;
 
-    private double targetRPM = 0;
-    private double currentRPM = 0;
-    private int lastPosition = 0;
-    private long lastTime = 0;
+    // PID coefficients
+    private double veloP = 0.05;
+    private double veloI = 0.01;
+    private double veloD = 0.31;
+    private double positionP = 0.05;
 
-    /**
-     * Constructs a MotorConfig using the builder.
-     *
-     * @param builder The builder containing configuration parameters.
-     */
-    private MotorConfig(Builder builder)
-    {
+    private MotorConfig(Builder builder) {
         this.name = builder.name;
         this.position = builder.position;
-        this.direction = builder.direction;
-        this.zeroPowerBehavior = builder.zeroPowerBehavior;
-        this.runMode = builder.runMode;
-        this.ticksPerRevolution = builder.ticksPerRevolution;
-    }
 
-    /**
-     * Builder class for MotorConfig.
-     */
-    public static class Builder
-    {
-        private String name;
-        private Position position;
-        private DcMotor.Direction direction = DcMotor.Direction.FORWARD;
-        private DcMotor.ZeroPowerBehavior zeroPowerBehavior = DcMotor.ZeroPowerBehavior.BRAKE;
-        private DcMotor.RunMode runMode = DcMotor.RunMode.RUN_WITHOUT_ENCODER;
-        private double ticksPerRevolution = 537.6; // Default for many FTC motors
-
-        /**
-         * Creates a new builder for MotorConfig.
-         * @param name The name of the motor.
-         * @param position The position of the motor.
-         */
-        public Builder(String name, Position position)
+        if (builder.useMotorEx)
         {
-            this.name = name;
-            this.position = position;
+            this.motor = new MotorEx(builder.hardwareMap, builder.name);
+        }
+        else if (builder.maxRPM != 0 && builder.cpr != 0)
+        {
+            this.motor = new Motor(builder.hardwareMap, builder.name, builder.cpr, builder.maxRPM);
+        }
+        else
+        {
+            this.motor = new Motor(builder.hardwareMap, builder.name);
         }
 
-        /**
-         * Sets the direction for the motor.
-         * @param direction The motor direction.
-         * @return The builder instance.
-         */
-        public Builder direction(DcMotor.Direction direction)
-        {
-            this.direction = direction;
+        this.motor.setInverted(builder.inverted);
+        this.motor.setZeroPowerBehavior(builder.zeroPowerBehavior);
+
+        initializePIDCoefficients();
+    }
+
+    public static class Builder {
+        private final HardwareMap hardwareMap;
+        private final String name;
+        private final Position position;
+        private final double maxRPM;
+        private final double cpr;
+
+        private boolean inverted = false;
+        private Motor.ZeroPowerBehavior zeroPowerBehavior = Motor.ZeroPowerBehavior.BRAKE;
+        private boolean useMotorEx = false;
+
+        public Builder(HardwareMap hardwareMap, String name, Position position, double cpr, double maxRPM) {
+            this.hardwareMap = hardwareMap;
+            this.name = name;
+            this.position = position;
+            this.maxRPM = maxRPM;
+            this.cpr = cpr;
+        }
+
+        public Builder(HardwareMap hardwareMap, String name, Position position) {
+            this.hardwareMap = hardwareMap;
+            this.name = name;
+            this.position = position;
+            this.maxRPM = 0;
+            this.cpr = 0;
+        }
+
+        public Builder inverted() {
+            this.inverted = true;
             return this;
         }
 
-        /**
-         * Sets the zero power behavior for the motor.
-         * @param zeroPowerBehavior The zero power behavior.
-         * @return The builder instance.
-         */
-        public Builder zeroPowerBehavior(DcMotor.ZeroPowerBehavior zeroPowerBehavior)
-        {
+        public Builder zeroPowerBehavior(Motor.ZeroPowerBehavior zeroPowerBehavior) {
             this.zeroPowerBehavior = zeroPowerBehavior;
             return this;
         }
 
-        /**
-         * Sets the run mode for the motor.
-         * @param runMode The run mode.
-         * @return The builder instance.
-         */
-        public Builder runMode(DcMotor.RunMode runMode)
-        {
-            this.runMode = runMode;
+        public Builder useMotorEx() {
+            this.useMotorEx = true;
             return this;
         }
 
-        /**
-         * Sets the encoder ticks per revolution for the motor.
-         * @param ticks The number of ticks per revolution.
-         * @return The builder instance.
-         */
-        public Builder ticksPerRevolution(double ticks)
-        {
-            this.ticksPerRevolution = ticks;
-            return this;
-        }
-
-        /**
-         * Builds the MotorConfig instance.
-         * @return The MotorConfig.
-         */
-        public MotorConfig build()
-        {
+        public MotorConfig build() {
             return new MotorConfig(this);
         }
     }
 
-    // RPM RELATED METHODS
-
-    /**
-     * Initializes the RPM tracking variables.
-     * @param currentPosition The starting encoder position of the motor.
-     */
-    public void initializeRPMTracking(int currentPosition)
-    {
-        this.lastPosition = currentPosition;
-        this.lastTime = System.currentTimeMillis();
+    private void initializePIDCoefficients() {
+//        motor.setVeloCoefficients(veloP, veloI, veloD);
+//        motor.setPositionCoefficient(positionP);
     }
 
-    /**
-     * Updates the current RPM calculation. Should be called in a loop.
-     * @param currentPosition The current encoder position of the motor.
-     */
-    public void updateRPM(int currentPosition)
-    {
-        long currentTime = System.currentTimeMillis();
-        if (lastTime > 0 && currentTime > lastTime)
-        {
-            long deltaTime = currentTime - lastTime;
-            int deltaPosition = currentPosition - lastPosition;
-            this.currentRPM = (deltaPosition / (double)deltaTime) * 1000.0 * 60.0 / ticksPerRevolution;
-        }
-        else
-        {
-            this.currentRPM = 0.0;
-        }
-        this.lastPosition = currentPosition;
-        this.lastTime = currentTime;
+    // ===== VELOCITY METHODS =====
+    public double getVelocity() {
+        return motor.getCorrectedVelocity();
     }
 
+    public void setTargetRPM(double rpm) {
+        setControlMode(ControlMode.VELOCITY_CONTROL);
+        motor.set(rpm);
+        state = (rpm != 0) ? MotorState.ON : MotorState.OFF;
+    }
 
-    /**
-     * Sets the motor's target RPM and updates the motor's velocity.
-     * @param motor The DcMotorEx instance to control.
-     * @param rpm The desired target RPM.
-     */
-    public void setRPM(DcMotorEx motor, double rpm)
-    {
-        this.targetRPM = rpm;
-        if (state == MotorState.ON && rpm > 0)
-        {
-            double targetVelocity = (rpm / 60.0) * ticksPerRevolution;
-            motor.setVelocity(targetVelocity);
-        } else {
-            motor.setVelocity(0); // Also stop motor if rpm is 0 or state is OFF
+    // ===== CONTROL MODE MANAGEMENT =====
+    public void setControlMode(ControlMode controlMode) {
+        this.currentControlMode = controlMode;
+        switch (controlMode) {
+            case VELOCITY_CONTROL:
+                motor.setRunMode(Motor.RunMode.VelocityControl);
+                break;
+            case POSITION_CONTROL:
+                motor.setRunMode(Motor.RunMode.PositionControl);
+                break;
+            case RAW_POWER:
+            default:
+                motor.setRunMode(Motor.RunMode.RawPower);
+                break;
         }
     }
 
-
-    public double getRPM()
-    {
-        return currentRPM;
+    // ===== BASIC MOTOR CONTROL =====
+    public void setPower(double power) {
+        setControlMode(ControlMode.RAW_POWER);
+        motor.set(power);
+        state = (power != 0) ? MotorState.ON : MotorState.OFF;
     }
 
-    public double getTargetRPM()
-    {
-        return targetRPM;
+    public void stop() {
+        motor.stopMotor();
+        state = MotorState.OFF;
     }
 
+    // ===== GETTER METHODS =====
+    public String getName() { return name; }
+    public Position getPosition() { return position; }
+    public MotorState getState() { return state; }
+    public ControlMode getControlMode() { return currentControlMode; }
 
-    public String getName()
-    {
-        return name;
-    }
-
-    public Position getPosition()
-    {
-        return position;
-    }
-
-    public DcMotor.Direction getDirection()
-    {
-        return direction;
-    }
-
-    public DcMotor.ZeroPowerBehavior getZeroPowerBehavior()
-    {
-        return zeroPowerBehavior;
-    }
-
-    public DcMotor.RunMode getRunMode()
-    {
-        return runMode;
-    }
-
-    public MotorState getState()
-    {
-        return state;
-    }
-
-    public void setState(MotorState state)
-    {
+    public void setState(MotorState state) {
         this.state = state;
+        if (state == MotorState.OFF) stop();
     }
 }
