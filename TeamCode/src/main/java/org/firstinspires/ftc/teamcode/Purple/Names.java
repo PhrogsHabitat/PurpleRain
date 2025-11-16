@@ -16,6 +16,6 @@ public final class Names {
     public static final String INTAKE = "FE";
     public static final String MIDTAKE = "BE";
 
-    // Servo names
+    // Finn the human.
     public static final String FINGER = "FIN";
 }

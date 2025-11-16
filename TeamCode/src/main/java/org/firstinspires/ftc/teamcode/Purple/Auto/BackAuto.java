@@ -1,16 +1,20 @@
-package org.firstinspires.ftc.teamcode.Purple;
+package org.firstinspires.ftc.teamcode.Purple.Auto;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
+import org.firstinspires.ftc.teamcode.Purple.Constants;
+import org.firstinspires.ftc.teamcode.Purple.Controls;
+import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.LimeUtil;
 
-@com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
-public class TeleOp extends LinearOpMode {
+@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "BackAuto", group = "Purple")
+public class BackAuto extends LinearOpMode {
     private Controls driver1;
     private Controls driver2;
 
@@ -33,6 +37,7 @@ public class TeleOp extends LinearOpMode {
     public double swagShitFar   = Explosher.FAR_SWEET;   // 1600
 
     private static final long TAG_TIMEOUT_MS = 500;
+    private ElapsedTime timer = new ElapsedTime();
 
     @Override
     public void runOpMode() {
@@ -45,9 +50,11 @@ public class TeleOp extends LinearOpMode {
         DebugUtil.setTelemetry(telemetry);
 
         waitForStart();
+
+        timer.reset();
         while (opModeIsActive()) {
-            driver1.update();
-            driver2.update();
+//            driver1.update();
+//            driver2.update();
             update();
         }
         stopAll();
@@ -74,8 +81,8 @@ public class TeleOp extends LinearOpMode {
 
     private void update() {
         updateAprilTagFeedback();
-        updatePlayer1Controls();
-        updatePlayer2Controls(); // consolidated operator controls
+//        updatePlayer1Controls();
+//        updatePlayer2Controls(); // consolidated operator controls
 
         // Only run debug adjustments once per loop if enabled
         if (Constants.DEBUG_MODE) {
@@ -95,13 +102,21 @@ public class TeleOp extends LinearOpMode {
     // ===== DRIVE (unchanged directions & math) =====
 
     private void updateDrive() {
-        // Speed boost when left stick button is pressed
-        powerScale = driver1.isPressed("left_stick_button") ?
-                Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
 
-        double forward = driver1.getLeftStickY();
-        double strafe = driver1.getLeftStickX();
-        double turn = driver1.getRightStickX();
+        // Start the elapsed timer :3
+        double elapsed = timer.seconds();
+
+        // Speed boost when left stick button is pressed
+        // powerScale = driver1.isPressed("left_stick_button") ? Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
+
+        double forward = 0;
+        double strafe = 0;
+        double turn = 0;
+
+        if (elapsed < 1)
+        {
+            forward = 0.4;
+        }
 
         double[] powers = MotorUtil.normalizePowers(new double[]{
                 (-forward - strafe - turn),

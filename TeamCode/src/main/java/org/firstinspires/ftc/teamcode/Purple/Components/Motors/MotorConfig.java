@@ -5,6 +5,7 @@ import com.arcrobotics.ftclib.hardware.motors.MotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 public final class MotorConfig {
+
     public enum Position {
         FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, EXPLOSHER, INTAKE, MIDTAKE
     }
@@ -23,34 +24,33 @@ public final class MotorConfig {
     private MotorState state = MotorState.OFF;
     private ControlMode currentControlMode = ControlMode.VELOCITY_CONTROL;
 
-    // PID coefficients
-    private double veloP = 0.05;
-    private double veloI = 0.01;
-    private double veloD = 0.31;
-    private double positionP = 0.05;
+    private double targetRPM = 0;
+
+    // --- PID coefficients ---
+    private double veloP = 1.0; // Low value, I gotta tune this
+    private double veloI = 0; // Very low value, I gotta tune this
+    private double veloD = 0; // Low value, I gotta tune this
+    private double positionP = 1.0;
 
     private MotorConfig(Builder builder) {
         this.name = builder.name;
         this.position = builder.position;
 
-        if (builder.useMotorEx)
-        {
+        if (builder.useMotorEx) {
             this.motor = new MotorEx(builder.hardwareMap, builder.name);
-        }
-        else if (builder.maxRPM != 0 && builder.cpr != 0)
-        {
+        } else if (builder.maxRPM != 0 && builder.cpr != 0) {
             this.motor = new Motor(builder.hardwareMap, builder.name, builder.cpr, builder.maxRPM);
-        }
-        else
-        {
+        } else {
             this.motor = new Motor(builder.hardwareMap, builder.name);
         }
 
-        this.motor.setInverted(builder.inverted);
-        this.motor.setZeroPowerBehavior(builder.zeroPowerBehavior);
+        motor.setInverted(builder.inverted);
+        motor.setZeroPowerBehavior(builder.zeroPowerBehavior);
 
         initializePIDCoefficients();
     }
+
+    // ***************** BUILDER *****************
 
     public static class Builder {
         private final HardwareMap hardwareMap;
@@ -72,11 +72,7 @@ public final class MotorConfig {
         }
 
         public Builder(HardwareMap hardwareMap, String name, Position position) {
-            this.hardwareMap = hardwareMap;
-            this.name = name;
-            this.position = position;
-            this.maxRPM = 0;
-            this.cpr = 0;
+            this(hardwareMap, name, position, 0, 0);
         }
 
         public Builder inverted() {
@@ -99,32 +95,64 @@ public final class MotorConfig {
         }
     }
 
+    // ***************** INTERNAL HELPERS *****************
+
     private void initializePIDCoefficients() {
-//        motor.setVeloCoefficients(veloP, veloI, veloD);
-//        motor.setPositionCoefficient(positionP);
+         motor.setVeloCoefficients(veloP, veloI, veloD);
+         motor.setPositionCoefficient(positionP);
+         motor.setFeedforwardCoefficients(2, 2);
     }
 
-    // ===== VELOCITY METHODS =====
-    public double getVelocity() {
-        return motor.getCorrectedVelocity();
+    private double rpmToTicksPerSecond(double rpm) {
+        return (rpm * motor.getCPR()) / 60.0;
     }
 
-    public void setTargetRPM(double rpm) {
+    private double ticksPerSecondToRpm(double tps) {
+        return (tps * 60.0) / motor.getCPR();
+    }
+
+    // ***************** VELOCITY CONTROL *****************
+
+    public void setTargetRPM(double output) {
+
+        // Ugh. (FNF Reference)
+
+
+        // We will stop the motor and reset encoder for now to see what happens
+        // motor.stopAndResetEncoder();
+
+        // Then set the control mode once again, just to be safe
         setControlMode(ControlMode.VELOCITY_CONTROL);
-        motor.set(rpm);
-        state = (rpm != 0) ? MotorState.ON : MotorState.OFF;
+        this.targetRPM = output;
+
+        // Then do the unsafe stuff
+        motor.set(output);
+
+        state = (output != 0) ? MotorState.ON : MotorState.OFF;
     }
 
-    // ===== CONTROL MODE MANAGEMENT =====
+    public double getCurrentRPM() {
+        return ticksPerSecondToRpm(motor.getCorrectedVelocity());
+    }
+
+    public double getTargetRPM() {
+        return targetRPM;
+    }
+
+    // ***************** CONTROL MODE *****************
+
     public void setControlMode(ControlMode controlMode) {
         this.currentControlMode = controlMode;
+
         switch (controlMode) {
             case VELOCITY_CONTROL:
                 motor.setRunMode(Motor.RunMode.VelocityControl);
                 break;
+
             case POSITION_CONTROL:
                 motor.setRunMode(Motor.RunMode.PositionControl);
                 break;
+
             case RAW_POWER:
             default:
                 motor.setRunMode(Motor.RunMode.RawPower);
@@ -132,7 +160,8 @@ public final class MotorConfig {
         }
     }
 
-    // ===== BASIC MOTOR CONTROL =====
+    // ***************** RAW POWER CONTROL *****************
+
     public void setPower(double power) {
         setControlMode(ControlMode.RAW_POWER);
         motor.set(power);
@@ -144,7 +173,8 @@ public final class MotorConfig {
         state = MotorState.OFF;
     }
 
-    // ===== GETTER METHODS =====
+    // ***************** GETTERS *****************
+
     public String getName() { return name; }
     public Position getPosition() { return position; }
     public MotorState getState() { return state; }

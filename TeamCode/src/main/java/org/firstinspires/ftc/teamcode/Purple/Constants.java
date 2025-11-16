@@ -27,11 +27,7 @@ public final class Constants {
     // I2C address
     public static final I2cAddr ODOMETRY_COMPUTER_I2C_ADDR = I2cAddr.create7bit(0x31);
 
-    // Explosher RPM values
-    public static final int EXPLOSHER_CLOSE_SWEET = 2400;
-    public static final int EXPLOSHER_FAR_SWEET = 6000;
-
-    // Vibration patterns
+    // Vibration stuffies
     public static final int VIBRATION_TAG_DETECTED = 40;
     public static final int VIBRATION_ALIGNED = 100;
 
