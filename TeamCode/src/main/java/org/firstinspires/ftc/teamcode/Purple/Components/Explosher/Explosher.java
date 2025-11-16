@@ -3,180 +3,197 @@ package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
-import org.firstinspires.ftc.teamcode.Purple.Utils.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
 
-public class Explosher {
+public class Explosher
+{
 
-    public enum DistanceState {
-        NEAR, MID, FAR, AUTO;
+	// Shooter presets
+	public static final double CLOSE_SWEET = 0.45;
+	public static final double FAR_SWEET = 1.0;
+	// Finger preset positions
+	private static final double NEAR_POS = 0.0;
+	private static final double MID_POS = 0.2;
+	private static final double FAR_POS = 0.3;
+	private final MotorConfig motor;
+	private final Servo finger;
+	private final ServoConfig fingerConfig;
+	private DistanceState distanceState = DistanceState.NEAR;
+	private double targetRPM = 0;
 
-        public DistanceState next() {
-            return values()[(ordinal() + 1) % values().length];
-        }
-    }
+	public Explosher (HardwareMap hardwareMap, ServoConfig fingerConfig)
+	{
 
-    private final MotorConfig motor;
-    private final Servo finger;
-    private final ServoConfig fingerConfig;
+		this.motor = new MotorConfig.Builder(
+				hardwareMap,
+				Names.EXPLOSHER,
+				MotorConfig.Position.EXPLOSHER,
+				28,
+				6000
+		)
 
-    private DistanceState distanceState = DistanceState.NEAR;
+				.build();
 
-    private double targetRPM = 0;
+		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
+		this.fingerConfig = fingerConfig;
 
-    // Finger preset positions
-    private static final double NEAR_POS = 0.0;
-    private static final double MID_POS = 0.2;
-    private static final double FAR_POS = 0.3;
+		setMotorState(MotorConfig.MotorState.OFF);
+		setFingerState(ServoConfig.ServoState.OFF);
+		setDistanceState(DistanceState.NEAR);
+	}
 
-    // Shooter presets
-    public static final double CLOSE_SWEET = 0.45;
-    public static final double FAR_SWEET   = 1.0;
+	public void setRPM (double rpm)
+	{
+		this.targetRPM = rpm;
+		motor.setTargetRPM(rpm);
+	}
 
-    public Explosher(HardwareMap hardwareMap, ServoConfig fingerConfig) {
+	// -------------------------------
+	//   MOTOR / RPM CONTROL
+	// -------------------------------
 
-        this.motor = new MotorConfig.Builder(
-                hardwareMap,
-                Names.EXPLOSHER,
-                MotorConfig.Position.EXPLOSHER,
-                28,
-                6000
-        )
+	public double getCurrentRPM ()
+	{
+		return motor.getCurrentRPM();
+	}
 
-        .build();
+	public double getTargetRPM ()
+	{
+		return targetRPM;
+	}
 
-        this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
-        this.fingerConfig = fingerConfig;
+	public MotorConfig.MotorState getMotorState ()
+	{
+		return motor.getState();
+	}
 
-        setMotorState(MotorConfig.MotorState.OFF);
-        setFingerState(ServoConfig.ServoState.OFF);
-        setDistanceState(DistanceState.NEAR);
-    }
+	public void setMotorState (MotorConfig.MotorState state)
+	{
+		if (state == MotorConfig.MotorState.ON)
+		{
+			double rpmToUse = (targetRPM > 0) ? targetRPM : FAR_SWEET;
+			motor.setTargetRPM(rpmToUse);
+		} else
+		{
+			motor.stop();
+			targetRPM = 0;
+		}
+	}
 
-    // -------------------------------
-    //   MOTOR / RPM CONTROL
-    // -------------------------------
+	public ServoConfig.ServoState getFingerState ()
+	{
+		return fingerConfig.getState();
+	}
 
-    public void setMotorState(MotorConfig.MotorState state) {
-        if (state == MotorConfig.MotorState.ON) {
-            double rpmToUse = (targetRPM > 0) ? targetRPM : FAR_SWEET;
-            motor.setTargetRPM(rpmToUse);
-        } else {
-            motor.stop();
-            targetRPM = 0;
-        }
-    }
+	// -------------------------------
+	//     FINGER / SERVO CONTROL
+	// -------------------------------
 
-    public void setRPM(double rpm) {
-        this.targetRPM = rpm;
-        motor.setTargetRPM(rpm);
-    }
+	public void setFingerState (ServoConfig.ServoState state)
+	{
+		fingerConfig.setState(state);
 
-    public double getCurrentRPM() {
-        return motor.getCurrentRPM();
-    }
+		if (state == ServoConfig.ServoState.ON)
+			finger.setPosition(fingerConfig.getMaxPosition());
+		else
+			finger.setPosition(fingerConfig.getMinPosition());
+	}
 
-    public double getTargetRPM() {
-        return targetRPM;
-    }
+	public double getFingerPosition ()
+	{
+		return finger.getPosition();
+	}
 
-    public MotorConfig.MotorState getMotorState() {
-        return motor.getState();
-    }
+	public void setFingerPosition (double position)
+	{
+		finger.setPosition(fingerConfig.clamp(position));
+	}
 
-    // -------------------------------
-    //     FINGER / SERVO CONTROL
-    // -------------------------------
+	public DistanceState getDistanceState ()
+	{
+		return distanceState;
+	}
 
-    public void setFingerState(ServoConfig.ServoState state) {
-        fingerConfig.setState(state);
+	// -------------------------------
+	//     DISTANCE STATE LOGIC
+	// -------------------------------
 
-        if (state == ServoConfig.ServoState.ON)
-            finger.setPosition(fingerConfig.getMaxPosition());
-        else
-            finger.setPosition(fingerConfig.getMinPosition());
-    }
+	public void setDistanceState (DistanceState state)
+	{
+		this.distanceState = state;
 
-    public ServoConfig.ServoState getFingerState() {
-        return fingerConfig.getState();
-    }
+		switch (state)
+		{
+			case NEAR:
+				setFingerPosition(NEAR_POS);
+				break;
 
-    public void setFingerPosition(double position) {
-        finger.setPosition(fingerConfig.clamp(position));
-    }
+			case MID:
+				setFingerPosition(MID_POS);
+				break;
 
-    public double getFingerPosition() {
-        return finger.getPosition();
-    }
+			case FAR:
+				setFingerPosition(FAR_POS);
+				break;
 
-    // -------------------------------
-    //     DISTANCE STATE LOGIC
-    // -------------------------------
+			case AUTO:
+				autoFingerAdjust();
+				break;
+		}
+	}
 
-    public void setDistanceState(DistanceState state) {
-        this.distanceState = state;
+	public void cycleDistanceState ()
+	{
+		setDistanceState(distanceState.next());
+	}
 
-        switch (state) {
-            case NEAR:
-                setFingerPosition(NEAR_POS);
-                break;
+	private void autoFingerAdjust ()
+	{
+		if (distanceState != DistanceState.AUTO)
+			return;
 
-            case MID:
-                setFingerPosition(MID_POS);
-                break;
+		double dist = LimeUtil.getTargetDistance();
+		double clamped = MathUtil.clamp(dist, 0.0, 0.3);
 
-            case FAR:
-                setFingerPosition(FAR_POS);
-                break;
+		setFingerPosition(clamped);
 
-            case AUTO:
-                autoFingerAdjust();
-                break;
-        }
-    }
+		DebugUtil.logAdd("AutoFingerPos: " + clamped);
+		DebugUtil.logAdd("Lime Best Target: " + LimeUtil.getResult());
+		DebugUtil.logAdd("Lime TX: " + LimeUtil.getTx());
+	}
 
-    public DistanceState getDistanceState() {
-        return distanceState;
-    }
+	// -------------------------------
+	//         AUTO MODE
+	// -------------------------------
 
-    public void cycleDistanceState() {
-        setDistanceState(distanceState.next());
-    }
+	public void update ()
+	{
+		if (distanceState == DistanceState.AUTO)
+			autoFingerAdjust();
 
-    // -------------------------------
-    //         AUTO MODE
-    // -------------------------------
+		DebugUtil.logAdd("Explosher RPM: " +
+				String.format("%.2f", getCurrentRPM()) +
+				" / " +
+				String.format("%.2f", getTargetRPM())
+		);
+	}
 
-    private void autoFingerAdjust() {
-        if (distanceState != DistanceState.AUTO)
-            return;
+	// -------------------------------
+	//           UPDATE
+	// -------------------------------
 
-        double dist = LimeUtil.getTargetDistance();
-        double clamped = MathUtil.clamp(dist, 0.0, 0.3);
+	public enum DistanceState
+	{
+		NEAR, MID, FAR, AUTO;
 
-        setFingerPosition(clamped);
-
-        DebugUtil.logAdd("AutoFingerPos: " + clamped);
-        DebugUtil.logAdd("Lime Best Target: " + LimeUtil.getResult());
-        DebugUtil.logAdd("Lime TX: " + LimeUtil.getTx());
-    }
-
-    // -------------------------------
-    //           UPDATE
-    // -------------------------------
-
-    public void update() {
-        if (distanceState == DistanceState.AUTO)
-            autoFingerAdjust();
-
-        DebugUtil.logAdd("Explosher RPM: " +
-                String.format("%.2f", getCurrentRPM()) +
-                " / " +
-                String.format("%.2f", getTargetRPM())
-        );
-    }
+		public DistanceState next ()
+		{
+			return values()[(ordinal() + 1) % values().length];
+		}
+	}
 }

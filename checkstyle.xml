@@ -1,0 +1,11 @@
+<module name="EmptyLineSeparator">
+    <property name="allowNoEmptyLineBetweenFields" value="false"/>
+    <property name="allowMultipleEmptyLines" value="false"/>
+    <property name="tokens" value="VARIABLE_DEF, EXPR"/>
+</module>
+
+<module name="SeparatorWrap">
+    <property name="id" value="BLANK_BEFORE_COMMENT"/>
+    <property name="option" value="nl"/>
+    <property name="tokens" value="SINGLE_LINE_COMMENT"/>
+</module>

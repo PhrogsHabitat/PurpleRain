@@ -1,37 +1,36 @@
 package org.firstinspires.ftc.teamcode.Purple;
 
 import com.qualcomm.robotcore.hardware.I2cAddr;
-import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
+
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 
-public final class Constants {
-    private Constants() {}
+public final class Constants
+{
+	public static final ServoConfig FINGER_SERVO_CONFIG = new ServoConfig(Names.FINGER, 0.0, 1.0, 0.0);
+	// Drive settings
+	public static final double DRIVE_POWER_SCALE = 1.0;
+	public static final double DRIVE_POWER_BOOST = 2.0;
+	public static final double JOYSTICK_DEADZONE = 0.1;
+	public static final double LL_HEIGHT = 13.5;
+	public static final double LL_ANGLE = 85;
+	public static final double TARGET_HEIGHT = 29.5;
+	public static final double DESIRED_TAG_DISTANCE = 18.0;
+	public static final double ALIGN_ANGLE_KP = 0.02;
+	public static final double MAX_ALIGN_POWER = 0.4;
+	public static final double ALIGN_ANGLE_TOLERANCE = 1.0;
+	public static final double ALIGN_DISTANCE_TOLERANCE = 1.0;
+	public static final double ALIGN_ANGLE_DEADZONE = 0.5;
+	public static final double ALIGN_DISTANCE_DEADZONE = 0.5;
+	// I2C address
+	public static final I2cAddr ODOMETRY_COMPUTER_I2C_ADDR = I2cAddr.create7bit(0x31);
+	// Vibration stuffies
+	public static final int VIBRATION_TAG_DETECTED = 40;
+	public static final int VIBRATION_ALIGNED = 100;
+	// Note: MotorConfig instances will be created in the opmodes with HardwareMap
+	// Debug mode toggle
+	public static final boolean DEBUG_MODE = true;
 
-    public static final ServoConfig FINGER_SERVO_CONFIG = new ServoConfig(Names.FINGER, 0.0, 1.0, 0.0);
-
-    // Drive settings
-    public static final double DRIVE_POWER_SCALE = 1.0;
-    public static final double DRIVE_POWER_BOOST = 2.0;
-    public static final double JOYSTICK_DEADZONE = 0.1;
-    public static final double LL_HEIGHT = 13.5;
-    public static final double LL_ANGLE = 85;
-    public static final double TARGET_HEIGHT = 29.5;
-    public static final double DESIRED_TAG_DISTANCE = 18.0;
-    public static final double ALIGN_ANGLE_KP = 0.02;
-    public static final double MAX_ALIGN_POWER = 0.4;
-    public static final double ALIGN_ANGLE_TOLERANCE = 1.0;
-    public static final double ALIGN_DISTANCE_TOLERANCE = 1.0;
-    public static final double ALIGN_ANGLE_DEADZONE = 0.5;
-    public static final double ALIGN_DISTANCE_DEADZONE = 0.5;
-
-    // I2C address
-    public static final I2cAddr ODOMETRY_COMPUTER_I2C_ADDR = I2cAddr.create7bit(0x31);
-
-    // Vibration stuffies
-    public static final int VIBRATION_TAG_DETECTED = 40;
-    public static final int VIBRATION_ALIGNED = 100;
-
-    // Note: MotorConfig instances will be created in the opmodes with HardwareMap
-    // Debug mode toggle
-    public static final boolean DEBUG_MODE = true;
+	private Constants ()
+	{
+	}
 }
