@@ -30,6 +30,7 @@ public final class LimeUtil
 	 */
 	public static boolean start (HardwareMap hardwareMap, String name, int pollHz)
 	{
+
 		try
 		{
 			limelight = hardwareMap.get(Limelight3A.class, name);
@@ -46,18 +47,11 @@ public final class LimeUtil
 	}
 
 	/**
-	 * Initialize with default polling rate (60 Hz)
-	 */
-	public static boolean start (HardwareMap hardwareMap, String name)
-	{
-		return start(hardwareMap, name, 60);
-	}
-
-	/**
 	 * Stop the limelight
 	 */
 	public static void stop ()
 	{
+
 		if (limelight != null)
 		{
 			try
@@ -76,6 +70,7 @@ public final class LimeUtil
 	 */
 	public static boolean isInitialized ()
 	{
+
 		return initialized && limelight != null;
 	}
 
@@ -84,6 +79,7 @@ public final class LimeUtil
 	 */
 	public static void setPipeline (int pipeline)
 	{
+
 		if (isInitialized())
 		{
 			limelight.pipelineSwitch(pipeline);
@@ -96,6 +92,7 @@ public final class LimeUtil
 	 */
 	public static void setLedMode (int mode)
 	{
+
 		if (isInitialized())
 		{
 			// Implementation depends on Limelight3A API
@@ -108,6 +105,7 @@ public final class LimeUtil
 	 */
 	public static LLResult getResult ()
 	{
+
 		if (!isInitialized()) return null;
 		try
 		{
@@ -119,10 +117,13 @@ public final class LimeUtil
 	}
 
 	/**
-	 * True if Limelight sees a valid target
+	 * Check if Limelight has a valid target
+	 *
+	 * @return Limelight sees a valid target
 	 */
 	public static boolean hasValidTarget ()
 	{
+
 		LLResult result = getResult();
 		return result != null && result.isValid();
 	}
@@ -132,6 +133,7 @@ public final class LimeUtil
 	 */
 	public static double getTx ()
 	{
+
 		LLResult result = getResult();
 		return (result != null && result.isValid()) ? result.getTx() : 0;
 	}
@@ -141,6 +143,7 @@ public final class LimeUtil
 	 */
 	public static double getTy ()
 	{
+
 		LLResult result = getResult();
 		return (result != null && result.isValid()) ? result.getTy() : 0;
 	}
@@ -150,6 +153,7 @@ public final class LimeUtil
 	 */
 	public static double getTa ()
 	{
+
 		LLResult result = getResult();
 		return (result != null && result.isValid()) ? result.getTa() : 0;
 	}
@@ -159,6 +163,7 @@ public final class LimeUtil
 	 */
 	public static double getTargetDistance ()
 	{
+
 		LLResult result = getResult();
 		return (result != null && result.isValid()) ? result.getBotposeAvgArea() * 39.3701 : 0;
 	}
@@ -168,6 +173,7 @@ public final class LimeUtil
 	 */
 	public static Limelight3A getLimelight ()
 	{
+
 		return limelight;
 	}
 }
