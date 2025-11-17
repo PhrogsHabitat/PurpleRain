@@ -3,6 +3,10 @@ package org.firstinspires.ftc.teamcode.Purple.Components.Lime;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.IMU;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 /**
  * FTC Limelight utility: wraps Limelight3A for easy, robust access
@@ -13,6 +17,8 @@ public final class LimeUtil
 
 	// Limelight instance
 	private static Limelight3A limelight = null;
+	public static IMU imu;
+
 	private static boolean initialized = false;
 
 	private LimeUtil ()
@@ -36,6 +42,8 @@ public final class LimeUtil
 			limelight = hardwareMap.get(Limelight3A.class, name);
 			limelight.setPollRateHz(pollHz);
 			limelight.start();
+			imu = hardwareMap.get(IMU.class, "imu");
+
 			initialized = true;
 			return true;
 		} catch (Exception e)
@@ -44,6 +52,14 @@ public final class LimeUtil
 			initialized = false;
 			return false;
 		}
+	}
+
+	public static void update()
+	{
+		YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
+		double yaw = orientation.getYaw(AngleUnit.DEGREES);
+
+		limelight.updateRobotOrientation(yaw);
 	}
 
 	/**
@@ -165,7 +181,7 @@ public final class LimeUtil
 	{
 
 		LLResult result = getResult();
-		return (result != null && result.isValid()) ? result.getBotposeAvgArea() * 39.3701 : 0;
+		return (result != null && result.isValid()) ? result.getBotposeAvgDist() * 39.3701 : 0;
 	}
 
 	/**

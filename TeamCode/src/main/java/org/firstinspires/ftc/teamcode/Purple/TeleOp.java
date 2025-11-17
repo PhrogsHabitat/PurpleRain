@@ -32,6 +32,7 @@ public class TeleOp extends LinearOpMode
 	// Auto-align state
 	private boolean autoAlignActive = false;
 	private long lastTagSeenTime = 0;
+	public double dist;
 
 	@Override
 	public void runOpMode ()
@@ -79,6 +80,7 @@ public class TeleOp extends LinearOpMode
 
 	private void update ()
 	{
+		LimeUtil.update();
 		updateAprilTagFeedback();
 		updatePlayer1Controls();
 		updatePlayer2Controls(); // consolidated operator controls
@@ -96,6 +98,12 @@ public class TeleOp extends LinearOpMode
 		{
 			updateDrive();
 		}
+		double m = 0.15 / 71;
+		if (LimeUtil.getTargetDistance() != 0)
+		{
+			dist = LimeUtil.getTargetDistance();
+		}
+		explosher.setRPM(m * dist);
 
 		updateSubsystems();
 		updateTelemetry();
@@ -221,19 +229,19 @@ public class TeleOp extends LinearOpMode
 		// we still allow driver2 to bump sweet spots here for quick tuning too.
 		if (driver2.justPressed("dpad_up") && Constants.DEBUG_MODE)
 		{
-			swagShitClose += 100;
+			swagShitClose += 0.05;
 		}
 		if (driver2.justPressed("dpad_down") && Constants.DEBUG_MODE)
 		{
-			swagShitClose -= 100;
+			swagShitClose -= 0.05;
 		}
 		if (driver2.justPressed("dpad_left") && Constants.DEBUG_MODE)
 		{
-			swagShitFar += 100;
+			swagShitFar += 0.05;
 		}
 		if (driver2.justPressed("dpad_right") && Constants.DEBUG_MODE)
 		{
-			swagShitFar -= 100;
+			swagShitFar -= 0.05;
 		}
 
 		// --- Alignment vibration feedback for operator ---
@@ -344,7 +352,7 @@ public class TeleOp extends LinearOpMode
 
 	private void updateTelemetry ()
 	{
-		DebugUtil.logAdd("Power Scale: " + powerScale);
+		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
 		DebugUtil.logAdd("Sticky State: " + stickyState);
 

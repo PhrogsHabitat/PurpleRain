@@ -45,7 +45,7 @@ public final class MotorConfig
 	{
 		motor.setVeloCoefficients(veloP, veloI, veloD);
 		motor.setPositionCoefficient(positionP);
-		motor.setFeedforwardCoefficients(2, 2);
+		motor.setFeedforwardCoefficients(5, 5);
 	}
 
 	private double rpmToTicksPerSecond (double rpm)
