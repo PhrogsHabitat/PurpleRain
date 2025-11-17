@@ -39,6 +39,12 @@ public class RedAuto extends LinearOpMode {
     private static final long TAG_TIMEOUT_MS = 500;
     private ElapsedTime timer = new ElapsedTime();
 
+    // Vacuum shoot-pause timing
+    private boolean vacuumPaused = false;
+    private double lastVacuumToggle = 0;
+    private static final double VACUUM_ON_TIME = 0.50;   // seconds vacuum feeds
+    private static final double VACUUM_PAUSE_TIME = 0.35; // seconds vacuum rests
+
     @Override
     public void runOpMode() {
         driver1 = new Controls(gamepad1);
@@ -125,10 +131,33 @@ public class RedAuto extends LinearOpMode {
             autoAlignToTag();
         }
 
-        if (elapsed > 6 && elapsed < 16)
-        {
+        if (elapsed > 6 && elapsed < 16) {
             autoAlignActive = false;
-            vaccum.setState(MotorConfig.MotorState.ON);
+
+            double t = timer.seconds();
+            double pulseTime = 0.1;    // seconds vacuum runs per ball
+            double pauseTime = 0.3;    // pause between balls
+
+            if (!vacuumPaused) {
+                // Start vacuum pulse
+                vaccum.setPower(Vaccum.DEFAULT_POW);
+
+                // Pulse done?
+                if (t - lastVacuumToggle > pulseTime) {
+                    vaccum.setPower(0);   // stop vacuum
+                    vacuumPaused = true;
+                    lastVacuumToggle = t;
+                }
+            } else {
+                // Pausing
+                vaccum.setPower(0);
+
+                // Pause done?
+                if (t - lastVacuumToggle > pauseTime) {
+                    vacuumPaused = false;
+                    lastVacuumToggle = t;
+                }
+            }
         }
 
         if (elapsed > 16 && elapsed < 18)
