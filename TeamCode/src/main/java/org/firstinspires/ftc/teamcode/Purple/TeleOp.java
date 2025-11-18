@@ -13,30 +13,34 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 public class TeleOp extends LinearOpMode
 {
 	private static final long TAG_TIMEOUT_MS = 500;
-
-	// Use Explosher presets by default (Option A)
+	private static final double RPM_SMOOTHING_ALPHA = 0.2; // Adjust smoothing factor (0.0 to 1.0)
+	// Use Explosher presets by default
 	public double swagShitClose = Explosher.CLOSE_SWEET; // 900
 	public double swagShitFar = Explosher.FAR_SWEET;   // 1600
+	public double dist;
 	private Controls driver1;
 	private Controls driver2;
 	private MotorConfig fl, fr, bl, br;
 	private double powerScale = Constants.DRIVE_POWER_SCALE;
 	private Explosher explosher;
 	private Vaccum vaccum;
-
 	// State tracking
 	private boolean wasAligned = false;
 	private boolean wasTagDetected = false;
 	private Explosher.DistanceState stickyState = null;
-
 	// Auto-align state
 	private boolean autoAlignActive = false;
 	private long lastTagSeenTime = 0;
-	public double dist;
+	// Linear regression variables
+	private double regressionSlope;
+	private double regressionIntercept;
+	// Add a smoothing factor for target RPM
+	private double smoothedTargetRPM = 0;
 
 	@Override
 	public void runOpMode ()
 	{
+
 		driver1 = new Controls(gamepad1);
 		driver2 = new Controls(gamepad2);
 
@@ -44,6 +48,9 @@ public class TeleOp extends LinearOpMode
 		initializeExplosher();
 		initializeVaccum();
 		DebugUtil.setTelemetry(telemetry);
+
+		// Calculate the regression line from calibration points
+		calculateRegression();
 
 		waitForStart();
 		while (opModeIsActive())
@@ -58,7 +65,7 @@ public class TeleOp extends LinearOpMode
 
 	private void initializeMotors ()
 	{
-		// Keep your mecanum and motor parameters as they were
+
 		fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.8, 312).build();
 		fr = new MotorConfig.Builder(hardwareMap, Names.FRONTRIGHT, MotorConfig.Position.FRONT_RIGHT, 2150.8, 312).build();
 		bl = new MotorConfig.Builder(hardwareMap, Names.BACKLEFT, MotorConfig.Position.BACK_LEFT, 2150.8, 312).build();
@@ -67,7 +74,7 @@ public class TeleOp extends LinearOpMode
 
 	private void initializeExplosher ()
 	{
-		// Lime camera + explosher init (unchanged)
+		// Lime camera + explosher init
 		LimeUtil.start(hardwareMap, "SwagLime", 60);
 		LimeUtil.setPipeline(0);
 		explosher = new Explosher(hardwareMap, Constants.FINGER_SERVO_CONFIG);
@@ -75,15 +82,51 @@ public class TeleOp extends LinearOpMode
 
 	private void initializeVaccum ()
 	{
+
 		vaccum = new Vaccum(hardwareMap);
+	}
+
+	private void calculateRegression ()
+	{
+		// The more points you add, the more accurate it becomes!
+		double[][] calibrationPoints = {
+				{22, 1650},
+				{32, 1800},
+				{50, 1950},
+				{63, 2000},
+				{90, 2300},
+				{122, 2500},
+				{125, 2600}
+		};
+
+		int n = calibrationPoints.length;
+		double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+
+		for (double[] point : calibrationPoints)
+		{
+			double distance = point[0];
+			double rpm = point[1];
+			sumX += distance;
+			sumY += rpm;
+			sumXY += distance * rpm;
+			sumX2 += distance * distance;
+		}
+
+		// Calculate slope (m) and intercept (b) for: RPM = m * distance + b
+		regressionSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+		regressionIntercept = (sumY - regressionSlope * sumX) / n;
+
+		DebugUtil.logAdd("Regression Calculated!");
+		DebugUtil.logAdd("RPM = " + String.format("%.3f", regressionSlope) + " * dist + " + String.format("%.3f", regressionIntercept));
 	}
 
 	private void update ()
 	{
+
 		LimeUtil.update();
 		updateAprilTagFeedback();
 		updatePlayer1Controls();
-		updatePlayer2Controls(); // consolidated operator controls
+		updatePlayer2Controls();
 
 		// Only run debug adjustments once per loop if enabled
 		if (Constants.DEBUG_MODE)
@@ -98,12 +141,21 @@ public class TeleOp extends LinearOpMode
 		{
 			updateDrive();
 		}
-		double m = 0.15 / 71;
+
+		// UPDATED: Use linear regression to calculate RPM based on distance
 		if (LimeUtil.getTargetDistance() != 0)
 		{
 			dist = LimeUtil.getTargetDistance();
+			double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
+
+			// Smooth the target RPM using EMA
+			smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
+
+			// Clamp the smoothed RPM to a reasonable range
+			smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
+
+			explosher.setRPM(smoothedTargetRPM);
 		}
-		explosher.setRPM(m * dist);
 
 		updateSubsystems();
 		updateTelemetry();
@@ -138,6 +190,7 @@ public class TeleOp extends LinearOpMode
 
 	private void updateAprilTagFeedback ()
 	{
+
 		boolean tagDetected = LimeUtil.hasValidTarget();
 
 		if (tagDetected)
@@ -229,19 +282,19 @@ public class TeleOp extends LinearOpMode
 		// we still allow driver2 to bump sweet spots here for quick tuning too.
 		if (driver2.justPressed("dpad_up") && Constants.DEBUG_MODE)
 		{
-			swagShitClose += 0.05;
+			swagShitClose += 100;
 		}
 		if (driver2.justPressed("dpad_down") && Constants.DEBUG_MODE)
 		{
-			swagShitClose -= 0.05;
+			swagShitClose -= 100;
 		}
 		if (driver2.justPressed("dpad_left") && Constants.DEBUG_MODE)
 		{
-			swagShitFar += 0.05;
+			swagShitFar += 100;
 		}
 		if (driver2.justPressed("dpad_right") && Constants.DEBUG_MODE)
 		{
-			swagShitFar -= 0.05;
+			swagShitFar -= 100;
 		}
 
 		// --- Alignment vibration feedback for operator ---
@@ -254,7 +307,6 @@ public class TeleOp extends LinearOpMode
 
 	private void updateDebug ()
 	{
-		// Keep this available for general debug toggles if DEBUG_MODE is enabled.
 		// (We already expose dpad adjustments inside updatePlayer2Controls for quick tuning.)
 	}
 
@@ -262,12 +314,14 @@ public class TeleOp extends LinearOpMode
 
 	private boolean hasRecentTarget ()
 	{
+
 		return LimeUtil.hasValidTarget() &&
 				(System.currentTimeMillis() - lastTagSeenTime) < TAG_TIMEOUT_MS;
 	}
 
 	private void autoAlignToTag ()
 	{
+
 		if (!hasRecentTarget())
 		{
 			autoAlignActive = false;
@@ -320,11 +374,13 @@ public class TeleOp extends LinearOpMode
 
 	private double clamp (double value, double min, double max)
 	{
+
 		return Math.max(min, Math.min(max, value));
 	}
 
 	private boolean isFullyAligned ()
 	{
+
 		if (!hasRecentTarget()) return false;
 
 		double tx = LimeUtil.getTx();
@@ -337,13 +393,15 @@ public class TeleOp extends LinearOpMode
 
 	private void checkForImpact ()
 	{
-		// Placeholder - leave for IMU/encoders implementation
+		// Placeholder
 	}
 
 	// ===== SUBSYSTEM UPDATES =====
 
 	private void updateSubsystems ()
 	{
+
+		// Ensure the Explosher's update method is called
 		explosher.update();
 		vaccum.update();
 	}
@@ -352,9 +410,18 @@ public class TeleOp extends LinearOpMode
 
 	private void updateTelemetry ()
 	{
+
 		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
 		DebugUtil.logAdd("Sticky State: " + stickyState);
+
+		// NEW: Show regression calculation info
+		double calculatedRPM = (regressionSlope * dist) + regressionIntercept;
+		DebugUtil.logAdd("Calculated RPM: " + String.format("%.1f", calculatedRPM) +
+				" (from regression)");
+		DebugUtil.logAdd("Smoothed Target RPM: " + String.format("%.1f", smoothedTargetRPM));
+		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
+		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 
 		if (LimeUtil.hasValidTarget())
 		{
@@ -366,13 +433,12 @@ public class TeleOp extends LinearOpMode
 			DebugUtil.logAdd("AprilTag: No target");
 		}
 
-		DebugUtil.logAdd("Explosher RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
-		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 		DebugUtil.update();
 	}
 
 	private void stopAll ()
 	{
+
 		fl.stop();
 		fr.stop();
 		bl.stop();
@@ -382,3 +448,4 @@ public class TeleOp extends LinearOpMode
 		autoAlignActive = false;
 	}
 }
+

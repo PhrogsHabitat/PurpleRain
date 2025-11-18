@@ -4,154 +4,232 @@ import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.arcrobotics.ftclib.hardware.motors.MotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
+
 public final class MotorConfig
 {
 
 	private final String name;
 	private final Position position;
+
 	private final Motor motor;
-	// --- PID coefficients ---
-	private final double veloP = 1.0; // Low value, I gotta tune this
-	private final double veloI = 0; // Very low value, I gotta tune this
-	private final double veloD = 0; // Low value, I gotta tune this
-	private final double positionP = 1.0;
+	private final double cpr;
+	private final double maxRPM;
+	// -----------------------------
+	//  Flags
+	// -----------------------------
+	private final boolean velocityEnabled;
+	private final double velocitySmoothingAlpha = 0.15;
+	private final double maxPowerStep = 0.06; // increments per loop
+	// -----------------------------
+	//  PID + Feedforward Coefficients (sane defaults)
+	// -----------------------------
+
+	// 0
+	// -0.0013
+	// -0.0004
+	private double kP = -0.0013; // Increased from 0.0007
+	private double kI = -0.0004;
+	private double kD = 0.0;
+	private double kV = 0.0013;
+	private double kA = 0.0;
+	// -----------------------------
+	//  State Tracking
+	// -----------------------------
 	private MotorState state = MotorState.OFF;
-	private ControlMode currentControlMode = ControlMode.VELOCITY_CONTROL;
+	private ControlMode controlMode = ControlMode.RAW_POWER;
 	private double targetRPM = 0;
+	private double targetTPS = 0;
+	// Velocity smoothing:
+	private double velocityEMA = 0;
+	// Power ramp rate limiting:
+	private double lastPower = 0;
 
-	private MotorConfig (Builder builder)
+	private MotorConfig (Builder b)
 	{
-		this.name = builder.name;
-		this.position = builder.position;
 
-		if (builder.useMotorEx)
+		this.name = b.name;
+		this.position = b.position;
+		this.maxRPM = b.maxRPM;
+		this.velocityEnabled = b.velocityEnabled;
+
+		if (b.useMotorEx)
 		{
-			this.motor = new MotorEx(builder.hardwareMap, builder.name);
-		} else if (builder.maxRPM != 0 && builder.cpr != 0)
+			this.motor = new MotorEx(b.hardwareMap, b.name);
+		} else if (b.maxRPM != 0 && b.cpr != 0)
 		{
-			this.motor = new Motor(builder.hardwareMap, builder.name, builder.cpr, builder.maxRPM);
+			this.motor = new Motor(b.hardwareMap, b.name, b.cpr, b.maxRPM);
 		} else
 		{
-			this.motor = new Motor(builder.hardwareMap, builder.name);
+			this.motor = new Motor(b.hardwareMap, b.name);
 		}
 
-		motor.setInverted(builder.inverted);
-		motor.setZeroPowerBehavior(builder.zeroPowerBehavior);
+		// prefer builder-specified cpr; fallback to motor provided value
+		this.cpr = (b.cpr != 0) ? b.cpr : motor.getCPR();
 
-		initializePIDCoefficients();
+		motor.setInverted(b.inverted);
+		motor.setZeroPowerBehavior(b.zeroPowerBehavior);
+
+		if (velocityEnabled)
+		{
+			applyPID();
+			applyFeedforward();
+			setControlMode(ControlMode.VELOCITY_CONTROL);
+		} else
+		{
+			// ensure raw power mode when velocity disabled
+			setControlMode(ControlMode.RAW_POWER);
+		}
 	}
 
-	private void initializePIDCoefficients ()
+	// ---------------- PID/FF ----------------
+	private void applyPID ()
 	{
-		motor.setVeloCoefficients(veloP, veloI, veloD);
-		motor.setPositionCoefficient(positionP);
-		motor.setFeedforwardCoefficients(5, 5);
+
+		motor.setVeloCoefficients(kP, kI, kD);
+		motor.setPositionCoefficient(1.0);
 	}
 
-	private double rpmToTicksPerSecond (double rpm)
+	private void applyFeedforward ()
 	{
-		return (rpm * motor.getCPR()) / 60.0;
+
+		motor.setFeedforwardCoefficients(kV, kA);
 	}
 
-	private double ticksPerSecondToRpm (double tps)
+	// ---------------- Unit conversions ----------------
+	private double rpmToTps (double rpm)
 	{
-		return (tps * 60.0) / motor.getCPR();
+
+		if (cpr == 0) return 0;
+		return rpm * (cpr / 60.0);
 	}
 
-	// ***************** BUILDER *****************
-
-	public double getCurrentRPM ()
+	private double tpsToRpm (double tps)
 	{
-		return ticksPerSecondToRpm(motor.getCorrectedVelocity());
+
+		if (cpr == 0) return 0;
+		return tps * (60.0 / cpr);
 	}
 
-	// ***************** INTERNAL HELPERS *****************
+	// ---------------- Public API ----------------
 
 	public double getTargetRPM ()
 	{
+
 		return targetRPM;
 	}
 
-	public void setTargetRPM (double output)
+	/**
+	 * Set target RPM. If this MotorConfig has velocity control enabled it sends a ticks/sec target.
+	 * If velocity control is disabled this converts rpm->fraction of configured maxRPM and sets raw power.
+	 */
+	public void setTargetRPM (double rpm)
 	{
 
-		// Ugh. (FNF Reference)
+		if (rpm < 0) rpm = 0;
+		this.targetRPM = rpm;
 
+		if (velocityEnabled && maxRPM > 0)
+		{
+			if (controlMode != ControlMode.VELOCITY_CONTROL)
+			{
+				setControlMode(ControlMode.VELOCITY_CONTROL);
+			}
+			this.targetTPS = rpmToTps(rpm);
+			motor.set(targetTPS);
 
-		// We will stop the motor and reset encoder for now to see what happens
-		// motor.stopAndResetEncoder();
+			// Debugging: Log the target TPS and RPM
+			DebugUtil.logAdd("MotorConfig [" + name + "] Target RPM: " + rpm);
+			DebugUtil.logAdd("MotorConfig [" + name + "] Target TPS: " + targetTPS);
 
-		// Then set the control mode once again, just to be safe
-		setControlMode(ControlMode.VELOCITY_CONTROL);
-		this.targetRPM = output;
-
-		// Then do the unsafe stuff
-		motor.set(output);
-
-		state = (output != 0) ? MotorState.ON : MotorState.OFF;
+			state = (rpm > 0) ? MotorState.ON : MotorState.OFF;
+		} else
+		{
+			// Fallback: convert to raw power fraction using maxRPM if available
+			double power = 0;
+			if (maxRPM > 0)
+			{
+				power = rpm / maxRPM; // simple linear mapping
+			} else
+			{
+				// no maxRPM info — conservatively map small RPM to small power
+				power = Math.min(1.0, rpm / 1000.0);
+			}
+			power = Math.max(-1.0, Math.min(1.0, power));
+			setPower(power);
+		}
 	}
 
-	public void setPower (double power)
+	public void setPower (double pwr)
 	{
+
 		setControlMode(ControlMode.RAW_POWER);
-		motor.set(power);
-		state = (power != 0) ? MotorState.ON : MotorState.OFF;
+
+		// Smooth ramp to avoid current spikes
+		double diff = pwr - lastPower;
+		if (Math.abs(diff) > maxPowerStep)
+		{
+			pwr = lastPower + Math.signum(diff) * maxPowerStep;
+		}
+
+		lastPower = pwr;
+		motor.set(pwr);
+		state = (pwr != 0) ? MotorState.ON : MotorState.OFF;
 	}
 
-	// ***************** VELOCITY CONTROL *****************
-
-	public void stop ()
+	/**
+	 * Periodic update to maintain EMA of velocity (call from your OpMode loop).
+	 */
+	public void update ()
 	{
-		motor.stopMotor();
-		state = MotorState.OFF;
+		// Get the raw ticks per second from the motor
+		double rawTps = motor.getCorrectedVelocity();
+
+		// Debugging: Log the raw ticks per second and motor power
+		DebugUtil.logAdd("MotorConfig [" + name + "] Raw TPS: " + rawTps);
+		DebugUtil.logAdd("MotorConfig [" + name + "] Motor Power: " + lastPower);
+
+		// Update the velocity EMA (Exponential Moving Average)
+		velocityEMA = velocityEMA + velocitySmoothingAlpha * (rawTps - velocityEMA);
 	}
 
-	public String getName ()
+	public double getCurrentRPM ()
 	{
-		return name;
-	}
 
-	public Position getPosition ()
-	{
-		return position;
+		return tpsToRpm(velocityEMA);
 	}
-
-	// ***************** CONTROL MODE *****************
 
 	public MotorState getState ()
 	{
+
 		return state;
-	}
-
-	// ***************** RAW POWER CONTROL *****************
-
-	public void setState (MotorState state)
-	{
-		this.state = state;
-		if (state == MotorState.OFF) stop();
 	}
 
 	public ControlMode getControlMode ()
 	{
-		return currentControlMode;
+
+		return controlMode;
 	}
 
-	// ***************** GETTERS *****************
-
-	public void setControlMode (ControlMode controlMode)
+	public void setControlMode (ControlMode mode)
 	{
-		this.currentControlMode = controlMode;
+		// Do not allow velocity mode if velocityEnabled == false
+		if (mode == ControlMode.VELOCITY_CONTROL && !velocityEnabled)
+		{
+			this.controlMode = ControlMode.RAW_POWER;
+			motor.setRunMode(Motor.RunMode.RawPower);
+			return;
+		}
 
-		switch (controlMode)
+		this.controlMode = mode;
+		switch (mode)
 		{
 			case VELOCITY_CONTROL:
 				motor.setRunMode(Motor.RunMode.VelocityControl);
 				break;
-
 			case POSITION_CONTROL:
 				motor.setRunMode(Motor.RunMode.PositionControl);
 				break;
-
 			case RAW_POWER:
 			default:
 				motor.setRunMode(Motor.RunMode.RawPower);
@@ -159,26 +237,52 @@ public final class MotorConfig
 		}
 	}
 
+	public String getName ()
+	{
+
+		return name;
+	}
+
+	public Position getPosition ()
+	{
+
+		return position;
+	}
+
+	public void stop ()
+	{
+
+		motor.stopMotor();
+		state = MotorState.OFF;
+		targetRPM = 0;
+		targetTPS = 0;
+	}
+
+	public double getMaxRPM ()
+	{
+
+		return maxRPM;
+	}
+
+	// ---------------- Enums ----------------
 	public enum Position
 	{
 		FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, EXPLOSHER, INTAKE, MIDTAKE
 	}
 
 	public enum MotorState
-	{
-		ON, OFF
-	}
+	{ON, OFF}
 
 	public enum ControlMode
-	{
-		RAW_POWER, VELOCITY_CONTROL, POSITION_CONTROL
-	}
+	{RAW_POWER, VELOCITY_CONTROL, POSITION_CONTROL}
 
+	// ---------------- Builder ----------------
 	public static class Builder
 	{
 		private final HardwareMap hardwareMap;
 		private final String name;
 		private final Position position;
+
 		private final double maxRPM;
 		private final double cpr;
 
@@ -186,40 +290,59 @@ public final class MotorConfig
 		private Motor.ZeroPowerBehavior zeroPowerBehavior = Motor.ZeroPowerBehavior.BRAKE;
 		private boolean useMotorEx = false;
 
-		public Builder (HardwareMap hardwareMap, String name, Position position, double cpr, double maxRPM)
+		// new: allow disabling velocity control for drive motors, defaults to true (enabled)
+		private boolean velocityEnabled = true;
+
+		public Builder (HardwareMap hw, String name, Position position, double cpr, double maxRPM)
 		{
-			this.hardwareMap = hardwareMap;
+
+			this.hardwareMap = hw;
 			this.name = name;
 			this.position = position;
-			this.maxRPM = maxRPM;
 			this.cpr = cpr;
+			this.maxRPM = maxRPM;
 		}
 
-		public Builder (HardwareMap hardwareMap, String name, Position position)
+		public Builder (HardwareMap hw, String name, Position position)
 		{
-			this(hardwareMap, name, position, 0, 0);
+
+			this(hw, name, position, 0, 0);
 		}
 
 		public Builder inverted ()
 		{
+
 			this.inverted = true;
 			return this;
 		}
 
 		public Builder zeroPowerBehavior (Motor.ZeroPowerBehavior zeroPowerBehavior)
 		{
+
 			this.zeroPowerBehavior = zeroPowerBehavior;
 			return this;
 		}
 
 		public Builder useMotorEx ()
 		{
+
 			this.useMotorEx = true;
+			return this;
+		}
+
+		/**
+		 * Disable velocity control for this motor. Useful for drive motors where you want raw power.
+		 */
+		public Builder disableVelocityControl ()
+		{
+
+			this.velocityEnabled = false;
 			return this;
 		}
 
 		public MotorConfig build ()
 		{
+
 			return new MotorConfig(this);
 		}
 	}

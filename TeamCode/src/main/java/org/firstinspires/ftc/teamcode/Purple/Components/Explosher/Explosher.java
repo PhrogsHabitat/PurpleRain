@@ -49,6 +49,7 @@ public class Explosher
 
 	public void setRPM (double rpm)
 	{
+
 		this.targetRPM = rpm;
 		motor.setTargetRPM(rpm);
 	}
@@ -59,21 +60,25 @@ public class Explosher
 
 	public double getCurrentRPM ()
 	{
+
 		return motor.getCurrentRPM();
 	}
 
 	public double getTargetRPM ()
 	{
+
 		return targetRPM;
 	}
 
 	public MotorConfig.MotorState getMotorState ()
 	{
+
 		return motor.getState();
 	}
 
 	public void setMotorState (MotorConfig.MotorState state)
 	{
+
 		if (state == MotorConfig.MotorState.ON)
 		{
 			double rpmToUse = (targetRPM > 0) ? targetRPM : FAR_SWEET;
@@ -87,6 +92,7 @@ public class Explosher
 
 	public ServoConfig.ServoState getFingerState ()
 	{
+
 		return fingerConfig.getState();
 	}
 
@@ -96,6 +102,7 @@ public class Explosher
 
 	public void setFingerState (ServoConfig.ServoState state)
 	{
+
 		fingerConfig.setState(state);
 
 		if (state == ServoConfig.ServoState.ON)
@@ -106,16 +113,19 @@ public class Explosher
 
 	public double getFingerPosition ()
 	{
+
 		return finger.getPosition();
 	}
 
 	public void setFingerPosition (double position)
 	{
+
 		finger.setPosition(fingerConfig.clamp(position));
 	}
 
 	public DistanceState getDistanceState ()
 	{
+
 		return distanceState;
 	}
 
@@ -125,6 +135,7 @@ public class Explosher
 
 	public void setDistanceState (DistanceState state)
 	{
+
 		this.distanceState = state;
 
 		switch (state)
@@ -149,11 +160,13 @@ public class Explosher
 
 	public void cycleDistanceState ()
 	{
+
 		setDistanceState(distanceState.next());
 	}
 
 	private void autoFingerAdjust ()
 	{
+
 		if (distanceState != DistanceState.AUTO)
 			return;
 
@@ -173,19 +186,29 @@ public class Explosher
 
 	public void update ()
 	{
-		if (distanceState == DistanceState.AUTO)
-			autoFingerAdjust();
+		// Update the motor to ensure velocity feedback is refreshed
+		motor.update();
 
+		// Debugging: Log the current RPM, target RPM, and motor power
 		DebugUtil.logAdd("Explosher RPM: " +
 				String.format("%.2f", getCurrentRPM()) +
 				" / " +
 				String.format("%.2f", getTargetRPM())
 		);
+
+		if (distanceState == DistanceState.AUTO)
+			autoFingerAdjust();
 	}
 
 	// -------------------------------
 	//           UPDATE
 	// -------------------------------
+
+	public double getMaxRPM ()
+	{
+
+		return motor.getMaxRPM();
+	}
 
 	public enum DistanceState
 	{
@@ -193,6 +216,7 @@ public class Explosher
 
 		public DistanceState next ()
 		{
+
 			return values()[(ordinal() + 1) % values().length];
 		}
 	}

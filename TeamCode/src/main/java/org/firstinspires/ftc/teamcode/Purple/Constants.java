@@ -30,7 +30,11 @@ public final class Constants
 	// Debug mode toggle
 	public static final boolean DEBUG_MODE = true;
 
+	// 63, 2000
+	// 90, 2300
+	// 122, 2500
 	private Constants ()
 	{
+
 	}
 }
