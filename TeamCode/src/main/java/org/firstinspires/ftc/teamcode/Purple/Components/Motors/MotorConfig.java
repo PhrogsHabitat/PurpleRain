@@ -28,7 +28,7 @@ public final class MotorConfig
 	// 0
 	// -0.0013
 	// -0.0004
-	private double kP = -0.0013; // Increased from 0.0007
+	private double kP = 0.0013; // Increased from 0.0007
 	private double kI = -0.0004;
 	private double kD = 0.0;
 	private double kV = 0.0013;
