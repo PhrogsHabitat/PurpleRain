@@ -14,7 +14,6 @@ public class TeleOp extends LinearOpMode
 {
 	private static final long TAG_TIMEOUT_MS = 500;
 	private static final double RPM_SMOOTHING_ALPHA = 0.2; // Adjust smoothing factor (0.0 to 1.0)
-	// Use Explosher presets by default
 	public double swagShitClose = Explosher.CLOSE_SWEET; // 900
 	public double swagShitFar = Explosher.FAR_SWEET;   // 1600
 	public double dist;
@@ -63,6 +62,13 @@ public class TeleOp extends LinearOpMode
 		stopAll();
 	}
 
+	// 8 Hours so far on BLOOP
+
+	// 7 (give or take) hours on the first video (COMPLETE)
+	// 12 hours on CRASH Logo (COMPLETE)
+	// 2 hours on Thumbnail (COMPLETE)
+	// 2 hours (Give or take) on the "What is CRASH?" Video (COMPLETE)
+
 	private void initializeMotors ()
 	{
 
@@ -90,13 +96,10 @@ public class TeleOp extends LinearOpMode
 	{
 		// The more points you add, the more accurate it becomes!
 		double[][] calibrationPoints = {
-				{22, 1650},
-				{32, 1800},
-				{50, 1950},
-				{63, 2000},
-				{90, 2300},
-				{122, 2500},
-				{125, 2600}
+				{80, 1200},
+				{95, 1300},
+				{105, 1300},
+				{126, 1400},
 		};
 
 		int n = calibrationPoints.length;
@@ -246,7 +249,7 @@ public class TeleOp extends LinearOpMode
 		} else if (stickyState == null)
 		{
 			// Stick returned to center and no sticky preset => turn off
-			explosher.setMotorState(MotorConfig.MotorState.OFF);
+//			explosher.setMotorState(MotorConfig.MotorState.OFF);
 		}
 
 		// --- Explosher trigger-based sticky toggle (same behavior) ---
