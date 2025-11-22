@@ -35,6 +35,7 @@ public class TeleOp extends LinearOpMode
 	private double regressionIntercept;
 	// Add a smoothing factor for target RPM
 	private double smoothedTargetRPM = 0;
+	public boolean manual = false;
 
 	@Override
 	public void runOpMode ()
@@ -61,13 +62,6 @@ public class TeleOp extends LinearOpMode
 
 		stopAll();
 	}
-
-	// 8 Hours so far on BLOOP
-
-	// 7 (give or take) hours on the first video (COMPLETE)
-	// 12 hours on CRASH Logo (COMPLETE)
-	// 2 hours on Thumbnail (COMPLETE)
-	// 2 hours (Give or take) on the "What is CRASH?" Video (COMPLETE)
 
 	private void initializeMotors ()
 	{
@@ -96,10 +90,11 @@ public class TeleOp extends LinearOpMode
 	{
 		// The more points you add, the more accurate it becomes!
 		double[][] calibrationPoints = {
-				{80, 1200},
-				{95, 1300},
-				{105, 1300},
-				{126, 1400},
+				{45, 1300},
+				{80, 1500},
+				{99, 1600},
+				{125, 1700},
+				{133, 1800},
 		};
 
 		int n = calibrationPoints.length;
@@ -146,20 +141,29 @@ public class TeleOp extends LinearOpMode
 		}
 
 		// UPDATED: Use linear regression to calculate RPM based on distance
-		if (LimeUtil.getTargetDistance() != 0)
-		{
-			dist = LimeUtil.getTargetDistance();
-			double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
+		double leftStickY = driver2.getLeftStickY();
 
-			// Smooth the target RPM using EMA
-			smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
+		if (Math.abs(leftStickY) > Constants.JOYSTICK_DEADZONE) {
+			if (LimeUtil.getTargetDistance() != 0) {
+				dist = LimeUtil.getTargetDistance();
+				double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
 
-			// Clamp the smoothed RPM to a reasonable range
-			smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
+				// Smooth the target RPM using EMA
+				smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
 
-			explosher.setRPM(smoothedTargetRPM);
+				// Clamp the smoothed RPM to a reasonable range
+				smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
+
+				explosher.setRPM(smoothedTargetRPM);
+			}
+			else {
+				if (!manual)
+				{
+					explosher.setRPM(0);
+					explosher.setMotorState(MotorConfig.MotorState.OFF);
+				}
+			}
 		}
-
 		updateSubsystems();
 		updateTelemetry();
 	}
@@ -226,32 +230,6 @@ public class TeleOp extends LinearOpMode
 
 	private void updatePlayer2Controls ()
 	{
-		// --- Explosher stick behavior (temporary manual control) ---
-		double leftStickY = driver2.getLeftStickY();
-
-		if (Math.abs(leftStickY) > Constants.JOYSTICK_DEADZONE)
-		{
-			// Stick being used: clear sticky state (temporary manual control)
-			stickyState = null;
-
-			if (driver2.isPressed("left_stick_button"))
-			{
-				// Stick pressed + forward => FAR sweet spot
-				explosher.setRPM(swagShitFar);
-				explosher.setMotorState(MotorConfig.MotorState.ON);
-			} else if (leftStickY > 0.5)
-			{
-				// Stick forward => CLOSE sweet spot
-				explosher.setRPM(swagShitClose);
-				explosher.setMotorState(MotorConfig.MotorState.ON);
-			}
-			// NOTE: if stick used but not forwarded >0.5, we don't change RPM (keep previous)
-		} else if (stickyState == null)
-		{
-			// Stick returned to center and no sticky preset => turn off
-//			explosher.setMotorState(MotorConfig.MotorState.OFF);
-		}
-
 		// --- Explosher trigger-based sticky toggle (same behavior) ---
 		if (driver2.justPressed("left_trigger"))
 		{
@@ -271,12 +249,15 @@ public class TeleOp extends LinearOpMode
 		if (driver2.isPressed("y"))
 		{
 			vaccum.setState(MotorConfig.MotorState.ON);
-		} else if (driver2.isPressed("x"))
+		}
+		else if (driver2.isPressed("x"))
 		{
 			vaccum.setState(MotorConfig.MotorState.ON);
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
+			explosher.setRPM(-4000);
 		} else
 		{
+			// If they keep goign when letting go of the stick, set the power to 00 here!
 			vaccum.setState(MotorConfig.MotorState.OFF);
 		}
 
@@ -285,15 +266,21 @@ public class TeleOp extends LinearOpMode
 		// we still allow driver2 to bump sweet spots here for quick tuning too.
 		if (driver2.justPressed("dpad_up") && Constants.DEBUG_MODE)
 		{
+			manual = true;
 			swagShitClose += 100;
+			explosher.setRPM(swagShitClose);
 		}
 		if (driver2.justPressed("dpad_down") && Constants.DEBUG_MODE)
 		{
+			manual = true;
 			swagShitClose -= 100;
+			explosher.setRPM(swagShitClose);
 		}
 		if (driver2.justPressed("dpad_left") && Constants.DEBUG_MODE)
 		{
+			manual = false;
 			swagShitFar += 100;
+			explosher.setRPM(0);
 		}
 		if (driver2.justPressed("dpad_right") && Constants.DEBUG_MODE)
 		{
@@ -415,16 +402,11 @@ public class TeleOp extends LinearOpMode
 	{
 
 		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
+		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
+		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
+
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
 		DebugUtil.logAdd("Sticky State: " + stickyState);
-
-		// NEW: Show regression calculation info
-		double calculatedRPM = (regressionSlope * dist) + regressionIntercept;
-		DebugUtil.logAdd("Calculated RPM: " + String.format("%.1f", calculatedRPM) +
-				" (from regression)");
-		DebugUtil.logAdd("Smoothed Target RPM: " + String.format("%.1f", smoothedTargetRPM));
-		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
-		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 
 		if (LimeUtil.hasValidTarget())
 		{

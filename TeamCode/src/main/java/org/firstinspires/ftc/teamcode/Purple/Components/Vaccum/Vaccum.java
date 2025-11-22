@@ -23,13 +23,17 @@ public class Vaccum
 				hardwareMap,
 				Names.INTAKE,
 				MotorConfig.Position.INTAKE
-		).useMotorEx().build();
+		).useMotorEx()
+				.disableVelocityControl()  // Disable PID and smoothing for intake
+				.build();
 
 		midtakeMotor = new MotorConfig.Builder(
 				hardwareMap,
 				Names.MIDTAKE,
 				MotorConfig.Position.MIDTAKE
-		).useMotorEx().build();
+		).useMotorEx()
+				.disableVelocityControl()  // Disable PID and smoothing for midtake
+				.build();
 
 		setState(MotorConfig.MotorState.OFF);
 	}
@@ -77,6 +81,9 @@ public class Vaccum
 
 	public void update ()
 	{
+		midtakeMotor.update();
+		intakeMotor.update();
+
 		DebugUtil.logAdd("Intake RPM: " +
 				String.format("%.1f", getIntakeCurrentRPM()));
 

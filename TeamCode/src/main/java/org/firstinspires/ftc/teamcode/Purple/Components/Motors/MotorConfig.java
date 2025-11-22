@@ -29,7 +29,7 @@ public final class MotorConfig
 	// -0.0013
 	// -0.0004
 	private double kP = 0.0013; // Increased from 0.0007
-	private double kI = -0.0004;
+	private double kI = 0.0004;
 	private double kD = 0.0;
 	private double kV = 0.0013;
 	private double kA = 0.0;
@@ -115,7 +115,6 @@ public final class MotorConfig
 
 	public double getTargetRPM ()
 	{
-
 		return targetRPM;
 	}
 
@@ -126,7 +125,7 @@ public final class MotorConfig
 	public void setTargetRPM (double rpm)
 	{
 
-		if (rpm < 0) rpm = 0;
+        // if (rpm < 0) rpm = 0;
 		this.targetRPM = rpm;
 
 		if (velocityEnabled && maxRPM > 0)
@@ -142,7 +141,7 @@ public final class MotorConfig
 			DebugUtil.logAdd("MotorConfig [" + name + "] Target RPM: " + rpm);
 			DebugUtil.logAdd("MotorConfig [" + name + "] Target TPS: " + targetTPS);
 
-			state = (rpm > 0) ? MotorState.ON : MotorState.OFF;
+			state = (rpm != 0) ? MotorState.ON : MotorState.OFF;
 		} else
 		{
 			// Fallback: convert to raw power fraction using maxRPM if available

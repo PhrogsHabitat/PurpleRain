@@ -35,9 +35,7 @@ public class Explosher
 				MotorConfig.Position.EXPLOSHER,
 				28,
 				6000
-		)
-
-				.build();
+		).build();
 
 		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
