@@ -12,14 +12,13 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
 
 public class Explosher
 {
-
-	// Shooter presets
 	public static final double CLOSE_SWEET = 0.45;
 	public static final double FAR_SWEET = 1.0;
-	// Finger preset positions
+
 	private static final double NEAR_POS = 0.0;
 	private static final double MID_POS = 0.2;
 	private static final double FAR_POS = 0.3;
+
 	private final MotorConfig motor;
 	private final Servo finger;
 	private final ServoConfig fingerConfig;
@@ -29,22 +28,20 @@ public class Explosher
 	public Explosher (HardwareMap hardwareMap, ServoConfig fingerConfig)
 	{
 
-		this.motor = new MotorConfig.Builder(
-				hardwareMap,
-				Names.EXPLOSHER,
-				MotorConfig.Position.EXPLOSHER,
-				28,
-				6000
-		).build();
+		this.motor = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
 
 		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
 
-		setMotorState(MotorConfig.MotorState.OFF);
-		setFingerState(ServoConfig.ServoState.OFF);
+		stop();
 		setDistanceState(DistanceState.NEAR);
 	}
 
+	/**
+	 * Sets the target RPM for the shooter motor
+	 *
+	 * @param rpm The target RPM to set
+	 */
 	public void setRPM (double rpm)
 	{
 
@@ -52,52 +49,54 @@ public class Explosher
 		motor.setTargetRPM(rpm);
 	}
 
-	// -------------------------------
-	//   MOTOR / RPM CONTROL
-	// -------------------------------
-
+	/**
+	 * Gets the current RPM of the shooter motor
+	 *
+	 * @return Current RPM value
+	 */
 	public double getCurrentRPM ()
 	{
 
 		return motor.getCurrentRPM();
 	}
 
+	/**
+	 * Gets the target RPM of the shooter motor
+	 *
+	 * @return Target RPM value
+	 */
 	public double getTargetRPM ()
 	{
 
 		return targetRPM;
 	}
 
-	public MotorConfig.MotorState getMotorState ()
+	/**
+	 * Stops the shooter motor
+	 */
+	public void stop ()
 	{
 
-		return motor.getState();
+		motor.stop();
+		targetRPM = 0;
 	}
 
-	public void setMotorState (MotorConfig.MotorState state)
-	{
-
-		if (state == MotorConfig.MotorState.ON)
-		{
-			double rpmToUse = (targetRPM > 0) ? targetRPM : FAR_SWEET;
-			motor.setTargetRPM(rpmToUse);
-		} else
-		{
-			motor.stop();
-			targetRPM = 0;
-		}
-	}
-
+	/**
+	 * Gets the current finger servo state
+	 *
+	 * @return Current servo state
+	 */
 	public ServoConfig.ServoState getFingerState ()
 	{
 
 		return fingerConfig.getState();
 	}
 
-	// -------------------------------
-	//     FINGER / SERVO CONTROL
-	// -------------------------------
-
+	/**
+	 * Sets the finger servo state
+	 *
+	 * @param state The servo state to set
+	 */
 	public void setFingerState (ServoConfig.ServoState state)
 	{
 
@@ -109,28 +108,44 @@ public class Explosher
 			finger.setPosition(fingerConfig.getMinPosition());
 	}
 
+	/**
+	 * Gets the current finger servo position
+	 *
+	 * @return Current finger position
+	 */
 	public double getFingerPosition ()
 	{
 
 		return finger.getPosition();
 	}
 
+	/**
+	 * Sets the finger servo to a specific position
+	 *
+	 * @param position The position to set (clamped to valid range)
+	 */
 	public void setFingerPosition (double position)
 	{
 
 		finger.setPosition(fingerConfig.clamp(position));
 	}
 
+	/**
+	 * Gets the current distance state
+	 *
+	 * @return Current distance state
+	 */
 	public DistanceState getDistanceState ()
 	{
 
 		return distanceState;
 	}
 
-	// -------------------------------
-	//     DISTANCE STATE LOGIC
-	// -------------------------------
-
+	/**
+	 * Sets the distance state and adjusts finger position accordingly
+	 *
+	 * @param state The distance state to set
+	 */
 	public void setDistanceState (DistanceState state)
 	{
 
@@ -141,21 +156,21 @@ public class Explosher
 			case NEAR:
 				setFingerPosition(NEAR_POS);
 				break;
-
 			case MID:
 				setFingerPosition(MID_POS);
 				break;
-
 			case FAR:
 				setFingerPosition(FAR_POS);
 				break;
-
 			case AUTO:
 				autoFingerAdjust();
 				break;
 		}
 	}
 
+	/**
+	 * Cycles to the next distance state
+	 */
 	public void cycleDistanceState ()
 	{
 
@@ -178,16 +193,14 @@ public class Explosher
 		DebugUtil.logAdd("Lime TX: " + LimeUtil.getTx());
 	}
 
-	// -------------------------------
-	//         AUTO MODE
-	// -------------------------------
-
+	/**
+	 * Updates the explosher subsystem - call in main loop
+	 */
 	public void update ()
 	{
-		// Update the motor to ensure velocity feedback is refreshed
+
 		motor.update();
 
-		// Debugging: Log the current RPM, target RPM, and motor power
 		DebugUtil.logAdd("Explosher RPM: " +
 				String.format("%.2f", getCurrentRPM()) +
 				" / " +
@@ -198,10 +211,11 @@ public class Explosher
 			autoFingerAdjust();
 	}
 
-	// -------------------------------
-	//           UPDATE
-	// -------------------------------
-
+	/**
+	 * Gets the maximum RPM capability of the shooter motor
+	 *
+	 * @return Maximum RPM value
+	 */
 	public double getMaxRPM ()
 	{
 
@@ -212,6 +226,11 @@ public class Explosher
 	{
 		NEAR, MID, FAR, AUTO;
 
+		/**
+		 * Gets the next distance state in sequence
+		 *
+		 * @return Next distance state
+		 */
 		public DistanceState next ()
 		{
 

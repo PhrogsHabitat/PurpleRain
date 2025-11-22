@@ -13,29 +13,25 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 public class TeleOp extends LinearOpMode
 {
 	private static final long TAG_TIMEOUT_MS = 500;
-	private static final double RPM_SMOOTHING_ALPHA = 0.2; // Adjust smoothing factor (0.0 to 1.0)
-	public double swagShitClose = Explosher.CLOSE_SWEET; // 900
-	public double swagShitFar = Explosher.FAR_SWEET;   // 1600
+	private static final double RPM_SMOOTHING_ALPHA = 0.2;
+	public double swagShitClose = Explosher.CLOSE_SWEET;
+	public double swagShitFar = Explosher.FAR_SWEET;
 	public double dist;
+	public boolean manual = false;
 	private Controls driver1;
 	private Controls driver2;
 	private MotorConfig fl, fr, bl, br;
 	private double powerScale = Constants.DRIVE_POWER_SCALE;
 	private Explosher explosher;
 	private Vaccum vaccum;
-	// State tracking
 	private boolean wasAligned = false;
 	private boolean wasTagDetected = false;
 	private Explosher.DistanceState stickyState = null;
-	// Auto-align state
 	private boolean autoAlignActive = false;
 	private long lastTagSeenTime = 0;
-	// Linear regression variables
 	private double regressionSlope;
 	private double regressionIntercept;
-	// Add a smoothing factor for target RPM
 	private double smoothedTargetRPM = 0;
-	public boolean manual = false;
 
 	@Override
 	public void runOpMode ()
@@ -49,7 +45,6 @@ public class TeleOp extends LinearOpMode
 		initializeVaccum();
 		DebugUtil.setTelemetry(telemetry);
 
-		// Calculate the regression line from calibration points
 		calculateRegression();
 
 		waitForStart();
@@ -66,15 +61,19 @@ public class TeleOp extends LinearOpMode
 	private void initializeMotors ()
 	{
 
-		fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.8, 312).build();
-		fr = new MotorConfig.Builder(hardwareMap, Names.FRONTRIGHT, MotorConfig.Position.FRONT_RIGHT, 2150.8, 312).build();
-		bl = new MotorConfig.Builder(hardwareMap, Names.BACKLEFT, MotorConfig.Position.BACK_LEFT, 2150.8, 312).build();
-		br = new MotorConfig.Builder(hardwareMap, Names.BACKRIGHT, MotorConfig.Position.BACK_RIGHT, 2150.8, 312).build();
+		fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.76, 312)
+				.disableVelocityControl().build();
+		fr = new MotorConfig.Builder(hardwareMap, Names.FRONTRIGHT, MotorConfig.Position.FRONT_RIGHT, 2150.76, 312)
+				.disableVelocityControl().build();
+		bl = new MotorConfig.Builder(hardwareMap, Names.BACKLEFT, MotorConfig.Position.BACK_LEFT, 2150.76, 312)
+				.disableVelocityControl().build();
+		br = new MotorConfig.Builder(hardwareMap, Names.BACKRIGHT, MotorConfig.Position.BACK_RIGHT, 2150.76, 312)
+				.disableVelocityControl().build();
 	}
 
 	private void initializeExplosher ()
 	{
-		// Lime camera + explosher init
+
 		LimeUtil.start(hardwareMap, "SwagLime", 60);
 		LimeUtil.setPipeline(0);
 		explosher = new Explosher(hardwareMap, Constants.FINGER_SERVO_CONFIG);
@@ -88,7 +87,7 @@ public class TeleOp extends LinearOpMode
 
 	private void calculateRegression ()
 	{
-		// The more points you add, the more accurate it becomes!
+
 		double[][] calibrationPoints = {
 				{45, 1300},
 				{80, 1500},
@@ -110,7 +109,6 @@ public class TeleOp extends LinearOpMode
 			sumX2 += distance * distance;
 		}
 
-		// Calculate slope (m) and intercept (b) for: RPM = m * distance + b
 		regressionSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
 		regressionIntercept = (sumY - regressionSlope * sumX) / n;
 
@@ -126,7 +124,6 @@ public class TeleOp extends LinearOpMode
 		updatePlayer1Controls();
 		updatePlayer2Controls();
 
-		// Only run debug adjustments once per loop if enabled
 		if (Constants.DEBUG_MODE)
 		{
 			updateDebug();
@@ -140,27 +137,21 @@ public class TeleOp extends LinearOpMode
 			updateDrive();
 		}
 
-		// UPDATED: Use linear regression to calculate RPM based on distance
 		double leftStickY = driver2.getLeftStickY();
-
-		if (Math.abs(leftStickY) > Constants.JOYSTICK_DEADZONE) {
-			if (LimeUtil.getTargetDistance() != 0) {
+		if (Math.abs(leftStickY) > Constants.JOYSTICK_DEADZONE)
+		{
+			if (LimeUtil.getTargetDistance() != 0)
+			{
 				dist = LimeUtil.getTargetDistance();
 				double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
-
-				// Smooth the target RPM using EMA
 				smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
-
-				// Clamp the smoothed RPM to a reasonable range
 				smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
-
 				explosher.setRPM(smoothedTargetRPM);
-			}
-			else {
+			} else
+			{
 				if (!manual)
 				{
-					explosher.setRPM(0);
-					explosher.setMotorState(MotorConfig.MotorState.OFF);
+					explosher.stop();
 				}
 			}
 		}
@@ -168,11 +159,12 @@ public class TeleOp extends LinearOpMode
 		updateTelemetry();
 	}
 
-	// ===== DRIVE (unchanged directions & math) =====
-
+	/**
+	 * Updates the drivetrain motors based on gamepad input
+	 */
 	private void updateDrive ()
 	{
-		// Speed boost when left stick button is pressed
+
 		powerScale = driver1.isPressed("left_stick_button") ?
 				Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
 
@@ -193,8 +185,6 @@ public class TeleOp extends LinearOpMode
 		br.setPower(powers[3] * powerScale);
 	}
 
-	// ===== APRILTAG / TAG FEEDBACK =====
-
 	private void updateAprilTagFeedback ()
 	{
 
@@ -205,7 +195,6 @@ public class TeleOp extends LinearOpMode
 			lastTagSeenTime = System.currentTimeMillis();
 		}
 
-		// Quick vibration when tag newly detected
 		if (tagDetected && !wasTagDetected)
 		{
 			driver1.vibrate(Constants.VIBRATION_TAG_DETECTED);
@@ -215,22 +204,16 @@ public class TeleOp extends LinearOpMode
 		wasTagDetected = tagDetected;
 	}
 
-	// ===== PLAYER 1 (driver) =====
-
 	private void updatePlayer1Controls ()
 	{
-		// Auto-align with AprilTag when right bumper held and tag present
-		autoAlignActive = driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget();
 
-		// Impact detection placeholder
+		autoAlignActive = driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget();
 		checkForImpact();
 	}
 
-	// ===== PLAYER 2 (operator) =====
-
 	private void updatePlayer2Controls ()
 	{
-		// --- Explosher trigger-based sticky toggle (same behavior) ---
+
 		if (driver2.justPressed("left_trigger"))
 		{
 			if (stickyState == null || stickyState == Explosher.DistanceState.FAR)
@@ -242,28 +225,20 @@ public class TeleOp extends LinearOpMode
 				stickyState = Explosher.DistanceState.FAR;
 				explosher.setRPM(Explosher.FAR_SWEET);
 			}
-			explosher.setMotorState(MotorConfig.MotorState.ON);
 		}
 
-		// --- Vacuum control (operator) ---
 		if (driver2.isPressed("y"))
 		{
-			vaccum.setState(MotorConfig.MotorState.ON);
-		}
-		else if (driver2.isPressed("x"))
+			vaccum.setPower(Vaccum.DEFAULT_POW);
+		} else if (driver2.isPressed("x"))
 		{
-			vaccum.setState(MotorConfig.MotorState.ON);
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
 			explosher.setRPM(-4000);
 		} else
 		{
-			// If they keep goign when letting go of the stick, set the power to 00 here!
-			vaccum.setState(MotorConfig.MotorState.OFF);
+			vaccum.stop();
 		}
 
-		// --- Debug dpad tweaks (keeps original behavior) ---
-		// NOTE: updateDebug() is called once per loop if DEBUG_MODE is true;
-		// we still allow driver2 to bump sweet spots here for quick tuning too.
 		if (driver2.justPressed("dpad_up") && Constants.DEBUG_MODE)
 		{
 			manual = true;
@@ -280,14 +255,13 @@ public class TeleOp extends LinearOpMode
 		{
 			manual = false;
 			swagShitFar += 100;
-			explosher.setRPM(0);
+			explosher.stop();
 		}
 		if (driver2.justPressed("dpad_right") && Constants.DEBUG_MODE)
 		{
 			swagShitFar -= 100;
 		}
 
-		// --- Alignment vibration feedback for operator ---
 		if (isFullyAligned() && !wasAligned)
 		{
 			driver2.vibrate(Constants.VIBRATION_ALIGNED);
@@ -297,10 +271,8 @@ public class TeleOp extends LinearOpMode
 
 	private void updateDebug ()
 	{
-		// (We already expose dpad adjustments inside updatePlayer2Controls for quick tuning.)
+		// Debug adjustments if needed
 	}
-
-	// ===== AUTO-ALIGN HELPERS =====
 
 	private boolean hasRecentTarget ()
 	{
@@ -309,6 +281,9 @@ public class TeleOp extends LinearOpMode
 				(System.currentTimeMillis() - lastTagSeenTime) < TAG_TIMEOUT_MS;
 	}
 
+	/**
+	 * Automatically aligns the robot to the detected AprilTag
+	 */
 	private void autoAlignToTag ()
 	{
 
@@ -318,21 +293,19 @@ public class TeleOp extends LinearOpMode
 			return;
 		}
 
-		double tx = LimeUtil.getTx(); // horizontal offset (deg)
+		double tx = LimeUtil.getTx();
 		double distance = LimeUtil.getTargetDistance();
 
-		// errors
 		double angleError = -tx;
 		double distanceError = Constants.DESIRED_TAG_DISTANCE - distance;
 
-		// apply deadzone
 		if (Math.abs(angleError) < Constants.ALIGN_ANGLE_DEADZONE) angleError = 0;
 		if (Math.abs(distanceError) < Constants.ALIGN_DISTANCE_DEADZONE) distanceError = 0;
 
 		double strafePower = clamp(angleError * Constants.ALIGN_ANGLE_KP,
 				-Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
 
-		double forwardPower = 0; // intentionally 0 for angle-only strafing
+		double forwardPower = 0;
 		double turnPower = clamp(-angleError * Constants.ALIGN_ANGLE_KP,
 				-Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
 
@@ -348,20 +321,27 @@ public class TeleOp extends LinearOpMode
 		fr.setPower(powers[2] * powerScale);
 		br.setPower(powers[3] * powerScale);
 
-		// vibration feedback
 		double alignmentError = Math.abs(angleError) + Math.abs(distanceError);
 		if (alignmentError < 2.0)
 		{
-			driver1.vibrate(50); // continuous gentle
+			driver1.vibrate(50);
 		} else if (alignmentError < 5.0)
 		{
 			if ((System.currentTimeMillis() % 500) < 250)
 			{
-				driver1.vibrate(25); // pulsed
+				driver1.vibrate(25);
 			}
 		}
 	}
 
+	/**
+	 * Clamps a value between minimum and maximum bounds
+	 *
+	 * @param value The value to clamp
+	 * @param min   Minimum allowed value
+	 * @param max   Maximum allowed value
+	 * @return The clamped value
+	 */
 	private double clamp (double value, double min, double max)
 	{
 
@@ -383,21 +363,22 @@ public class TeleOp extends LinearOpMode
 
 	private void checkForImpact ()
 	{
-		// Placeholder
+		// Placeholder for impact detection
 	}
 
-	// ===== SUBSYSTEM UPDATES =====
-
+	/**
+	 * Updates all subsystem components
+	 */
 	private void updateSubsystems ()
 	{
 
-		// Ensure the Explosher's update method is called
 		explosher.update();
 		vaccum.update();
 	}
 
-	// ===== TELEMETRY =====
-
+	/**
+	 * Updates telemetry display with current robot state
+	 */
 	private void updateTelemetry ()
 	{
 
@@ -421,6 +402,9 @@ public class TeleOp extends LinearOpMode
 		DebugUtil.update();
 	}
 
+	/**
+	 * Stops all motors and subsystems
+	 */
 	private void stopAll ()
 	{
 
@@ -428,9 +412,8 @@ public class TeleOp extends LinearOpMode
 		fr.stop();
 		bl.stop();
 		br.stop();
-		explosher.setMotorState(MotorConfig.MotorState.OFF);
-		vaccum.setState(MotorConfig.MotorState.OFF);
+		explosher.stop();
+		vaccum.stop();
 		autoAlignActive = false;
 	}
 }
-

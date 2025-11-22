@@ -8,79 +8,87 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 public class Vaccum
 {
-
 	public static final double DEFAULT_POW = 1.0;
+
 	private final MotorConfig intakeMotor;
 	private final MotorConfig midtakeMotor;
 	private double currentPower = 0;
 
 	/**
-	 * Create a new Vaccum subsystem.
+	 * Creates a new Vaccum subsystem
+	 *
+	 * @param hardwareMap The robot's hardware map
 	 */
 	public Vaccum (HardwareMap hardwareMap)
 	{
-		intakeMotor = new MotorConfig.Builder(
-				hardwareMap,
-				Names.INTAKE,
-				MotorConfig.Position.INTAKE
-		).useMotorEx()
-				.disableVelocityControl()  // Disable PID and smoothing for intake
-				.build();
 
-		midtakeMotor = new MotorConfig.Builder(
-				hardwareMap,
-				Names.MIDTAKE,
-				MotorConfig.Position.MIDTAKE
-		).useMotorEx()
-				.disableVelocityControl()  // Disable PID and smoothing for midtake
-				.build();
+		intakeMotor = new MotorConfig.Builder(hardwareMap, Names.INTAKE, MotorConfig.Position.INTAKE).disableVelocityControl().build();
+		midtakeMotor = new MotorConfig.Builder(hardwareMap, Names.MIDTAKE, MotorConfig.Position.MIDTAKE).disableVelocityControl().build();
 
-		setState(MotorConfig.MotorState.OFF);
+		stop();
 	}
 
-	public MotorConfig.MotorState getState ()
-	{
-		return (currentPower > 0) ? MotorConfig.MotorState.ON : MotorConfig.MotorState.OFF;
-	}
-
-	/** Sets ON/OFF state using raw power (not RPM). */
-	public void setState (MotorConfig.MotorState state)
-	{
-		if (state == MotorConfig.MotorState.ON)
-		{
-			setPower(DEFAULT_POW);
-		} else
-		{
-			setPower(0);
-		}
-	}
-
+	/**
+	 * Gets the current intake power level
+	 *
+	 * @return Current power value (-1 to 1)
+	 */
 	public double getPower ()
 	{
+
 		return currentPower;
 	}
 
-	/** Sets *power*, not RPM. Power range is -1 to 1. */
+	/**
+	 * Sets the intake power level
+	 *
+	 * @param power Power value between -1 and 1
+	 */
 	public void setPower (double power)
 	{
-		currentPower = power;
 
+		currentPower = power;
 		intakeMotor.setPower(power);
 		midtakeMotor.setPower(power);
 	}
 
+	/**
+	 * Stops the intake motors
+	 */
+	public void stop ()
+	{
+
+		setPower(0);
+	}
+
+	/**
+	 * Gets the current RPM of the intake motor
+	 *
+	 * @return Intake motor RPM
+	 */
 	public double getIntakeCurrentRPM ()
 	{
+
 		return intakeMotor.getCurrentRPM();
 	}
 
+	/**
+	 * Gets the current RPM of the midtake motor
+	 *
+	 * @return Midtake motor RPM
+	 */
 	public double getMidtakeCurrentRPM ()
 	{
+
 		return midtakeMotor.getCurrentRPM();
 	}
 
+	/**
+	 * Updates the vaccum subsystem - call in main loop
+	 */
 	public void update ()
 	{
+
 		midtakeMotor.update();
 		intakeMotor.update();
 
