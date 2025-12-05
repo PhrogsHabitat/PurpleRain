@@ -89,11 +89,13 @@ public class TeleOp extends LinearOpMode
 	{
 
 		double[][] calibrationPoints = {
-				{45, 1300},
-				{80, 1500},
-				{99, 1600},
-				{125, 1700},
-				{133, 1800},
+				{59, 3000},
+				{65, 2800},
+				{77, 3100},
+				{80, 3200},
+				{94, 3100}
+
+
 		};
 
 		int n = calibrationPoints.length;
@@ -138,7 +140,7 @@ public class TeleOp extends LinearOpMode
 		}
 
 		double leftStickY = driver2.getLeftStickY();
-		if (Math.abs(leftStickY) > Constants.JOYSTICK_DEADZONE)
+		if (leftStickY > Constants.JOYSTICK_DEADZONE)
 		{
 			if (LimeUtil.getTargetDistance() != 0)
 			{
@@ -154,6 +156,10 @@ public class TeleOp extends LinearOpMode
 					explosher.stop();
 				}
 			}
+		}
+		else if (leftStickY < -Constants.JOYSTICK_DEADZONE)
+		{
+			explosher.setRPM(-4000);
 		}
 		updateSubsystems();
 		updateTelemetry();
@@ -233,7 +239,6 @@ public class TeleOp extends LinearOpMode
 		} else if (driver2.isPressed("x"))
 		{
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
-			explosher.setRPM(-4000);
 		} else
 		{
 			vaccum.stop();

@@ -28,7 +28,7 @@ public final class Constants
 	public static final int VIBRATION_ALIGNED = 100;
 	// Note: MotorConfig instances will be created in the opmodes with HardwareMap
 	// Debug mode toggle
-	public static final boolean DEBUG_MODE = true;
+	public static final boolean DEBUG_MODE = false;
 
 	// 63, 2000
 	// 90, 2300
