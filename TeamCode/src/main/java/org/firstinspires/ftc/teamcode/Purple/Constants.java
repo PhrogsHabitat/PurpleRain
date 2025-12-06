@@ -15,15 +15,15 @@ public final class Constants
 	public static final double LL_ANGLE = 85;
 	public static final double TARGET_HEIGHT = 29.5;
 	public static final double DESIRED_TAG_DISTANCE = 18.0;
-	public static final double ALIGN_ANGLE_KP = 0.02;
-	public static final double ALIGN_DISTANCE_KP = 0.04; // Needs tuning!!!!!!
-	public static final double ALIGN_STRAFE_KP   = 0.02; // Needs tuning!!!!!!
+	public static final double ALIGN_ANGLE_KP = 0.5;
+	public static final double ALIGN_DISTANCE_KP = 0.5; // Needs tuning!!!!!!
+	public static final double ALIGN_STRAFE_KP   = 0.5; // Needs tuning!!!!!!
 
-	public static final double MAX_ALIGN_POWER = 0.4;
+	public static final double MAX_ALIGN_POWER = 0.6;
 	public static final double ALIGN_ANGLE_TOLERANCE = 1.0;
 	public static final double ALIGN_DISTANCE_TOLERANCE = 1.0;
 	public static final double ALIGN_ANGLE_DEADZONE = 0.5;
-	public static final double ALIGN_DISTANCE_DEADZONE = 0.5;
+	public static final double ALIGN_DISTANCE_DEADZONE = 0.5;   // Beans
 	// I2C address
 	public static final I2cAddr ODOMETRY_COMPUTER_I2C_ADDR = I2cAddr.create7bit(0x31);
 	// Vibration stuffies

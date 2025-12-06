@@ -314,7 +314,7 @@ public class TeleOp extends LinearOpMode
 			return;
 		}
 
-		double tx = LimeUtil.getTx();                 // horizontal angle
+		double tx = LimeUtil.getTx();  // horizontal angle
 		double distance = LimeUtil.getTargetDistance();
 		double distanceError = Constants.DESIRED_TAG_DISTANCE - distance;
 

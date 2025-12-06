@@ -56,7 +56,7 @@ public class BluePedroAuto extends OpMode {
     public void statePathUpdate() {
         switch (pathState) {
             case START_SHOOT:
-                follower.followPath(DriveStartShoot, true);
+//                follower.followPath(DriveStartShoot, true);
                 setPathState(PathState.SHOOTPRELOAD);
                 break;
             case SHOOTPRELOAD:
@@ -101,33 +101,39 @@ public class BluePedroAuto extends OpMode {
     }
 
     private void shootFull() {
-        if (pathTimer.getElapsedTimeSeconds() < 1) {
+        if (pathTimer.getElapsedTimeSeconds() < .2) {
             toggleB(true);
         }
-//        if (pathTimer.getElapsedTimeSeconds() > 1 && pathTimer.getElapsedTimeSeconds() < 8) {
-//            exploSwag(true, "Forward");
-//        }
-//        if (pathTimer.getElapsedTimeSeconds() > 2.3 && pathTimer.getElapsedTimeSeconds() < 2.5) {
-//            toggleY(true);
-//        }
-//        if (pathTimer.getElapsedTimeSeconds() > 2.5 && pathTimer.getElapsedTimeSeconds() < 2.6) {
-//            toggleY(false);
-//        }
-//        if (pathTimer.getElapsedTimeSeconds() > 4 && pathTimer.getElapsedTimeSeconds() < 4.3) {
-//            toggleY(true);
-//        }
-//        if (pathTimer.getElapsedTimeSeconds() > 4.3 && pathTimer.getElapsedTimeSeconds() < 4.4) {
-//            toggleY(false);
-//        }
-//        if (pathTimer.getElapsedTimeSeconds() > 5 && pathTimer.getElapsedTimeSeconds() < 5.1) {
-//            toggleX(true);
-//        }
-//        if (pathTimer.getElapsedTimeSeconds() > 5.2 && pathTimer.getElapsedTimeSeconds() < 5.4) {
-//            toggleY(true);
-//        }
-//        if (pathTimer.getElapsedTimeSeconds() > 10) {
-//            toggleY(false);
-//        }
+        if (pathTimer.getElapsedTimeSeconds() > .2 && pathTimer.getElapsedTimeSeconds()< .35) {
+            toggleB(false);
+        }
+        if (pathTimer.getElapsedTimeSeconds() > 2 && pathTimer.getElapsedTimeSeconds() < 8) {
+            exploSwag(true, "Forward");
+        }
+        if (pathTimer.getElapsedTimeSeconds() > 3 && pathTimer.getElapsedTimeSeconds() < 3.1) {
+            toggleY(true);
+        }
+        if (pathTimer.getElapsedTimeSeconds() > 3.1 && pathTimer.getElapsedTimeSeconds() < 3.3) {
+            toggleY(false);
+        }
+        if (pathTimer.getElapsedTimeSeconds() > 4.5 && pathTimer.getElapsedTimeSeconds() < 4.7) {
+            toggleY(true);
+        }
+        if (pathTimer.getElapsedTimeSeconds() > 4.7 && pathTimer.getElapsedTimeSeconds() < 4.8) {
+            toggleY(false);
+        }
+        if (pathTimer.getElapsedTimeSeconds() > 5 && pathTimer.getElapsedTimeSeconds() < 5.05) {
+            toggleX(true);
+        }
+        if (pathTimer.getElapsedTimeSeconds() > 5.05  && pathTimer.getElapsedTimeSeconds() < 5.05) {
+            toggleX(false);
+        }
+        if (pathTimer.getElapsedTimeSeconds() > 5.5 && pathTimer.getElapsedTimeSeconds() < 6) {
+            toggleY(true);
+        }
+        if (pathTimer.getElapsedTimeSeconds() > 7) {
+            toggleY(false);
+        }
     }
 
     @Override
@@ -230,7 +236,7 @@ public class BluePedroAuto extends OpMode {
 
     private void toggleX(boolean should)
     {
-        double pow = should ? -Vaccum.DEFAULT_POW : 0;
+        double pow = should ? -.25  : 0;
         vaccum.setPower(pow);
     }
 
@@ -238,15 +244,15 @@ public class BluePedroAuto extends OpMode {
     {
         double rpm = should ? -4000 : 0.0;
         double pow = should ? -Vaccum.DEFAULT_POW : 0;
-        explosher.setRPM(rpm);
+        exploSwag(should, should ? "Back" : "Off");
         vaccum.setPower(pow);
     }
 
     private void toggleB(boolean should)
     {
         double rpm = should ? -4000 : 0.0;
-        double pow = should ? -Vaccum.DEFAULT_POW : 0;
-        explosher.setRPM(rpm);
+        double pow = should ? -.50 : 0;
+        exploSwag(should, should ? "Back" : "Off");
         vaccum.swagReverse(pow);
     }
 
