@@ -57,10 +57,11 @@ public class BluePedroAuto extends OpMode {
         switch (pathState) {
             case START_SHOOT:
                 follower.followPath(DriveStartShoot, true);
-                setPathState(pathState.SHOOTPRELOAD);
+                setPathState(PathState.SHOOTPRELOAD);
                 break;
             case SHOOTPRELOAD:
                 if (!follower.isBusy()) {
+                    shootFull();
                     DebugUtil.logAdd("Finished shooting");
                 }
                 break;
@@ -99,6 +100,36 @@ public class BluePedroAuto extends OpMode {
         setPathState(pathState);
     }
 
+    private void shootFull() {
+        if (pathTimer.getElapsedTimeSeconds() < 1) {
+            toggleB(true);
+        }
+//        if (pathTimer.getElapsedTimeSeconds() > 1 && pathTimer.getElapsedTimeSeconds() < 8) {
+//            exploSwag(true, "Forward");
+//        }
+//        if (pathTimer.getElapsedTimeSeconds() > 2.3 && pathTimer.getElapsedTimeSeconds() < 2.5) {
+//            toggleY(true);
+//        }
+//        if (pathTimer.getElapsedTimeSeconds() > 2.5 && pathTimer.getElapsedTimeSeconds() < 2.6) {
+//            toggleY(false);
+//        }
+//        if (pathTimer.getElapsedTimeSeconds() > 4 && pathTimer.getElapsedTimeSeconds() < 4.3) {
+//            toggleY(true);
+//        }
+//        if (pathTimer.getElapsedTimeSeconds() > 4.3 && pathTimer.getElapsedTimeSeconds() < 4.4) {
+//            toggleY(false);
+//        }
+//        if (pathTimer.getElapsedTimeSeconds() > 5 && pathTimer.getElapsedTimeSeconds() < 5.1) {
+//            toggleX(true);
+//        }
+//        if (pathTimer.getElapsedTimeSeconds() > 5.2 && pathTimer.getElapsedTimeSeconds() < 5.4) {
+//            toggleY(true);
+//        }
+//        if (pathTimer.getElapsedTimeSeconds() > 10) {
+//            toggleY(false);
+//        }
+    }
+
     @Override
     public void loop() {
         DebugUtil.update();
@@ -108,35 +139,44 @@ public class BluePedroAuto extends OpMode {
 
         statePathUpdate();
 
-        DebugUtil.logAdd("pathstate" + pathState.toString());
+        DebugUtil.logAdd("pathstate: " + pathState.toString());
         DebugUtil.logAdd("x: " + follower.getPose().getX());
         DebugUtil.logAdd("y: " + follower.getPose().getY());
         DebugUtil.logAdd("heading: " + follower.getHeading());
         DebugUtil.logAdd("path time: " + pathTimer.getElapsedTimeSeconds());
+        if (LimeUtil.getTargetDistance() != 0) {
+            DebugUtil.logAdd("apriltag distance: " + LimeUtil.getTargetDistance());
+            DebugUtil.logAdd("smooth rpm: " + smoothedTargetRPM);
+        } else {
+            DebugUtil.logAdd("no apriltag found");
+        }
 
         explosher.update();
         vaccum.update();
     }
 
-    public void exploSwag(boolean should)
+
+
+    public void exploSwag(boolean should, String Explostate)
     {
         if (should)
         {
-            if (LimeUtil.getTargetDistance() != 0)
+            if (Explostate == "Forward")
             {
-                dist = LimeUtil.getTargetDistance();
-                double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
-                smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
-                smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
-                explosher.setRPM(smoothedTargetRPM);
-            } else
-            {
-                    explosher.stop();
+                if (LimeUtil.getTargetDistance() != 0) {
+                    dist = LimeUtil.getTargetDistance();
+                    double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
+                    smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
+                    smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
+                    explosher.setRPM(smoothedTargetRPM);
+                }
+            }
+            else if (Explostate == "Back") {
+                explosher.setRPM(-4000);
             }
         }
-        else
-        {
-            explosher.setRPM(-4000);
+        else {
+            explosher.stop();
         }
     }
 
@@ -180,6 +220,34 @@ public class BluePedroAuto extends OpMode {
 
         DebugUtil.logAdd("Regression Calculated!");
         DebugUtil.logAdd("RPM = " + String.format("%.3f", regressionSlope) + " * dist + " + String.format("%.3f", regressionIntercept));
+    }
+
+    private void toggleY(boolean should)
+    {
+        double pow = should ? Vaccum.DEFAULT_POW : 0;
+        vaccum.setPower(pow);
+    }
+
+    private void toggleX(boolean should)
+    {
+        double pow = should ? -Vaccum.DEFAULT_POW : 0;
+        vaccum.setPower(pow);
+    }
+
+    private void toggleSuperX(boolean should)
+    {
+        double rpm = should ? -4000 : 0.0;
+        double pow = should ? -Vaccum.DEFAULT_POW : 0;
+        explosher.setRPM(rpm);
+        vaccum.setPower(pow);
+    }
+
+    private void toggleB(boolean should)
+    {
+        double rpm = should ? -4000 : 0.0;
+        double pow = should ? -Vaccum.DEFAULT_POW : 0;
+        explosher.setRPM(rpm);
+        vaccum.swagReverse(pow);
     }
 
 }
