@@ -36,7 +36,6 @@ public class TeleOp extends LinearOpMode
 	@Override
 	public void runOpMode ()
 	{
-
 		driver1 = new Controls(gamepad1);
 		driver2 = new Controls(gamepad2);
 
@@ -95,7 +94,6 @@ public class TeleOp extends LinearOpMode
 				{80, 3200},
 				{94, 3100}
 
-
 		};
 
 		int n = calibrationPoints.length;
@@ -140,6 +138,7 @@ public class TeleOp extends LinearOpMode
 		}
 
 		double leftStickY = driver2.getLeftStickY();
+
 		if (leftStickY > Constants.JOYSTICK_DEADZONE)
 		{
 			if (LimeUtil.getTargetDistance() != 0)
@@ -149,7 +148,8 @@ public class TeleOp extends LinearOpMode
 				smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
 				smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
 				explosher.setRPM(smoothedTargetRPM);
-			} else
+			}
+			else
 			{
 				if (!manual)
 				{
@@ -157,10 +157,29 @@ public class TeleOp extends LinearOpMode
 				}
 			}
 		}
-		else if (leftStickY < -Constants.JOYSTICK_DEADZONE)
+
+		else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
 		{
 			explosher.setRPM(-4000);
+			vaccum.setPower(-Vaccum.DEFAULT_POW);
 		}
+
+		else if (driver2.isPressed(("b")))
+		{
+			explosher.setRPM(-4000);
+			vaccum.swagReverse(-Vaccum.DEFAULT_POW);
+		}
+
+		else
+		{
+			explosher.stop();
+		}
+
+		if (driver2.isPressed("x"))
+		{
+			vaccum.setPower(-Vaccum.DEFAULT_POW);
+		}
+
 		updateSubsystems();
 		updateTelemetry();
 	}
@@ -203,7 +222,7 @@ public class TeleOp extends LinearOpMode
 
 		if (tagDetected && !wasTagDetected)
 		{
-			driver1.vibrate(Constants.VIBRATION_TAG_DETECTED);
+			driver1.vibrate(150);
 			driver2.vibrate(Constants.VIBRATION_TAG_DETECTED);
 		}
 
@@ -236,10 +255,9 @@ public class TeleOp extends LinearOpMode
 		if (driver2.isPressed("y"))
 		{
 			vaccum.setPower(Vaccum.DEFAULT_POW);
-		} else if (driver2.isPressed("x"))
-		{
-			vaccum.setPower(-Vaccum.DEFAULT_POW);
-		} else
+		}
+
+		else
 		{
 			vaccum.stop();
 		}
@@ -289,55 +307,54 @@ public class TeleOp extends LinearOpMode
 	/**
 	 * Automatically aligns the robot to the detected AprilTag
 	 */
-	private void autoAlignToTag ()
-	{
+	private void autoAlignToTag() {
 
-		if (!hasRecentTarget())
-		{
+		if (!hasRecentTarget()) {
 			autoAlignActive = false;
 			return;
 		}
 
-		double tx = LimeUtil.getTx();
+		double tx = LimeUtil.getTx();                 // horizontal angle
 		double distance = LimeUtil.getTargetDistance();
-
-		double angleError = -tx;
 		double distanceError = Constants.DESIRED_TAG_DISTANCE - distance;
 
-		if (Math.abs(angleError) < Constants.ALIGN_ANGLE_DEADZONE) angleError = 0;
-		if (Math.abs(distanceError) < Constants.ALIGN_DISTANCE_DEADZONE) distanceError = 0;
+		// --- PD/P tuning ---
+		double turnPower =
+				clamp(tx * Constants.ALIGN_ANGLE_KP, -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
 
-		double strafePower = clamp(angleError * Constants.ALIGN_ANGLE_KP,
-				-Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
+		double forwardPower =
+				clamp(distanceError * Constants.ALIGN_DISTANCE_KP, -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
 
-		double forwardPower = 0;
-		double turnPower = clamp(-angleError * Constants.ALIGN_ANGLE_KP,
-				-Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
+		// Dead zones
+		if (Math.abs(tx) < Constants.ALIGN_ANGLE_DEADZONE) turnPower = 0;
+		if (Math.abs(distanceError) < Constants.ALIGN_DISTANCE_DEADZONE) forwardPower = 0;
 
-		double[] powers = MotorUtil.normalizePowers(new double[]{
-				(-forwardPower - strafePower - turnPower),
-				(-forwardPower + strafePower - turnPower),
-				(forwardPower - strafePower - turnPower),
-				(forwardPower + strafePower - turnPower)
-		});
+		// No strafe unless tag is severely off axis
+		double strafePower = 0;
+		if (Math.abs(tx) > 10) {
+			strafePower =
+					clamp(tx * Constants.ALIGN_STRAFE_KP, -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
+		}
 
-		fl.setPower(powers[0] * powerScale);
-		bl.setPower(powers[1] * powerScale);
-		fr.setPower(powers[2] * powerScale);
-		br.setPower(powers[3] * powerScale);
+		// --- Mecanum drive calculation ---
+		double flPower = forwardPower - strafePower - turnPower;
+		double frPower = forwardPower + strafePower - turnPower;
+		double blPower = forwardPower - strafePower - turnPower;
+		double brPower = forwardPower + strafePower - turnPower;
 
-		double alignmentError = Math.abs(angleError) + Math.abs(distanceError);
-		if (alignmentError < 2.0)
-		{
-			driver1.vibrate(50);
-		} else if (alignmentError < 5.0)
-		{
-			if ((System.currentTimeMillis() % 500) < 250)
-			{
-				driver1.vibrate(25);
-			}
+		double[] norm = MotorUtil.normalizePowers(new double[]{ flPower, frPower, blPower, brPower });
+
+		fl.setPower(norm[0] * powerScale);
+		fr.setPower(norm[1] * powerScale);
+		bl.setPower(norm[2] * powerScale);
+		br.setPower(norm[3] * powerScale);
+
+		// --- Haptic feedback ---
+		if (isFullyAligned()) {
+			driver1.vibrate(80);
 		}
 	}
+
 
 	/**
 	 * Clamps a value between minimum and maximum bounds

@@ -10,8 +10,8 @@ public class Vaccum
 {
 	public static final double DEFAULT_POW = 1.0;
 
-	private final MotorConfig intakeMotor;
-	private final MotorConfig midtakeMotor;
+	public final MotorConfig intakeMotor;
+	public final MotorConfig midtakeMotor;
 	private double currentPower = 0;
 
 	/**
@@ -35,7 +35,6 @@ public class Vaccum
 	 */
 	public double getPower ()
 	{
-
 		return currentPower;
 	}
 
@@ -46,10 +45,18 @@ public class Vaccum
 	 */
 	public void setPower (double power)
 	{
-
 		currentPower = power;
-		intakeMotor.setPower(power);
 		midtakeMotor.setPower(power);
+		intakeMotor.setPower(power);
+	}
+
+	/**
+	 * Runs only midtake at negative power
+	 */
+	public void swagReverse(double power)
+	{
+		currentPower = power;
+		midtakeMotor.setPower((power));
 	}
 
 	/**

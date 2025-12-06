@@ -15,16 +15,16 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 public class Constants {
 
     public static FollowerConstants followerConstants = new FollowerConstants()
-            .mass(9)
-            .forwardZeroPowerAcceleration(-36.18464288584762)
-            .lateralZeroPowerAcceleration(-38.03157031350675);
+            .mass(22.6)
+            .forwardZeroPowerAcceleration(-29.426346994728217)
+            .lateralZeroPowerAcceleration(-54.4986718533405);
 
     public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
 
     public static MecanumConstants driveConstants = new MecanumConstants()
             .maxPower(1)
-            .xVelocity(49.085779385303894)
-            .yVelocity(42.03438850462906)
+            .xVelocity(57.43825885442298)
+            .yVelocity(45.168336883304626)
 
             .rightFrontMotorName("FR")
             .rightRearMotorName("BR")

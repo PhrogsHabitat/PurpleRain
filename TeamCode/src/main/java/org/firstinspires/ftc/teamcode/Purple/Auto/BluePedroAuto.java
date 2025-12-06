@@ -9,6 +9,9 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.pedropathing.util.Timer;
 
+import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
+import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
+import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
@@ -16,6 +19,16 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 @Autonomous
 public class BluePedroAuto extends OpMode {
     public Follower follower;
+    public Explosher explosher;
+    public Vaccum vaccum;
+
+    private long lastTagSeenTime = 0;
+    private double regressionSlope;
+    private double regressionIntercept;
+    public double dist;
+    private static final double RPM_SMOOTHING_ALPHA = 0.2;
+    private double smoothedTargetRPM = 0;
+
     private Timer pathTimer, opModeTimer;
     public enum PathState {
         // path from start to shoot posi
@@ -48,7 +61,6 @@ public class BluePedroAuto extends OpMode {
                 break;
             case SHOOTPRELOAD:
                 if (!follower.isBusy()) {
-                    follower.followPath(DriveStartShoot, true);
                     DebugUtil.logAdd("Finished shooting");
                 }
                 break;
@@ -64,8 +76,6 @@ public class BluePedroAuto extends OpMode {
         pathTimer.resetTimer();
     }
 
-
-
     @Override
     public void init() {
         pathState = PathState.START_SHOOT;
@@ -74,6 +84,14 @@ public class BluePedroAuto extends OpMode {
         follower = Constants.createFollower(hardwareMap);
         buildpaths();
         follower.setPose(startPose);
+
+        DebugUtil.setTelemetry(telemetry);
+
+        calculateRegression();
+
+        initializeVaccum();
+        initializeExplosher();
+
     }
 
     public void start() {
@@ -83,7 +101,11 @@ public class BluePedroAuto extends OpMode {
 
     @Override
     public void loop() {
+        DebugUtil.update();
+        LimeUtil.update();
+
         follower.update();
+
         statePathUpdate();
 
         DebugUtil.logAdd("pathstate" + pathState.toString());
@@ -91,5 +113,73 @@ public class BluePedroAuto extends OpMode {
         DebugUtil.logAdd("y: " + follower.getPose().getY());
         DebugUtil.logAdd("heading: " + follower.getHeading());
         DebugUtil.logAdd("path time: " + pathTimer.getElapsedTimeSeconds());
+
+        explosher.update();
+        vaccum.update();
     }
+
+    public void exploSwag(boolean should)
+    {
+        if (should)
+        {
+            if (LimeUtil.getTargetDistance() != 0)
+            {
+                dist = LimeUtil.getTargetDistance();
+                double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
+                smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
+                smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
+                explosher.setRPM(smoothedTargetRPM);
+            } else
+            {
+                    explosher.stop();
+            }
+        }
+        else
+        {
+            explosher.setRPM(-4000);
+        }
+    }
+
+    private void initializeExplosher ()
+    {
+        LimeUtil.start(hardwareMap, "SwagLime", 60);
+        LimeUtil.setPipeline(0);
+        explosher = new Explosher(hardwareMap, org.firstinspires.ftc.teamcode.Purple.Constants.FINGER_SERVO_CONFIG);
+    }
+    private void initializeVaccum ()
+    {
+        vaccum = new Vaccum(hardwareMap);
+    }
+
+    private void calculateRegression ()
+    {
+
+        double[][] calibrationPoints = {
+                {59, 3000},
+                {65, 2800},
+                {77, 3100},
+                {80, 3200},
+                {94, 3100}
+        };
+
+        int n = calibrationPoints.length;
+        double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+
+        for (double[] point : calibrationPoints)
+        {
+            double distance = point[0];
+            double rpm = point[1];
+            sumX += distance;
+            sumY += rpm;
+            sumXY += distance * rpm;
+            sumX2 += distance * distance;
+        }
+
+        regressionSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        regressionIntercept = (sumY - regressionSlope * sumX) / n;
+
+        DebugUtil.logAdd("Regression Calculated!");
+        DebugUtil.logAdd("RPM = " + String.format("%.3f", regressionSlope) + " * dist + " + String.format("%.3f", regressionIntercept));
+    }
+
 }

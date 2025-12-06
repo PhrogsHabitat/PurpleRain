@@ -16,6 +16,9 @@ public final class Constants
 	public static final double TARGET_HEIGHT = 29.5;
 	public static final double DESIRED_TAG_DISTANCE = 18.0;
 	public static final double ALIGN_ANGLE_KP = 0.02;
+	public static final double ALIGN_DISTANCE_KP = 0.04; // Needs tuning!!!!!!
+	public static final double ALIGN_STRAFE_KP   = 0.02; // Needs tuning!!!!!!
+
 	public static final double MAX_ALIGN_POWER = 0.4;
 	public static final double ALIGN_ANGLE_TOLERANCE = 1.0;
 	public static final double ALIGN_DISTANCE_TOLERANCE = 1.0;
@@ -28,7 +31,7 @@ public final class Constants
 	public static final int VIBRATION_ALIGNED = 100;
 	// Note: MotorConfig instances will be created in the opmodes with HardwareMap
 	// Debug mode toggle
-	public static final boolean DEBUG_MODE = false;
+	public static final boolean DEBUG_MODE = true;
 
 	// 63, 2000
 	// 90, 2300
