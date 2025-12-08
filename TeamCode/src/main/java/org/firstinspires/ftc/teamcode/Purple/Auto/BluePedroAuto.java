@@ -165,7 +165,7 @@ public class BluePedroAuto extends OpMode {
 
             case RANKMOVE:
                 if (!follower.isBusy()) {
-                    follower.followPath(ran, false);
+                    follower.followPath(RankMove, false);
                 }
                 break;
             default:
