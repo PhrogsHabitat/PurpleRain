@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
+import org.firstinspires.ftc.teamcode.Purple.Constants;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
@@ -15,26 +16,21 @@ public class Explosher
 	public static final double CLOSE_SWEET = 0.45;
 	public static final double FAR_SWEET = 1.0;
 
-	private static final double NEAR_POS = 0.0;
-	private static final double MID_POS = 0.2;
-	private static final double FAR_POS = 0.3;
-
 	private final MotorConfig motor;
 	private final Servo finger;
 	private final ServoConfig fingerConfig;
-	private DistanceState distanceState = DistanceState.NEAR;
+	private FingerState fingerState = FingerState.STOP;
+	private double debugFingerPosition = Constants.FINGER_STOP_POSITION;
 	private double targetRPM = 0;
 
 	public Explosher (HardwareMap hardwareMap, ServoConfig fingerConfig)
 	{
-
 		this.motor = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
-
 		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
 
 		stop();
-		setDistanceState(DistanceState.NEAR);
+		setFingerState(FingerState.STOP);
 	}
 
 	/**
@@ -44,7 +40,6 @@ public class Explosher
 	 */
 	public void setRPM (double rpm)
 	{
-
 		this.targetRPM = rpm;
 		motor.setTargetRPM(rpm);
 	}
@@ -56,7 +51,6 @@ public class Explosher
 	 */
 	public double getCurrentRPM ()
 	{
-
 		return motor.getCurrentRPM();
 	}
 
@@ -67,7 +61,6 @@ public class Explosher
 	 */
 	public double getTargetRPM ()
 	{
-
 		return targetRPM;
 	}
 
@@ -76,7 +69,6 @@ public class Explosher
 	 */
 	public void stop ()
 	{
-
 		motor.stop();
 		targetRPM = 0;
 	}
@@ -88,7 +80,6 @@ public class Explosher
 	 */
 	public ServoConfig.ServoState getFingerState ()
 	{
-
 		return fingerConfig.getState();
 	}
 
@@ -99,9 +90,7 @@ public class Explosher
 	 */
 	public void setFingerState (ServoConfig.ServoState state)
 	{
-
 		fingerConfig.setState(state);
-
 		if (state == ServoConfig.ServoState.ON)
 			finger.setPosition(fingerConfig.getMaxPosition());
 		else
@@ -115,7 +104,6 @@ public class Explosher
 	 */
 	public double getFingerPosition ()
 	{
-
 		return finger.getPosition();
 	}
 
@@ -126,71 +114,68 @@ public class Explosher
 	 */
 	public void setFingerPosition (double position)
 	{
-
 		finger.setPosition(fingerConfig.clamp(position));
 	}
 
 	/**
-	 * Gets the current distance state
+	 * Gets the current finger state
 	 *
-	 * @return Current distance state
+	 * @return Current finger state
 	 */
-	public DistanceState getDistanceState ()
+	public FingerState getFingerStateEnum ()
 	{
-
-		return distanceState;
+		return fingerState;
 	}
 
 	/**
-	 * Sets the distance state and adjusts finger position accordingly
+	 * Sets the finger state and adjusts finger position accordingly
 	 *
-	 * @param state The distance state to set
+	 * @param state The finger state to set
 	 */
-	public void setDistanceState (DistanceState state)
+	public void setFingerState (FingerState state)
 	{
-
-		this.distanceState = state;
+		this.fingerState = state;
+		fingerConfig.setState(ServoConfig.ServoState.ON); // Always keep servo powered
 
 		switch (state)
 		{
-			case NEAR:
-				setFingerPosition(NEAR_POS);
+			case STOP:
+				setFingerPosition(Constants.FINGER_STOP_POSITION);
 				break;
-			case MID:
-				setFingerPosition(MID_POS);
+			case PASS:
+				setFingerPosition(Constants.FINGER_PASS_POSITION);
 				break;
-			case FAR:
-				setFingerPosition(FAR_POS);
-				break;
-			case AUTO:
-				autoFingerAdjust();
+			case DEBUG:
+				// In debug mode, keep current debug position
+				setFingerPosition(debugFingerPosition);
 				break;
 		}
 	}
 
 	/**
-	 * Cycles to the next distance state
+	 * Cycles to the next finger state (STOP -> PASS -> DEBUG -> STOP)
 	 */
-	public void cycleDistanceState ()
+	public void cycleFingerState ()
 	{
-
-		setDistanceState(distanceState.next());
+		setFingerState(fingerState.next());
 	}
 
-	private void autoFingerAdjust ()
+	/**
+	 * Adjusts the debug finger position by a small increment
+	 *
+	 * @param increment Positive to increase, negative to decrease
+	 */
+	public void adjustDebugFingerPosition (double increment)
 	{
-
-		if (distanceState != DistanceState.AUTO)
+		if (fingerState != FingerState.DEBUG) {
 			return;
+		}
 
-		double dist = LimeUtil.getTargetDistance();
-		double clamped = MathUtil.clamp(dist, 0.0, 0.3);
+		debugFingerPosition += increment;
+		debugFingerPosition = fingerConfig.clamp(debugFingerPosition);
+		setFingerPosition(debugFingerPosition);
 
-		setFingerPosition(clamped);
-
-		DebugUtil.logAdd("AutoFingerPos: " + clamped);
-		DebugUtil.logAdd("Lime Best Target: " + LimeUtil.getResult());
-		DebugUtil.logAdd("Lime TX: " + LimeUtil.getTx());
+		DebugUtil.logAdd("Debug Finger Pos: " + String.format("%.3f", debugFingerPosition));
 	}
 
 	/**
@@ -198,7 +183,6 @@ public class Explosher
 	 */
 	public void update ()
 	{
-
 		motor.update();
 
 		DebugUtil.logAdd("Explosher RPM: " +
@@ -207,8 +191,8 @@ public class Explosher
 				String.format("%.2f", getTargetRPM())
 		);
 
-		if (distanceState == DistanceState.AUTO)
-			autoFingerAdjust();
+		DebugUtil.logAdd("Finger State: " + fingerState +
+				" | Pos: " + String.format("%.3f", getFingerPosition()));
 	}
 
 	/**
@@ -218,22 +202,20 @@ public class Explosher
 	 */
 	public double getMaxRPM ()
 	{
-
 		return motor.getMaxRPM();
 	}
 
-	public enum DistanceState
+	public enum FingerState
 	{
-		NEAR, MID, FAR, AUTO;
+		STOP, PASS, DEBUG;
 
 		/**
-		 * Gets the next distance state in sequence
+		 * Gets the next finger state in sequence
 		 *
-		 * @return Next distance state
+		 * @return Next finger state
 		 */
-		public DistanceState next ()
+		public FingerState next ()
 		{
-
 			return values()[(ordinal() + 1) % values().length];
 		}
 	}

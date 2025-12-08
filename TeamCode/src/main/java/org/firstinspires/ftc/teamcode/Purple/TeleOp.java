@@ -26,7 +26,7 @@ public class TeleOp extends LinearOpMode
 	private Vaccum vaccum;
 	private boolean wasAligned = false;
 	private boolean wasTagDetected = false;
-	private Explosher.DistanceState stickyState = null;
+	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
 	private boolean autoAlignActive = false;
 	private long lastTagSeenTime = 0;
 	private double regressionSlope;
@@ -59,7 +59,6 @@ public class TeleOp extends LinearOpMode
 
 	private void initializeMotors ()
 	{
-
 		fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.76, 312)
 				.disableVelocityControl().build();
 		fr = new MotorConfig.Builder(hardwareMap, Names.FRONTRIGHT, MotorConfig.Position.FRONT_RIGHT, 2150.76, 312)
@@ -72,7 +71,6 @@ public class TeleOp extends LinearOpMode
 
 	private void initializeExplosher ()
 	{
-
 		LimeUtil.start(hardwareMap, "SwagLime", 60);
 		LimeUtil.setPipeline(0);
 		explosher = new Explosher(hardwareMap, Constants.FINGER_SERVO_CONFIG);
@@ -80,20 +78,17 @@ public class TeleOp extends LinearOpMode
 
 	private void initializeVaccum ()
 	{
-
 		vaccum = new Vaccum(hardwareMap);
 	}
 
 	private void calculateRegression ()
 	{
-
 		double[][] calibrationPoints = {
-				{59, 3000},
-				{65, 2800},
-				{77, 3100},
+				{59, 2900},
+				{65, 3000},
+				{77, 3000},
 				{80, 3200},
 				{94, 3100}
-
 		};
 
 		int n = calibrationPoints.length;
@@ -118,7 +113,6 @@ public class TeleOp extends LinearOpMode
 
 	private void update ()
 	{
-
 		LimeUtil.update();
 		updateAprilTagFeedback();
 		updatePlayer1Controls();
@@ -147,7 +141,10 @@ public class TeleOp extends LinearOpMode
 				double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
 				smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
 				smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
-				explosher.setRPM(smoothedTargetRPM);
+				if (!manual)
+				{
+					explosher.setRPM(smoothedTargetRPM);
+				}
 			}
 			else
 			{
@@ -189,7 +186,6 @@ public class TeleOp extends LinearOpMode
 	 */
 	private void updateDrive ()
 	{
-
 		powerScale = driver1.isPressed("left_stick_button") ?
 				Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
 
@@ -212,7 +208,6 @@ public class TeleOp extends LinearOpMode
 
 	private void updateAprilTagFeedback ()
 	{
-
 		boolean tagDetected = LimeUtil.hasValidTarget();
 
 		if (tagDetected)
@@ -231,37 +226,43 @@ public class TeleOp extends LinearOpMode
 
 	private void updatePlayer1Controls ()
 	{
-
 		autoAlignActive = driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget();
 		checkForImpact();
 	}
 
 	private void updatePlayer2Controls ()
 	{
-
+		// Finger state control - toggle with left_trigger
 		if (driver2.justPressed("left_trigger"))
 		{
-			if (stickyState == null || stickyState == Explosher.DistanceState.FAR)
+			explosher.cycleFingerState();
+			fingerState = explosher.getFingerStateEnum();
+		}
+
+		// DEBUG mode: manual finger adjustment with left_bumper (decrease) and right_bumper (increase)
+		if (fingerState == Explosher.FingerState.DEBUG)
+		{
+			if (driver2.justPressed("left_bumper"))
 			{
-				stickyState = Explosher.DistanceState.NEAR;
-				explosher.setRPM(Explosher.CLOSE_SWEET);
-			} else
+				explosher.adjustDebugFingerPosition(-Constants.FINGER_DEBUG_INCREMENT);
+			}
+			if (driver2.justPressed("right_bumper"))
 			{
-				stickyState = Explosher.DistanceState.FAR;
-				explosher.setRPM(Explosher.FAR_SWEET);
+				explosher.adjustDebugFingerPosition(Constants.FINGER_DEBUG_INCREMENT);
 			}
 		}
 
+		// Vaccum control
 		if (driver2.isPressed("y"))
 		{
 			vaccum.setPower(Vaccum.DEFAULT_POW);
 		}
-
 		else
 		{
 			vaccum.stop();
 		}
 
+		// Manual RPM adjustment for debugging
 		if (driver2.justPressed("dpad_up") && Constants.DEBUG_MODE)
 		{
 			manual = true;
@@ -294,12 +295,13 @@ public class TeleOp extends LinearOpMode
 
 	private void updateDebug ()
 	{
-		// Debug adjustments if needed
+		// Additional debug information for finger
+		DebugUtil.logAdd("Finger State: " + fingerState);
+		DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
 	}
 
 	private boolean hasRecentTarget ()
 	{
-
 		return LimeUtil.hasValidTarget() &&
 				(System.currentTimeMillis() - lastTagSeenTime) < TAG_TIMEOUT_MS;
 	}
@@ -308,7 +310,6 @@ public class TeleOp extends LinearOpMode
 	 * Automatically aligns the robot to the detected AprilTag
 	 */
 	private void autoAlignToTag() {
-
 		if (!hasRecentTarget()) {
 			autoAlignActive = false;
 			return;
@@ -366,13 +367,11 @@ public class TeleOp extends LinearOpMode
 	 */
 	private double clamp (double value, double min, double max)
 	{
-
 		return Math.max(min, Math.min(max, value));
 	}
 
 	private boolean isFullyAligned ()
 	{
-
 		if (!hasRecentTarget()) return false;
 
 		double tx = LimeUtil.getTx();
@@ -393,7 +392,6 @@ public class TeleOp extends LinearOpMode
 	 */
 	private void updateSubsystems ()
 	{
-
 		explosher.update();
 		vaccum.update();
 	}
@@ -403,13 +401,13 @@ public class TeleOp extends LinearOpMode
 	 */
 	private void updateTelemetry ()
 	{
-
 		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
 		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
 
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
-		DebugUtil.logAdd("Sticky State: " + stickyState);
+		DebugUtil.logAdd("Finger State: " + fingerState);
+		DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
 
 		if (LimeUtil.hasValidTarget())
 		{
@@ -429,7 +427,6 @@ public class TeleOp extends LinearOpMode
 	 */
 	private void stopAll ()
 	{
-
 		fl.stop();
 		fr.stop();
 		bl.stop();

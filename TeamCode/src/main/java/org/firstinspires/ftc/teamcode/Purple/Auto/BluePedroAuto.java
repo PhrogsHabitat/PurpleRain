@@ -35,8 +35,18 @@ public class BluePedroAuto extends OpMode {
         START_SHOOT,
         // shoots preloads
         SHOOTPRELOAD,
-        // move out of triangle
-        OUT_OF_TRIANGLE
+        //
+        PICKUP1,
+
+        SHOOT_LINE1,
+
+        HALF_LIFE2,
+
+        SHOOT_LINE2,
+
+        RANKMOVE,
+
+        DONE
     }
 
     PathState pathState;
@@ -44,25 +54,118 @@ public class BluePedroAuto extends OpMode {
     private final Pose startPose = new Pose(21.28301886792453, 123.84905660377358, Math.toRadians(143));
     private final Pose shootPose = new Pose(53.43396226415094, 94.41509433962264, Math.toRadians(143));
 
+    private final Pose PickupPose1 = new Pose(20.54587439170641, 83.0323509898277, Math.toRadians(180));
+
+    private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 57.12668327854573, Math.toRadians(180));
+
+    private final Pose Pickup_Second_Halflife2Pose = new Pose(20.54587439170641, 59.13660577338656, Math.toRadians(180));
+
+    private final Pose rankPose = new Pose(39.751800453518925, 62.93312604141928, Math.toRadians(90));
+
     private PathChain DriveStartShoot;
+
+    private PathChain DriveShootPickup1;
+
+    private PathChain DrivePickupShoot1;
+
+    private PathChain DriveShootPickup2;
+
+    private PathChain DriveToHalfLife;
+    private PathChain DriveHalfLife;
+
+    private PathChain DrivePickupShoot2;
+    private PathChain RankMove;
 
     public void buildpaths() {
         DriveStartShoot = follower.pathBuilder()
                 .addPath(new BezierLine(startPose, shootPose))
                 .setLinearHeadingInterpolation(startPose.getHeading(), shootPose.getHeading())
                 .build();
+        DriveShootPickup1 = follower.pathBuilder()
+                .addPath(new BezierLine(shootPose, PickupPose1))
+                .setLinearHeadingInterpolation(shootPose.getHeading(), PickupPose1.getHeading())
+                .build();
+        DrivePickupShoot1 = follower.pathBuilder()
+                .addPath(new BezierLine(PickupPose1, shootPose))
+                .setLinearHeadingInterpolation(PickupPose1.getHeading(), shootPose.getHeading())
+                .build();
+        DriveToHalfLife = follower.pathBuilder()
+                .addPath(new BezierLine(shootPose, Pickup_Second_Halflife1Pose))
+                .setLinearHeadingInterpolation(shootPose.getHeading(), Pickup_Second_Halflife1Pose.getHeading())
+                .build();
+        DriveHalfLife = follower.pathBuilder()
+                .addPath(new BezierLine(Pickup_Second_Halflife1Pose, Pickup_Second_Halflife2Pose))
+                .setLinearHeadingInterpolation(Pickup_Second_Halflife1Pose.getHeading(), Pickup_Second_Halflife2Pose.getHeading())
+                .build();
+        DrivePickupShoot2 = follower.pathBuilder()
+                .addPath(new BezierLine(Pickup_Second_Halflife2Pose, shootPose))
+                .setLinearHeadingInterpolation(Pickup_Second_Halflife2Pose.getHeading(), shootPose.getHeading())
+                .build();
+        RankMove = follower.pathBuilder()
+                .addPath(new BezierLine(shootPose, rankPose))
+                .setLinearHeadingInterpolation(shootPose.getHeading(), rankPose.getHeading())
+                .build();
     }
 
     public void statePathUpdate() {
         switch (pathState) {
             case START_SHOOT:
-//                follower.followPath(DriveStartShoot, true);
+                follower.followPath(DriveStartShoot, true);
                 setPathState(PathState.SHOOTPRELOAD);
                 break;
+
             case SHOOTPRELOAD:
                 if (!follower.isBusy()) {
                     shootFull();
                     DebugUtil.logAdd("Finished shooting");
+                    if (pathTimer.getElapsedTimeSeconds() > 10) {
+                        setPathState(PathState.PICKUP1);
+                    }
+                }
+                break;
+
+            case PICKUP1:
+                if (!follower.isBusy()) {
+                    vaccum.setPower(1.0);
+                    follower.followPath(DriveShootPickup1, true);
+                    setPathState(PathState.SHOOT_LINE1);
+                }
+                break;
+
+            case SHOOT_LINE1:
+                if (!follower.isBusy()) {
+                    vaccum.setPower(0);
+                    follower.followPath(DrivePickupShoot1, true);
+                    shootFull();
+                    if (pathTimer.getElapsedTimeSeconds() > 10) {
+                        setPathState(PathState.HALF_LIFE2);
+                    }
+                }
+                break;
+
+            case HALF_LIFE2:
+                if (!follower.isBusy()) {
+                    follower.followPath(DriveToHalfLife, true);
+                    vaccum.setPower(1.0);
+                    follower.followPath(DriveHalfLife, true);
+                    setPathState(PathState.SHOOT_LINE2);
+                }
+                break;
+
+            case SHOOT_LINE2:
+                if (!follower.isBusy()) {
+                    vaccum.setPower(0.0);
+                    follower.followPath(DrivePickupShoot2, true);
+                    if (pathTimer.getElapsedTimeSeconds() > 10) {
+                        shootFull();
+                    }
+                    setPathState(PathState.RANKMOVE);
+                }
+                break;
+
+            case RANKMOVE:
+                if (!follower.isBusy()) {
+                    follower.followPath(ran, false);
                 }
                 break;
             default:
@@ -107,7 +210,7 @@ public class BluePedroAuto extends OpMode {
         if (pathTimer.getElapsedTimeSeconds() > .2 && pathTimer.getElapsedTimeSeconds()< .35) {
             toggleB(false);
         }
-        if (pathTimer.getElapsedTimeSeconds() > 2 && pathTimer.getElapsedTimeSeconds() < 8) {
+        if (pathTimer.getElapsedTimeSeconds() > 2.5 && pathTimer.getElapsedTimeSeconds() < 8) {
             exploSwag(true, "Forward");
         }
         if (pathTimer.getElapsedTimeSeconds() > 3 && pathTimer.getElapsedTimeSeconds() < 3.1) {
@@ -236,7 +339,7 @@ public class BluePedroAuto extends OpMode {
 
     private void toggleX(boolean should)
     {
-        double pow = should ? -.25  : 0;
+        double pow = should ? -.15  : 0;
         vaccum.setPower(pow);
     }
 
@@ -255,5 +358,4 @@ public class BluePedroAuto extends OpMode {
         exploSwag(should, should ? "Back" : "Off");
         vaccum.swagReverse(pow);
     }
-
 }
