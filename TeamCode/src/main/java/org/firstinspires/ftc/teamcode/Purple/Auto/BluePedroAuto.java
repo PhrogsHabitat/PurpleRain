@@ -68,8 +68,6 @@ public class BluePedroAuto extends OpMode {
 
     private PathChain DrivePickupShoot1;
 
-    private PathChain DriveShootPickup2;
-
     private PathChain DriveToHalfLife;
     private PathChain DriveHalfLife;
 
