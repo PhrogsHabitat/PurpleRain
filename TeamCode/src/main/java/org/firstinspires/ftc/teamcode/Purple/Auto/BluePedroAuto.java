@@ -51,16 +51,16 @@ public class BluePedroAuto extends OpMode {
 
     PathState pathState;
 
-    private final Pose startPose = new Pose(21.28301886792453, 123.84905660377358, Math.toRadians(143));
-    private final Pose shootPose = new Pose(53.43396226415094, 94.41509433962264, Math.toRadians(143));
+    private final Pose startPose = new Pose(122.31055900621118, 124.77018633540374, Math.toRadians(37));
+    private final Pose shootPose = new Pose(83.85093167701864, 83.40372670807454, Math.toRadians(44));
 
-    private final Pose PickupPose1 = new Pose(20.54587439170641, 83.0323509898277, Math.toRadians(180));
+    private final Pose PickupPose1 = new Pose(121.6, 83.6273291925466, Math.toRadians(0));
 
-    private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 57.12668327854573, Math.toRadians(180));
+    private final Pose Pickup_Second_Halflife1Pose = new Pose(96.4, 59.3, Math.toRadians(0));
 
-    private final Pose Pickup_Second_Halflife2Pose = new Pose(20.54587439170641, 59.13660577338656, Math.toRadians(180));
+    private final Pose Pickup_Second_Halflife2Pose = new Pose(121.6, 59.254658385093165, Math.toRadians(0));
 
-    private final Pose rankPose = new Pose(39.751800453518925, 62.93312604141928, Math.toRadians(90));
+    private final Pose rankPose = new Pose(105.98757763975155, 72.67080745341613, Math.toRadians(90));
 
     private PathChain DriveStartShoot;
 
