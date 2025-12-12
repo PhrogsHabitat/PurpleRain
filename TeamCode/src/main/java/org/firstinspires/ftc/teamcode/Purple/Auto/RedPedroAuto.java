@@ -51,24 +51,22 @@ public class RedPedroAuto extends OpMode {
 
     PathState pathState;
 
-    private final Pose startPose = new Pose(21.28301886792453, 123.84905660377358, Math.toRadians(143));
-    private final Pose shootPose = new Pose(53.43396226415094, 94.41509433962264, Math.toRadians(143));
+    private final Pose startPose = new Pose(122.31055900621118, 124.77018633540374, Math.toRadians(37));
+    private final Pose shootPose = new Pose(83.85093167701864, 83.40372670807454, Math.toRadians(44));
 
-    private final Pose PickupPose1 = new Pose(20.54587439170641, 83.0323509898277, Math.toRadians(180));
+    private final Pose PickupPose1 = new Pose(121.6, 83.6273291925466, Math.toRadians(0));
 
-    private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 57.12668327854573, Math.toRadians(180));
+    private final Pose Pickup_Second_Halflife1Pose = new Pose(96.4, 59.3, Math.toRadians(0));
 
-    private final Pose Pickup_Second_Halflife2Pose = new Pose(20.54587439170641, 59.13660577338656, Math.toRadians(180));
+    private final Pose Pickup_Second_Halflife2Pose = new Pose(121.6, 59.254658385093165, Math.toRadians(0));
 
-    private final Pose rankPose = new Pose(39.751800453518925, 62.93312604141928, Math.toRadians(90));
+    private final Pose rankPose = new Pose(105.98757763975155, 72.67080745341613, Math.toRadians(90));
 
     private PathChain DriveStartShoot;
 
     private PathChain DriveShootPickup1;
 
     private PathChain DrivePickupShoot1;
-
-    private PathChain DriveShootPickup2;
 
     private PathChain DriveToHalfLife;
     private PathChain DriveHalfLife;
@@ -107,47 +105,51 @@ public class RedPedroAuto extends OpMode {
                 .build();
     }
 
+    private void shootState(PathState Pathstate) {
+        shootFull();
+        DebugUtil.logAdd("Finished shooting");
+        if (pathTimer.getElapsedTimeSeconds() > 10) {
+            setPathState(Pathstate);
+        }
+    }
+
+    private void moveState(PathChain Pathchain, boolean holdEnd) {
+        follower.followPath(Pathchain, holdEnd);
+    }
+
     public void statePathUpdate() {
         switch (pathState) {
             case START_SHOOT:
-                follower.followPath(DriveStartShoot, true);
+                moveState(DriveStartShoot, true);
                 setPathState(PathState.SHOOTPRELOAD);
                 break;
 
             case SHOOTPRELOAD:
                 if (!follower.isBusy()) {
-                    shootFull();
-                    DebugUtil.logAdd("Finished shooting");
-                    if (pathTimer.getElapsedTimeSeconds() > 10) {
-                        setPathState(PathState.PICKUP1);
-                    }
+                    shootState(PathState.PICKUP1);
                 }
                 break;
 
             case PICKUP1:
                 if (!follower.isBusy()) {
                     vaccum.setPower(1.0);
-                    follower.followPath(DriveShootPickup1, true);
-                    setPathState(PathState.SHOOT_LINE1);
+                    moveState(DriveShootPickup1, true);
                 }
                 break;
 
             case SHOOT_LINE1:
                 if (!follower.isBusy()) {
                     vaccum.setPower(0);
-                    follower.followPath(DrivePickupShoot1, true);
-                    shootFull();
-                    if (pathTimer.getElapsedTimeSeconds() > 10) {
-                        setPathState(PathState.HALF_LIFE2);
-                    }
+                    moveState(DrivePickupShoot1, true);
+                    shootState(PathState.HALF_LIFE2);
                 }
                 break;
 
             case HALF_LIFE2:
                 if (!follower.isBusy()) {
-                    follower.followPath(DriveToHalfLife, true);
+                    moveState(DriveToHalfLife, true);
                     vaccum.setPower(1.0);
-                    follower.followPath(DriveHalfLife, true);
+                    moveState(DriveHalfLife, true);
                     setPathState(PathState.SHOOT_LINE2);
                 }
                 break;
@@ -155,17 +157,14 @@ public class RedPedroAuto extends OpMode {
             case SHOOT_LINE2:
                 if (!follower.isBusy()) {
                     vaccum.setPower(0.0);
-                    follower.followPath(DrivePickupShoot2, true);
-                    if (pathTimer.getElapsedTimeSeconds() > 10) {
-                        shootFull();
-                    }
-                    setPathState(PathState.RANKMOVE);
+                    moveState(DrivePickupShoot2, true);
+                    shootState(PathState.RANKMOVE);
                 }
                 break;
 
             case RANKMOVE:
                 if (!follower.isBusy()) {
-                    follower.followPath(RankMove, false);
+                    moveState(RankMove, true);
                 }
                 break;
             default:
@@ -204,13 +203,13 @@ public class RedPedroAuto extends OpMode {
     }
 
     private void shootFull() {
-        if (pathTimer.getElapsedTimeSeconds() < .2) {
-            toggleB(true);
+        if (pathTimer.getElapsedTimeSeconds() < 0 ) {
+            explosher.setFingerState(Explosher.FingerState.STOP);
         }
-        if (pathTimer.getElapsedTimeSeconds() > .2 && pathTimer.getElapsedTimeSeconds()< .35) {
-            toggleB(false);
+        if (pathTimer.getElapsedTimeSeconds() > 2) {
+            explosher.setFingerState(Explosher.FingerState.PASS);
         }
-        if (pathTimer.getElapsedTimeSeconds() > 2.5 && pathTimer.getElapsedTimeSeconds() < 8) {
+        if (pathTimer.getElapsedTimeSeconds() > 0.2 && pathTimer.getElapsedTimeSeconds() < 8) {
             exploSwag(true, "Forward");
         }
         if (pathTimer.getElapsedTimeSeconds() > 3 && pathTimer.getElapsedTimeSeconds() < 3.1) {

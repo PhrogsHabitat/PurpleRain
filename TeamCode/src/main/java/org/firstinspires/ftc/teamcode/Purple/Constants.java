@@ -8,8 +8,8 @@ public final class Constants
 {
 	// Finger servo configurations
 	public static final ServoConfig FINGER_SERVO_CONFIG = new ServoConfig(Names.FINGER, 0.0, 1.0, 0.0);
-	public static final double FINGER_STOP_POSITION = 0.45;    // Finger closed/stops pixel
-	public static final double FINGER_PASS_POSITION = 0.7;    // Finger open/passes pixel
+	public static final double FINGER_STOP_POSITION = 0.48;    // Finger closed/stops pixel
+	public static final double FINGER_PASS_POSITION = 0.69;    // Finger open/passes pixel
 	public static final double FINGER_DEBUG_INCREMENT = 0.01; // Manual adjustment step
 
 	// Drive settings

@@ -12,6 +12,7 @@ import com.pedropathing.util.Timer;
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
+import org.firstinspires.ftc.teamcode.Purple.Controls;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
@@ -22,6 +23,10 @@ public class BluePedroAuto extends OpMode {
     public Explosher explosher;
     public Vaccum vaccum;
 
+
+    private Controls driver1;
+    private Controls driver2;
+
     private long lastTagSeenTime = 0;
     private double regressionSlope;
     private double regressionIntercept;
@@ -29,14 +34,14 @@ public class BluePedroAuto extends OpMode {
     private static final double RPM_SMOOTHING_ALPHA = 0.2;
     private double smoothedTargetRPM = 0;
 
-    private Timer pathTimer, opModeTimer;
+    private Timer pathTimer, opModeTimer, enumTimer;
     public enum PathState {
         // path from start to shoot posi
         START_SHOOT,
         // shoots preloads
         SHOOTPRELOAD,
         //
-        PICKUP1,
+        HALFLIFE1,
 
         SHOOT_LINE1,
 
@@ -46,30 +51,39 @@ public class BluePedroAuto extends OpMode {
 
         RANKMOVE,
 
-        DONE
+        DONE;
+
+
+        public PathState next () {
+            return values()[(ordinal() + 1) % values().length];
+        }
     }
 
     PathState pathState;
 
-    private final Pose startPose = new Pose(122.31055900621118, 124.77018633540374, Math.toRadians(37));
-    private final Pose shootPose = new Pose(83.85093167701864, 83.40372670807454, Math.toRadians(44));
+    private final Pose startPose = new Pose(21.28301886792453, 123.84905660377358, Math.toRadians(143));
+    private final Pose shootPose = new Pose(53.43396226415094, 94.41509433962264, Math.toRadians(143));
 
-    private final Pose PickupPose1 = new Pose(121.6, 83.6273291925466, Math.toRadians(0));
+    private final Pose Pickup_First_Halflife1Pose = new Pose(53.440993788819874, 83.0323509898277, Math.toRadians(180));
 
-    private final Pose Pickup_Second_Halflife1Pose = new Pose(96.4, 59.3, Math.toRadians(0));
+    private final Pose Pickup_First_Halflife2Pose = new Pose(25, 83.0323509898277, Math.toRadians(180));
 
-    private final Pose Pickup_Second_Halflife2Pose = new Pose(121.6, 59.254658385093165, Math.toRadians(0));
+    private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 57.12668327854573, Math.toRadians(180));
 
-    private final Pose rankPose = new Pose(105.98757763975155, 72.67080745341613, Math.toRadians(90));
+    private final Pose Pickup_Second_Halflife2Pose = new Pose(25, 59.13660577338656, Math.toRadians(180));
+
+    private final Pose rankPose = new Pose(39.751800453518925, 62.93312604141928, Math.toRadians(90));
 
     private PathChain DriveStartShoot;
 
-    private PathChain DriveShootPickup1;
+    private PathChain DriveToHalfLife1;
+
+    private PathChain DriveHalfLife1;
 
     private PathChain DrivePickupShoot1;
 
-    private PathChain DriveToHalfLife;
-    private PathChain DriveHalfLife;
+    private PathChain DriveToHalfLife2;
+    private PathChain DriveHalfLife2;
 
     private PathChain DrivePickupShoot2;
     private PathChain RankMove;
@@ -79,19 +93,23 @@ public class BluePedroAuto extends OpMode {
                 .addPath(new BezierLine(startPose, shootPose))
                 .setLinearHeadingInterpolation(startPose.getHeading(), shootPose.getHeading())
                 .build();
-        DriveShootPickup1 = follower.pathBuilder()
-                .addPath(new BezierLine(shootPose, PickupPose1))
-                .setLinearHeadingInterpolation(shootPose.getHeading(), PickupPose1.getHeading())
+        DriveToHalfLife1 = follower.pathBuilder()
+                .addPath(new BezierLine(shootPose, Pickup_First_Halflife1Pose))
+                .setLinearHeadingInterpolation(shootPose.getHeading(), Pickup_First_Halflife1Pose.getHeading())
+                .build();
+        DriveHalfLife1 = follower.pathBuilder()
+                .addPath(new BezierLine(Pickup_First_Halflife1Pose, Pickup_First_Halflife2Pose))
+                .setLinearHeadingInterpolation(Pickup_First_Halflife1Pose.getHeading(), Pickup_First_Halflife2Pose.getHeading())
                 .build();
         DrivePickupShoot1 = follower.pathBuilder()
-                .addPath(new BezierLine(PickupPose1, shootPose))
-                .setLinearHeadingInterpolation(PickupPose1.getHeading(), shootPose.getHeading())
+                .addPath(new BezierLine(Pickup_First_Halflife2Pose, shootPose))
+                .setLinearHeadingInterpolation(Pickup_First_Halflife2Pose.getHeading(), shootPose.getHeading())
                 .build();
-        DriveToHalfLife = follower.pathBuilder()
+        DriveToHalfLife2 = follower.pathBuilder()
                 .addPath(new BezierLine(shootPose, Pickup_Second_Halflife1Pose))
                 .setLinearHeadingInterpolation(shootPose.getHeading(), Pickup_Second_Halflife1Pose.getHeading())
                 .build();
-        DriveHalfLife = follower.pathBuilder()
+        DriveHalfLife2 = follower.pathBuilder()
                 .addPath(new BezierLine(Pickup_Second_Halflife1Pose, Pickup_Second_Halflife2Pose))
                 .setLinearHeadingInterpolation(Pickup_Second_Halflife1Pose.getHeading(), Pickup_Second_Halflife2Pose.getHeading())
                 .build();
@@ -105,27 +123,38 @@ public class BluePedroAuto extends OpMode {
                 .build();
     }
 
+    private void shootState(PathState Pathstate) {
+        shootFull();
+        DebugUtil.logAdd("Finished shooting");
+        if (pathTimer.getElapsedTimeSeconds() > 10) {
+            setPathState(Pathstate);
+        }
+    }
+
+    private void moveState(PathChain Pathchain, boolean holdEnd) {
+        follower.followPath(Pathchain, holdEnd);
+    }
+
     public void statePathUpdate() {
         switch (pathState) {
             case START_SHOOT:
-                follower.followPath(DriveStartShoot, true);
+                moveState(DriveStartShoot, true);
                 setPathState(PathState.SHOOTPRELOAD);
                 break;
 
             case SHOOTPRELOAD:
                 if (!follower.isBusy()) {
-                    shootFull();
-                    DebugUtil.logAdd("Finished shooting");
-                    if (pathTimer.getElapsedTimeSeconds() > 10) {
-                        setPathState(PathState.PICKUP1);
-                    }
+                    shootState(PathState.HALFLIFE1);
                 }
                 break;
 
-            case PICKUP1:
+            case HALFLIFE1:
                 if (!follower.isBusy()) {
+                    moveState(DriveToHalfLife1, true);
+                    explosher.setFingerState(Explosher.FingerState.STOP);
                     vaccum.setPower(1.0);
-                    follower.followPath(DriveShootPickup1, true);
+                    exploSwag(false, "forward");
+                    moveState(DriveHalfLife1, false);
                     setPathState(PathState.SHOOT_LINE1);
                 }
                 break;
@@ -133,19 +162,19 @@ public class BluePedroAuto extends OpMode {
             case SHOOT_LINE1:
                 if (!follower.isBusy()) {
                     vaccum.setPower(0);
-                    follower.followPath(DrivePickupShoot1, true);
-                    shootFull();
-                    if (pathTimer.getElapsedTimeSeconds() > 10) {
-                        setPathState(PathState.HALF_LIFE2);
+                    moveState(DrivePickupShoot1, false);
+                    if (enumTimer.getElapsedTimeSeconds() == 0.5) {
+                        shootState(PathState.HALF_LIFE2);
                     }
                 }
                 break;
 
             case HALF_LIFE2:
                 if (!follower.isBusy()) {
-                    follower.followPath(DriveToHalfLife, true);
+                    moveState(DriveToHalfLife2, true);
                     vaccum.setPower(1.0);
-                    follower.followPath(DriveHalfLife, true);
+                    exploSwag(false, "forward");
+                    moveState(DriveHalfLife2, false);
                     setPathState(PathState.SHOOT_LINE2);
                 }
                 break;
@@ -153,22 +182,28 @@ public class BluePedroAuto extends OpMode {
             case SHOOT_LINE2:
                 if (!follower.isBusy()) {
                     vaccum.setPower(0.0);
-                    follower.followPath(DrivePickupShoot2, true);
-                    if (pathTimer.getElapsedTimeSeconds() > 10) {
-                        shootFull();
+                    moveState(DrivePickupShoot2, false);
+                    if (enumTimer.getElapsedTimeSeconds() == 1) {
+                        shootState(PathState.RANKMOVE);
                     }
-                    setPathState(PathState.RANKMOVE);
                 }
                 break;
 
             case RANKMOVE:
                 if (!follower.isBusy()) {
-                    follower.followPath(RankMove, false);
+                    moveState(RankMove, true);
                 }
                 break;
             default:
                 DebugUtil.logAdd("no current state");
                 break;
+        }
+    }
+
+
+    public void switchState() {
+        if (driver1.isPressed("a")) {
+            pathState.next();
         }
     }
 
@@ -180,12 +215,18 @@ public class BluePedroAuto extends OpMode {
 
     @Override
     public void init() {
+        driver1 = new Controls(gamepad1);
         pathState = PathState.START_SHOOT;
         pathTimer = new Timer();
         opModeTimer = new Timer();
+        enumTimer = new Timer();
         follower = Constants.createFollower(hardwareMap);
         buildpaths();
         follower.setPose(startPose);
+
+        if (driver1.isPressed("b")) {
+            DebugUtil.logAdd("current pathstate: " + pathState);
+        }
 
         DebugUtil.setTelemetry(telemetry);
 
@@ -202,38 +243,43 @@ public class BluePedroAuto extends OpMode {
     }
 
     private void shootFull() {
-        if (pathTimer.getElapsedTimeSeconds() < .2) {
-            toggleB(true);
+        if (pathTimer.getElapsedTimeSeconds() < 0 ) {
+            explosher.setFingerState(Explosher.FingerState.STOP);
         }
-        if (pathTimer.getElapsedTimeSeconds() > .2 && pathTimer.getElapsedTimeSeconds()< .35) {
-            toggleB(false);
+        if (pathTimer.getElapsedTimeSeconds() > 2) {
+            explosher.setFingerState(Explosher.FingerState.PASS);
         }
-        if (pathTimer.getElapsedTimeSeconds() > 2.5 && pathTimer.getElapsedTimeSeconds() < 8) {
+        if (pathTimer.getElapsedTimeSeconds() > 0 && pathTimer.getElapsedTimeSeconds() < 8) {
             exploSwag(true, "Forward");
         }
         if (pathTimer.getElapsedTimeSeconds() > 3 && pathTimer.getElapsedTimeSeconds() < 3.1) {
             toggleY(true);
+            DebugUtil.logAdd("first push on");
         }
-        if (pathTimer.getElapsedTimeSeconds() > 3.1 && pathTimer.getElapsedTimeSeconds() < 3.3) {
+        if (pathTimer.getElapsedTimeSeconds() > 3.1 && pathTimer.getElapsedTimeSeconds() < 3.2) {
             toggleY(false);
+            DebugUtil.logAdd("first push off");
         }
-        if (pathTimer.getElapsedTimeSeconds() > 4.5 && pathTimer.getElapsedTimeSeconds() < 4.7) {
+        if (pathTimer.getElapsedTimeSeconds() > 4.5 && pathTimer.getElapsedTimeSeconds() < 5) {
             toggleY(true);
+            DebugUtil.logAdd("first push on");
         }
-        if (pathTimer.getElapsedTimeSeconds() > 4.7 && pathTimer.getElapsedTimeSeconds() < 4.8) {
+        if (pathTimer.getElapsedTimeSeconds() == 5) {
             toggleY(false);
+            DebugUtil.logAdd("first push off");
         }
-        if (pathTimer.getElapsedTimeSeconds() > 5 && pathTimer.getElapsedTimeSeconds() < 5.05) {
+        if (pathTimer.getElapsedTimeSeconds() > 5 && pathTimer.getElapsedTimeSeconds() < 5.6) {
             toggleX(true);
         }
-        if (pathTimer.getElapsedTimeSeconds() > 5.05  && pathTimer.getElapsedTimeSeconds() < 5.05) {
+        if (pathTimer.getElapsedTimeSeconds() == 5.6) {
             toggleX(false);
         }
-        if (pathTimer.getElapsedTimeSeconds() > 5.5 && pathTimer.getElapsedTimeSeconds() < 6) {
+        if (pathTimer.getElapsedTimeSeconds() > 5.6 && pathTimer.getElapsedTimeSeconds() < 6) {
             toggleY(true);
         }
-        if (pathTimer.getElapsedTimeSeconds() > 7) {
+        if (pathTimer.getElapsedTimeSeconds() == 7.1) {
             toggleY(false);
+            exploSwag(false, "Forward");
         }
     }
 
@@ -241,6 +287,7 @@ public class BluePedroAuto extends OpMode {
     public void loop() {
         DebugUtil.update();
         LimeUtil.update();
+        driver1.update();
 
         follower.update();
 
@@ -302,9 +349,9 @@ public class BluePedroAuto extends OpMode {
     {
 
         double[][] calibrationPoints = {
-                {59, 3000},
-                {65, 2800},
-                {77, 3100},
+                {59, 2900},
+                {65, 3000},
+                {77, 3000},
                 {80, 3200},
                 {94, 3100}
         };

@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
