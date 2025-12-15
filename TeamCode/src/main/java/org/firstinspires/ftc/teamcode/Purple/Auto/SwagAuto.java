@@ -8,9 +8,9 @@ import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
-import org.firstinspires.ftc.teamcode.Purple.Pedro.PurpleChain;
-import org.firstinspires.ftc.teamcode.Purple.Pedro.PurplePath;
-import org.firstinspires.ftc.teamcode.Purple.Pedro.PurplePathing;
+import org.firstinspires.ftc.teamcode.Purple.Pathing.PurpleChain;
+import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePath;
+import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
