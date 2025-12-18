@@ -55,7 +55,7 @@
 /// /            driver2.update();
 //			update();
 //		}
-//		stopAll();
+//		disable();
 //	}
 //
 //	private void initializeMotors ()
@@ -83,8 +83,8 @@
 //	private void update ()
 //	{
 //		updateAprilTagFeedback();
-////        updatePlayer1Controls();
-////        updatePlayer2Controls(); // consolidated operator controls
+/// /        updatePlayer1Controls();
+/// /        updatePlayer2Controls(); // consolidated operator controls
 //
 //		// Only run debug adjustments once per loop if enabled
 //		if (Constants.DEBUG_MODE)
@@ -404,7 +404,7 @@
 //		DebugUtil.update();
 //	}
 //
-//	private void stopAll ()
+//	private void disable ()
 //	{
 //		fl.stop();
 //		fr.stop();
