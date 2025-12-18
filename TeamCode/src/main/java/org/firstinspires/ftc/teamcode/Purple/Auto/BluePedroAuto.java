@@ -23,7 +23,6 @@ public class BluePedroAuto extends OpMode {
     public Explosher explosher;
     public Vaccum vaccum;
 
-
     private Controls driver1;
     private Controls driver2;
 
@@ -31,6 +30,7 @@ public class BluePedroAuto extends OpMode {
     private double regressionSlope;
     private double regressionIntercept;
     public double dist;
+    public boolean IsBusy;
     private static final double RPM_SMOOTHING_ALPHA = 0.2;
     private double smoothedTargetRPM = 0;
 
@@ -41,11 +41,15 @@ public class BluePedroAuto extends OpMode {
         // shoots preloads
         SHOOTPRELOAD,
         //
-        HALFLIFE1,
+        FIRSTHALFLIFE1,
+
+        FIRSTHALFLIFE2,
 
         SHOOT_LINE1,
 
-        HALF_LIFE2,
+        SECONDHALF_LIFE1,
+
+        SECONDHALF_LIFE2,
 
         SHOOT_LINE2,
 
@@ -135,6 +139,8 @@ public class BluePedroAuto extends OpMode {
         follower.followPath(Pathchain, holdEnd);
     }
 
+
+
     public void statePathUpdate() {
         switch (pathState) {
             case START_SHOOT:
@@ -144,40 +150,50 @@ public class BluePedroAuto extends OpMode {
 
             case SHOOTPRELOAD:
                 if (!follower.isBusy()) {
-                    shootState(PathState.HALFLIFE1);
+                    shootState(PathState.FIRSTHALFLIFE1);
                 }
                 break;
 
-            case HALFLIFE1:
+            case FIRSTHALFLIFE1:
                 if (!follower.isBusy()) {
                     moveState(DriveToHalfLife1, true);
-                    explosher.setFingerState(Explosher.FingerState.STOP);
-                    vaccum.setPower(1.0);
-                    exploSwag(false, "forward");
-                    moveState(DriveHalfLife1, false);
-                    setPathState(PathState.SHOOT_LINE1);
+                    setPathState(PathState.FIRSTHALFLIFE2);
                 }
                 break;
+
+            case FIRSTHALFLIFE2:
+                if (!follower.isBusy()) {
+                    explosher.setFingerState(Explosher.FingerState.STOP);
+                    vaccum.setPower(1.0);
+                    exploSwag(false, "Forward");
+                    moveState(DriveHalfLife1, true);
+                    setPathState(PathState.SHOOT_LINE1);
+                }
 
             case SHOOT_LINE1:
                 if (!follower.isBusy()) {
                     vaccum.setPower(0);
                     moveState(DrivePickupShoot1, false);
-                    if (enumTimer.getElapsedTimeSeconds() == 0.5) {
-                        shootState(PathState.HALF_LIFE2);
+                    if (enumTimer.getElapsedTimeSeconds() == 3.0) {
+                        shootState(PathState.SECONDHALF_LIFE1);
                     }
                 }
                 break;
 
-            case HALF_LIFE2:
+            case SECONDHALF_LIFE1:
                 if (!follower.isBusy()) {
                     moveState(DriveToHalfLife2, true);
+                    setPathState(PathState.SECONDHALF_LIFE2);
+                }
+                break;
+
+            case SECONDHALF_LIFE2:
+                if (!follower.isBusy()) {
                     vaccum.setPower(1.0);
-                    exploSwag(false, "forward");
+                    exploSwag(false, "Forward");
                     moveState(DriveHalfLife2, false);
                     setPathState(PathState.SHOOT_LINE2);
                 }
-                break;
 
             case SHOOT_LINE2:
                 if (!follower.isBusy()) {
@@ -211,6 +227,7 @@ public class BluePedroAuto extends OpMode {
     public void setPathState(PathState newState) {
         pathState = newState;
         pathTimer.resetTimer();
+        enumTimer.resetTimer();
     }
 
     @Override
@@ -227,6 +244,11 @@ public class BluePedroAuto extends OpMode {
         if (driver1.isPressed("b")) {
             DebugUtil.logAdd("current pathstate: " + pathState);
         }
+        if (follower.isBusy()) {
+            DebugUtil.logAdd("busy");
+        }
+        DebugUtil.logAdd("position" + follower.getPose());
+
 
         DebugUtil.setTelemetry(telemetry);
 
@@ -249,7 +271,7 @@ public class BluePedroAuto extends OpMode {
         if (pathTimer.getElapsedTimeSeconds() > 2) {
             explosher.setFingerState(Explosher.FingerState.PASS);
         }
-        if (pathTimer.getElapsedTimeSeconds() > 0 && pathTimer.getElapsedTimeSeconds() < 8) {
+        if (pathTimer.getElapsedTimeSeconds() > 0 && pathTimer.getElapsedTimeSeconds() < 7.2) {
             exploSwag(true, "Forward");
         }
         if (pathTimer.getElapsedTimeSeconds() > 3 && pathTimer.getElapsedTimeSeconds() < 3.1) {
