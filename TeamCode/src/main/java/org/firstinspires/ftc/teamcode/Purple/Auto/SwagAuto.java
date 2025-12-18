@@ -2,26 +2,62 @@ package org.firstinspires.ftc.teamcode.Purple.Auto;
 
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.follower;
 
+import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
+import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
+import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurpleChain;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePath;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
+import java.util.Timer;
+
 @Autonomous(name = "SwagAuto", group = "Purple")
 public class SwagAuto extends OpMode
 {
 
+	private Follower follower;
+
+	public Explosher explosher;
+	public Vaccum vaccum;
+
+	public ElapsedTime shootTimer;
+
+	private double regressionSlope;
+
+	private double regressionIntercept;
+
+	public double dist;
+
+	private static final double RPM_SMOOTHING_ALPHA = 0.2;
+
+	private double smoothedTargetRPM = 0;
+
+	private boolean shouldShoot = false;
+
 	// sample poses (adjust to your field/layout)
 	private final Pose startPose = new Pose(21.28301886792453, 123.84905660377358, Math.toRadians(143));
-	private final Pose backPose = new Pose(21.28301886792453, 110.0, Math.toRadians(143)); // move back ~14 in
-	private final Pose rightPose = new Pose(26.28301886792453, 110.0, Math.toRadians(143)); // move right ~5 in
+
+	private final Pose shootPose = new Pose(53.43396226415094, 94.41509433962264, Math.toRadians(143));
+
+	private final Pose Pickup_First_Halflife1Pose = new Pose(53.440993788819874, 83.0323509898277, Math.toRadians(180));
+
+	private final Pose Pickup_First_Halflife2Pose = new Pose(25, 83.0323509898277, Math.toRadians(180));
+
+	private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 57.12668327854573, Math.toRadians(180));
+
+	private final Pose Pickup_Second_Halflife2Pose = new Pose(25, 59.13660577338656, Math.toRadians(180));
+
+	private final Pose rankPose = new Pose(39.751800453518925, 62.93312604141928, Math.toRadians(90));
 	private PurplePathing pathManager;
 
 	@Override
@@ -43,32 +79,87 @@ public class SwagAuto extends OpMode
 		// create follower and purple path manager
 		follower = Constants.createFollower(hardwareMap);
 		follower.setPose(startPose);
-
 		pathManager = new PurplePathing(follower);
 
-		// Build Pedro PathChains for the two movements
-		PathChain driveBack = follower.pathBuilder()
-				.addPath(new BezierLine(startPose, backPose))
-				.setLinearHeadingInterpolation(startPose.getHeading(), backPose.getHeading())
+		shootTimer = new ElapsedTime();
+
+		calculateRegression();
+
+		LimeUtil.start(hardwareMap, "SwagLime", 60);
+		LimeUtil.setPipeline(0);
+		explosher = new Explosher(hardwareMap, org.firstinspires.ftc.teamcode.Purple.Constants.FINGER_SERVO_CONFIG);
+		vaccum = new Vaccum(hardwareMap);
+
+
+		// Path Chain Presets
+		PathChain DriveStartShoot = follower.pathBuilder()
+				.addPath(new BezierLine(startPose, shootPose))
+				.setLinearHeadingInterpolation(startPose.getHeading(), shootPose.getHeading())
+				.build();
+		PathChain DriveToHalfLife1 = follower.pathBuilder()
+				.addPath(new BezierLine(shootPose, Pickup_First_Halflife1Pose))
+				.setLinearHeadingInterpolation(shootPose.getHeading(), Pickup_First_Halflife1Pose.getHeading())
+				.build();
+		PathChain DriveHalfLife1 = follower.pathBuilder()
+				.addPath(new BezierLine(Pickup_First_Halflife1Pose, Pickup_First_Halflife2Pose))
+				.setLinearHeadingInterpolation(Pickup_First_Halflife1Pose.getHeading(), Pickup_First_Halflife2Pose.getHeading())
+				.build();
+		PathChain DrivePickupShoot1 = follower.pathBuilder()
+				.addPath(new BezierLine(Pickup_First_Halflife2Pose, shootPose))
+				.setLinearHeadingInterpolation(Pickup_First_Halflife2Pose.getHeading(), shootPose.getHeading())
+				.build();
+		PathChain DriveToHalfLife2 = follower.pathBuilder()
+				.addPath(new BezierLine(shootPose, Pickup_Second_Halflife1Pose))
+				.setLinearHeadingInterpolation(shootPose.getHeading(), Pickup_Second_Halflife1Pose.getHeading())
+				.build();
+		PathChain DriveHalfLife2 = follower.pathBuilder()
+				.addPath(new BezierLine(Pickup_Second_Halflife1Pose, Pickup_Second_Halflife2Pose))
+				.setLinearHeadingInterpolation(Pickup_Second_Halflife1Pose.getHeading(), Pickup_Second_Halflife2Pose.getHeading())
+				.build();
+		PathChain DrivePickupShoot2 = follower.pathBuilder()
+				.addPath(new BezierLine(Pickup_Second_Halflife2Pose, shootPose))
+				.setLinearHeadingInterpolation(Pickup_Second_Halflife2Pose.getHeading(), shootPose.getHeading())
+				.build();
+		PathChain RankMove = follower.pathBuilder()
+				.addPath(new BezierLine(shootPose, rankPose))
+				.setLinearHeadingInterpolation(shootPose.getHeading(), rankPose.getHeading())
 				.build();
 
-		PathChain driveRight = follower.pathBuilder()
-				.addPath(new BezierLine(backPose, rightPose))
-				.setLinearHeadingInterpolation(backPose.getHeading(), rightPose.getHeading())
-				.build();
 
-		PurplePath path1 = new PurplePath("Drive Back", driveBack, 2.0, 3.0)
-				.onComplete(() -> DebugUtil.logAdd("path1 completed"));
 
-		PurplePath path2 = new PurplePath("Drive Right Slight", driveRight, 1.5, 0.0)
+		// Create the PurplePath objects
+		PurplePath path1 = new PurplePath("Drive Back", DriveStartShoot, 2.0, 8.0)
+				.onComplete(() -> flagShoot());
+
+		PurplePath path2 = new PurplePath("Drive back smore", DriveToHalfLife1, 1.5, 0.0)
+				.onComplete(() -> pickupBalls(true));
+
+		PurplePath path3 = new PurplePath("pickup BALLS =]", DriveHalfLife1, 2.0, 2.0)
+				.onComplete(() -> pickupBalls(false));
+
+		PurplePath path4 = new PurplePath("Drive back to shoot", DrivePickupShoot1, 1.5, 8.0)
+				.onComplete(() -> flagShoot());
+
+		PurplePath path5 = new PurplePath("Drive back smlot", DriveToHalfLife2, 2.0, 2.0)
+				.onComplete(() -> pickupBalls(true));
+
+		PurplePath path6 = new PurplePath("pickup BALLS =] 2: electric boogaloo", DriveHalfLife2, 1.5, 0.0)
+				.onComplete(() -> pickupBalls(false));
+
+		PurplePath path7 = new PurplePath("Drive Back to shoot again", DrivePickupShoot2, 2.0, 2.0)
+				.onComplete(() -> flagShoot());
+
+		PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 1.5, 0.0)
 				.onComplete(() -> DebugUtil.logAdd("path2 completed"));
 
-		// Create a chain: path1 then path2. Provide a chain-level onComplete too.
-		PurpleChain chain = new PurpleChain(path1, path2)
+		// Create the PurpleChain object
+		PurpleChain chain = new PurpleChain(path1, path2, path3, path4, path5, path6, path7, path8)
 				.onComplete(() -> DebugUtil.logAdd("Chain fully finished"));
 
 		// Start the chain. holdEnd = true (follower will hold at end of each path)
 		pathManager.startChain(chain, true, () -> DebugUtil.logAdd("startChain() provided onComplete"));
+
+		shootTimer.reset();
 
 		DebugUtil.setTelemetry(telemetry);
 	}
@@ -77,9 +168,156 @@ public class SwagAuto extends OpMode
 	{
 		// update the manager (must be called every loop)
 		pathManager.update();
+		explosher.update();
+		vaccum.update();
+
+		if (shouldShoot)
+		{
+			shootFull();
+		}
 
 		// logging
 		DebugUtil.logAdd("Current Path: " + pathManager.curPath());
 		DebugUtil.update();
+	}
+
+	private void flagShoot()
+	{
+		shouldShoot = true;
+		shootTimer.reset();
+		shootTimer.startTime();
+	}
+
+	private void pickupBalls(boolean should) {
+		exploSwag(false, "forward");
+		toggleY(should);
+		explosher.setFingerState(Explosher.FingerState.STOP);
+	}
+
+	private void shootFull() {
+		// Start Stuff
+
+		if (shootTimer.seconds() <= 0 ) {
+			explosher.setFingerState(Explosher.FingerState.STOP);
+		}
+		if (shootTimer.seconds() > 2) {
+			explosher.setFingerState(Explosher.FingerState.PASS);
+		}
+		if (shootTimer.seconds() > 0 && shootTimer.seconds() < 7.2) {
+			exploSwag(true, "Forward");
+		}
+		if (shootTimer.seconds() > 4 && shootTimer.seconds() < 4.1) {
+			toggleY(true);
+			DebugUtil.logAdd("first push on");
+		}
+		if (shootTimer.seconds() > 4.1 && shootTimer.seconds() < 4.2 ) {
+			toggleY(false);
+			DebugUtil.logAdd("first push off");
+		}
+		if (shootTimer.seconds() > 5.5 && shootTimer.seconds() < 6) {
+			toggleY(true);
+			DebugUtil.logAdd("first push on");
+		}
+		if (shootTimer.seconds() == 6) {
+			toggleY(false);
+			DebugUtil.logAdd("first push off");
+		}
+		if (shootTimer.seconds() > 6 && shootTimer.seconds() < 6.6) {
+			toggleX(true);
+		}
+		if (shootTimer.seconds() == 6.6) {
+			toggleX(false);
+		}
+		if (shootTimer.seconds() > 6.6 && shootTimer.seconds() < 7) {
+			toggleY(true);
+		}
+		if (shootTimer.seconds() >= 7.8) {
+			toggleY(false);
+			exploSwag(false, "Forward");
+			shouldShoot = false;
+			explosher.setFingerState(Explosher.FingerState.STOP);
+		}
+	}
+
+	public void exploSwag(boolean should, String Explostate)
+	{
+		if (should)
+		{
+			if (Explostate == "Forward")
+			{
+				if (LimeUtil.getTargetDistance() != 0) {
+					dist = LimeUtil.getTargetDistance();
+					double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
+					smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
+					smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
+					explosher.setRPM(smoothedTargetRPM);
+				}
+			}
+			else if (Explostate == "Back") {
+				explosher.setRPM(-4000);
+			}
+		}
+		else {
+			explosher.stop();
+		}
+	}
+
+	private void calculateRegression ()
+	{
+
+		double[][] calibrationPoints = {
+				{59, 2900},
+				{65, 3000},
+				{77, 3000},
+				{80, 3200},
+				{94, 3100}
+		};
+
+		int n = calibrationPoints.length;
+		double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+
+		for (double[] point : calibrationPoints)
+		{
+			double distance = point[0];
+			double rpm = point[1];
+			sumX += distance;
+			sumY += rpm;
+			sumXY += distance * rpm;
+			sumX2 += distance * distance;
+		}
+
+		regressionSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+		regressionIntercept = (sumY - regressionSlope * sumX) / n;
+
+		DebugUtil.logAdd("Regression Calculated!");
+		DebugUtil.logAdd("RPM = " + String.format("%.3f", regressionSlope) + " * dist + " + String.format("%.3f", regressionIntercept));
+	}
+
+	private void toggleY(boolean should)
+	{
+		double pow = should ? Vaccum.DEFAULT_POW : 0;
+		vaccum.setPower(pow);
+	}
+
+	private void toggleX(boolean should)
+	{
+		double pow = should ? -.15  : 0;
+		vaccum.setPower(pow);
+	}
+
+	private void toggleSuperX(boolean should)
+	{
+		double rpm = should ? -4000 : 0.0;
+		double pow = should ? -Vaccum.DEFAULT_POW : 0;
+		exploSwag(should, should ? "Back" : "Off");
+		vaccum.setPower(pow);
+	}
+
+	private void toggleB(boolean should)
+	{
+		double rpm = should ? -4000 : 0.0;
+		double pow = should ? -.50 : 0;
+		exploSwag(should, should ? "Back" : "Off");
+		vaccum.swagReverse(pow);
 	}
 }
