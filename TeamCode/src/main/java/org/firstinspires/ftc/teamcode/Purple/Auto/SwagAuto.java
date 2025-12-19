@@ -53,9 +53,9 @@ public class SwagAuto extends OpMode
 
 	private final Pose Pickup_First_Halflife2Pose = new Pose(25, 83.0323509898277, Math.toRadians(180));
 
-	private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 57.12668327854573, Math.toRadians(180));
+	private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 59, Math.toRadians(180));
 
-	private final Pose Pickup_Second_Halflife2Pose = new Pose(25, 59.13660577338656, Math.toRadians(180));
+	private final Pose Pickup_Second_Halflife2Pose = new Pose(25, 59, Math.toRadians(180));
 
 	private final Pose rankPose = new Pose(39.751800453518925, 62.93312604141928, Math.toRadians(90));
 	private PurplePathing pathManager;
@@ -128,28 +128,28 @@ public class SwagAuto extends OpMode
 
 
 		// Create the PurplePath objects
-		PurplePath path1 = new PurplePath("Drive Back", DriveStartShoot, 2.0, 8.0)
+		PurplePath path1 = new PurplePath("Drive Back", DriveStartShoot, 1.0, 6.5)
 				.onComplete(() -> flagShoot());
 
-		PurplePath path2 = new PurplePath("Drive back smore", DriveToHalfLife1, 1.5, 0.0)
+		PurplePath path2 = new PurplePath("Drive back smore", DriveToHalfLife1, 1, 0.0)
 				.onComplete(() -> pickupBalls(true));
 
-		PurplePath path3 = new PurplePath("pickup BALLS =]", DriveHalfLife1, 2.0, 2.0)
+		PurplePath path3 = new PurplePath("pickup BALLS =]", DriveHalfLife1, 2.0, 0)
 				.onComplete(() -> pickupBalls(false));
 
-		PurplePath path4 = new PurplePath("Drive back to shoot", DrivePickupShoot1, 1.5, 8.0)
+		PurplePath path4 = new PurplePath("Drive back to shoot", DrivePickupShoot1, 1, 6.5)
 				.onComplete(() -> flagShoot());
 
-		PurplePath path5 = new PurplePath("Drive back smlot", DriveToHalfLife2, 2.0, 2.0)
+		PurplePath path5 = new PurplePath("Drive back smlot", DriveToHalfLife2, 2.0, 0.0)
 				.onComplete(() -> pickupBalls(true));
 
-		PurplePath path6 = new PurplePath("pickup BALLS =] 2: electric boogaloo", DriveHalfLife2, 1.5, 0.0)
+		PurplePath path6 = new PurplePath("pickup BALLS =] 2: electric boogaloo", DriveHalfLife2, 1, 0.0)
 				.onComplete(() -> pickupBalls(false));
 
-		PurplePath path7 = new PurplePath("Drive Back to shoot again", DrivePickupShoot2, 2.0, 2.0)
+		PurplePath path7 = new PurplePath("Drive Back to shoot again", DrivePickupShoot2, 2.0, 6.5)
 				.onComplete(() -> flagShoot());
 
-		PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 1.5, 0.0)
+		PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 1, 0.0)
 				.onComplete(() -> DebugUtil.logAdd("path2 completed"));
 
 		// Create the PurpleChain object
@@ -203,35 +203,35 @@ public class SwagAuto extends OpMode
 		if (shootTimer.seconds() > 2) {
 			explosher.setFingerState(Explosher.FingerState.PASS);
 		}
-		if (shootTimer.seconds() > 0 && shootTimer.seconds() < 7.2) {
+		if (shootTimer.seconds() > 0 && shootTimer.seconds() < 6.5) {
 			exploSwag(true, "Forward");
 		}
-		if (shootTimer.seconds() > 4 && shootTimer.seconds() < 4.1) {
+		if (shootTimer.seconds() > 3.5 && shootTimer.seconds() < 3.6) {
 			toggleY(true);
 			DebugUtil.logAdd("first push on");
 		}
-		if (shootTimer.seconds() > 4.1 && shootTimer.seconds() < 4.2 ) {
+		if (shootTimer.seconds() > 3.6 && shootTimer.seconds() < 4.1) {
+			toggleY(false);
+			DebugUtil.logAdd("first push off");
+		}
+		if (shootTimer.seconds() > 5 && shootTimer.seconds() < 5.5) {
+			toggleY(true);
+			DebugUtil.logAdd("first push on");
+		}
+		if (shootTimer.seconds() == 5.5) {
 			toggleY(false);
 			DebugUtil.logAdd("first push off");
 		}
 		if (shootTimer.seconds() > 5.5 && shootTimer.seconds() < 6) {
-			toggleY(true);
-			DebugUtil.logAdd("first push on");
-		}
-		if (shootTimer.seconds() == 6) {
-			toggleY(false);
-			DebugUtil.logAdd("first push off");
-		}
-		if (shootTimer.seconds() > 6 && shootTimer.seconds() < 6.6) {
 			toggleX(true);
 		}
-		if (shootTimer.seconds() == 6.6) {
+		if (shootTimer.seconds() == 6) {
 			toggleX(false);
 		}
-		if (shootTimer.seconds() > 6.6 && shootTimer.seconds() < 7) {
+		if (shootTimer.seconds() > 6 && shootTimer.seconds() < 6.5) {
 			toggleY(true);
 		}
-		if (shootTimer.seconds() >= 7.8) {
+		if (shootTimer.seconds() >= 6.5) {
 			toggleY(false);
 			exploSwag(false, "Forward");
 			shouldShoot = false;
@@ -266,11 +266,11 @@ public class SwagAuto extends OpMode
 	{
 
 		double[][] calibrationPoints = {
-				{59, 2900},
-				{65, 3000},
-				{77, 3000},
-				{80, 3200},
-				{94, 3100}
+				{59, 2800},
+				{65, 2900},
+				{77, 2950},
+				{80, 3100},
+				{94, 2950}
 		};
 
 		int n = calibrationPoints.length;
