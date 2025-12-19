@@ -14,6 +14,7 @@ public class TeleOp extends PurpleOpMode
 	// Private variables after
 	private static final long TAG_TIMEOUT_MS = 500;
 	private static final double RPM_SMOOTHING_ALPHA = 0.2;
+	private static final double THRESHOLD = 3;
 
 	// Public variables first
 	public double swagShitClose = Explosher.CLOSE_SWEET;
@@ -61,74 +62,71 @@ public class TeleOp extends PurpleOpMode
 		updateAllSystems();
 	}
 
-	private void updateDrive ()
+	private void updateDrive (String dir)
 	{
 
 		powerScale = driver1.isPressed("left_stick_button") ?
 				Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
 
-		double forward = driver1.getLeftStickY();
-		double strafe = driver1.getLeftStickX();
-		double turn = driver1.getRightStickX();
+		if (dir == "L")
+		{
+			double forward = 0;
+			double strafe = 0;
+			double turn = -0.15;
 
-		double[] powers = MotorUtil.normalizePowers(new double[]{
-				(-forward - strafe - turn),
-				(-forward + strafe - turn),
-				(forward - strafe - turn),
-				(forward + strafe - turn)
-		});
+			double[] powers = MotorUtil.normalizePowers(new double[]{
+					(-forward - strafe - turn),
+					(-forward + strafe - turn),
+					(forward - strafe - turn),
+					(forward + strafe - turn)
+			});
 
-		fl.setPower(powers[0] * powerScale);
-		bl.setPower(powers[1] * powerScale);
-		fr.setPower(powers[2] * powerScale);
-		br.setPower(powers[3] * powerScale);
+			fl.setPower(powers[0] * powerScale);
+			bl.setPower(powers[1] * powerScale);
+			fr.setPower(powers[2] * powerScale);
+			br.setPower(powers[3] * powerScale);
+		}
+		else if (dir == "R")
+		{
+			double forward = 0;
+			double strafe = 0;
+			double turn = 0.15;
+
+			double[] powers = MotorUtil.normalizePowers(new double[]{
+					(-forward - strafe - turn),
+					(-forward + strafe - turn),
+					(forward - strafe - turn),
+					(forward + strafe - turn)
+			});
+
+			fl.setPower(powers[0] * powerScale);
+			bl.setPower(powers[1] * powerScale);
+			fr.setPower(powers[2] * powerScale);
+			br.setPower(powers[3] * powerScale);
+		}
+		else
+		{
+			double forward = driver1.getLeftStickY();
+			double strafe = driver1.getLeftStickX();
+			double turn = driver1.getRightStickX();
+
+			double[] powers = MotorUtil.normalizePowers(new double[]{
+					(-forward - strafe - turn),
+					(-forward + strafe - turn),
+					(forward - strafe - turn),
+					(forward + strafe - turn)
+			});
+
+			fl.setPower(powers[0] * powerScale);
+			bl.setPower(powers[1] * powerScale);
+			fr.setPower(powers[2] * powerScale);
+			br.setPower(powers[3] * powerScale);
+		}
 	}
 
 	/**
 	 * Automatically aligns the robot to the detected AprilTag
 	 */
-	private void autoAlignToTag ()
-	{
-
-		if (!hasRecentTarget())
-		{
-			autoAlignActive = false;
-			return;
-		}
-
-		double tx = LimeUtil.getTx();
-		double distance = LimeUtil.getTargetDistance();
-		double distanceError = Constants.DESIRED_TAG_DISTANCE - distance;
-
-		double turnPower = clamp(tx * Constants.ALIGN_ANGLE_KP, -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
-		double forwardPower = clamp(distanceError * Constants.ALIGN_DISTANCE_KP, -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
-
-		if (Math.abs(tx) < Constants.ALIGN_ANGLE_DEADZONE) turnPower = 0;
-		if (Math.abs(distanceError) < Constants.ALIGN_DISTANCE_DEADZONE) forwardPower = 0;
-
-		double strafePower = 0;
-		if (Math.abs(tx) > 10)
-		{
-			strafePower = clamp(tx * Constants.ALIGN_STRAFE_KP, -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
-		}
-
-		double flPower = forwardPower - strafePower - turnPower;
-		double frPower = forwardPower + strafePower - turnPower;
-		double blPower = forwardPower - strafePower - turnPower;
-		double brPower = forwardPower + strafePower - turnPower;
-
-		double[] norm = MotorUtil.normalizePowers(new double[]{flPower, frPower, blPower, brPower});
-
-		fl.setPower(norm[0] * powerScale);
-		fr.setPower(norm[1] * powerScale);
-		bl.setPower(norm[2] * powerScale);
-		br.setPower(norm[3] * powerScale);
-
-		if (isFullyAligned())
-		{
-			driver1.vibrate(80);
-		}
-	}
 
 	// Private non-utility methods without documentation at bottom
 	private void initializeMotors ()
@@ -174,10 +172,30 @@ public class TeleOp extends PurpleOpMode
 
 		if (autoAlignActive)
 		{
-			autoAlignToTag();
-		} else
+			if (Math.abs(LimeUtil.getTx()) > THRESHOLD)
+			{
+				if(LimeUtil.getTx() < 0)
+				{
+					updateDrive("L");
+				}
+				else if(LimeUtil.getTx() > 0)
+				{
+					updateDrive("R");
+				}
+				else
+				{
+					updateDrive("def");
+				}
+			}
+			else
+			{
+				driver1.vibrate(150);
+				updateDrive("def");
+			}
+		}
+		else
 		{
-			updateDrive();
+			updateDrive("def");
 		}
 
 		updateExplosherControl();
@@ -230,10 +248,10 @@ public class TeleOp extends PurpleOpMode
 
 		double[][] calibrationPoints = {
 				{59, 2900},
-				{65, 3000},
+				{65, 2850},
 				{77, 3000},
 				{80, 3200},
-				{94, 3100}
+				{94, 31/00}
 		};
 
 		int n = calibrationPoints.length;
@@ -357,7 +375,7 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateTelemetry ()
 	{
-
+		DebugUtil.logAdd("TX: " + LimeUtil.getTx());
 		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
 		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
