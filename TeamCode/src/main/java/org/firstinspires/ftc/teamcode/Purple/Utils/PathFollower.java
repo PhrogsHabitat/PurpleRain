@@ -1,9 +1,5 @@
 package org.firstinspires.ftc.teamcode.Purple.Utils;
 
-/**
- * Path follower using PID control for x, y, and heading.
- * Implements pose stabilization for mecanum drivetrains[citation:6].
- */
 public class PathFollower
 {
 	private final PID xController;
@@ -29,6 +25,7 @@ public class PathFollower
 	 */
 	public PathFollower (double kP, double kI, double kD, double maxPower, double tolerance, double headingTolerance)
 	{
+
 		this.xController = new PID(kP, kI, kD);
 		this.yController = new PID(kP, kI, kD);
 		this.headingController = new PID(kP, kI, kD); // Tune heading separately if needed
@@ -45,6 +42,7 @@ public class PathFollower
 	 */
 	public void setTarget (double x, double y, double heading)
 	{
+
 		this.targetX = x;
 		this.targetY = y;
 		this.targetHeading = heading;
@@ -69,6 +67,7 @@ public class PathFollower
 	 */
 	public double[] calculateMotorPowers (double currentX, double currentY, double currentHeading, double targetX, double targetY, double targetHeading)
 	{
+
 		if (!isFollowing)
 		{
 			setTarget(targetX, targetY, targetHeading);
@@ -123,6 +122,7 @@ public class PathFollower
 	 */
 	public boolean isAtTarget (double tolerance)
 	{
+
 		if (!isFollowing) return false;
 		// Check if both position and heading are within tolerance
 		double distanceError = Math.sqrt(Math.pow(targetX, 2) + Math.pow(targetY, 2));
@@ -135,6 +135,7 @@ public class PathFollower
 	 */
 	public void stop ()
 	{
+
 		this.isFollowing = false;
 	}
 
@@ -145,11 +146,13 @@ public class PathFollower
 	 */
 	public boolean isFollowing ()
 	{
+
 		return isFollowing;
 	}
 
 	private double normalizeAngle (double angle)
 	{
+
 		while (angle > Math.PI) angle -= 2 * Math.PI;
 		while (angle < -Math.PI) angle += 2 * Math.PI;
 		return angle;
@@ -157,6 +160,7 @@ public class PathFollower
 
 	private double clamp (double value, double min, double max)
 	{
+
 		return Math.max(min, Math.min(max, value));
 	}
 
@@ -169,6 +173,7 @@ public class PathFollower
 
 		public PID (double kP, double kI, double kD)
 		{
+
 			this.kP = kP;
 			this.kI = kI;
 			this.kD = kD;
@@ -176,6 +181,7 @@ public class PathFollower
 
 		public double calculate (double error)
 		{
+
 			integral += error;
 			double derivative = error - lastError;
 			lastError = error;
@@ -184,6 +190,7 @@ public class PathFollower
 
 		public void resetIntegral ()
 		{
+
 			integral = 0;
 		}
 	}
