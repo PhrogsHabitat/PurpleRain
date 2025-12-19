@@ -12,6 +12,8 @@ public class MathUtil
 	 */
 	public static double clamp (double value, double min, double max)
 	{
+
+		if (Double.isNaN(value)) return 0;
 		return Math.max(min, Math.min(max, value));
 	}
 
@@ -25,6 +27,7 @@ public class MathUtil
 	 */
 	public static double lerp (double a, double b, double t)
 	{
+
 		return a + (b - a) * t;
 	}
 
@@ -36,6 +39,7 @@ public class MathUtil
 	 */
 	public static double normalizeAngle (double angle)
 	{
+
 		while (angle > Math.PI) angle -= 2 * Math.PI;
 		while (angle < -Math.PI) angle += 2 * Math.PI;
 		return angle;

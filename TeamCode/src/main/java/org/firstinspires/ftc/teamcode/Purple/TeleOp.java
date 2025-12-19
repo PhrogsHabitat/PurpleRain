@@ -11,10 +11,12 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
 public class TeleOp extends PurpleOpMode
 {
-	// Private variables after
-	private static final long TAG_TIMEOUT_MS = 500;
-	private static final double RPM_SMOOTHING_ALPHA = 0.2;
 
+	// Private variables after
+	private static final double RPM_SMOOTHING_ALPHA = 0.2;
+	private static final double ROTATION_KP = 0.03; // Proportional gain for rotation
+	private static final double ROTATION_DEADZONE = 0.5; // Degrees to consider "centered"
+	private static final double MAX_ROTATION_POWER = 0.5; // Maximum rotation power
 	// Public variables first
 	public double swagShitClose = Explosher.CLOSE_SWEET;
 	public double swagShitFar = Explosher.FAR_SWEET;
@@ -26,14 +28,12 @@ public class TeleOp extends PurpleOpMode
 	private double powerScale = Constants.DRIVE_POWER_SCALE;
 	private Explosher explosher;
 	private Vaccum vaccum;
-	private boolean wasAligned = false;
-	private boolean wasTagDetected = false;
 	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
-	private boolean autoAlignActive = false;
-	private long lastTagSeenTime = 0;
 	private double regressionSlope;
 	private double regressionIntercept;
 	private double smoothedTargetRPM = 0;
+	// Rotation control variables
+	private boolean autoRotateToTag = false;
 
 	// Core methods ALWAYS come first (excluding destroy)
 	@Override
@@ -71,6 +71,45 @@ public class TeleOp extends PurpleOpMode
 		double strafe = driver1.getLeftStickX();
 		double turn = driver1.getRightStickX();
 
+		// Auto-rotate to AprilTag when right bumper is held
+		if (driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget())
+		{
+			autoRotateToTag = true;
+			double tx = LimeUtil.getTx(); // Horizontal offset in degrees
+
+			// If we're outside the deadzone, calculate rotation power
+			if (Math.abs(tx) > ROTATION_DEADZONE)
+			{
+				// Proportional control: more power when further from center
+				double rotationPower = tx * ROTATION_KP;
+
+				// Limit the rotation power
+				if (rotationPower > MAX_ROTATION_POWER)
+				{
+					rotationPower = MAX_ROTATION_POWER;
+				} else if (rotationPower < -MAX_ROTATION_POWER)
+				{
+					rotationPower = -MAX_ROTATION_POWER;
+				}
+
+				// Apply rotation power (negative because tx positive means tag is to the right)
+				turn = -rotationPower;
+			} else
+			{
+				// Tag is centered, don't rotate
+				turn = 0;
+				DebugUtil.logAdd("AprilTag Centered!");
+			}
+
+			if (Math.abs(tx) < ROTATION_DEADZONE)
+			{
+				driver1.vibrate(Constants.VIBRATION_ALIGNED);
+			}
+		} else
+		{
+			autoRotateToTag = false;
+		}
+
 		double[] powers = MotorUtil.normalizePowers(new double[]{
 				(-forward - strafe - turn),
 				(-forward + strafe - turn),
@@ -84,53 +123,6 @@ public class TeleOp extends PurpleOpMode
 		br.setPower(powers[3] * powerScale);
 	}
 
-	/**
-	 * Automatically aligns the robot to the detected AprilTag
-	 */
-	private void autoAlignToTag ()
-	{
-
-		if (!hasRecentTarget())
-		{
-			autoAlignActive = false;
-			return;
-		}
-
-		double tx = LimeUtil.getTx();
-		double distance = LimeUtil.getTargetDistance();
-		double distanceError = Constants.DESIRED_TAG_DISTANCE - distance;
-
-		double turnPower = clamp(tx * Constants.ALIGN_ANGLE_KP, -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
-		double forwardPower = clamp(distanceError * Constants.ALIGN_DISTANCE_KP, -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
-
-		if (Math.abs(tx) < Constants.ALIGN_ANGLE_DEADZONE) turnPower = 0;
-		if (Math.abs(distanceError) < Constants.ALIGN_DISTANCE_DEADZONE) forwardPower = 0;
-
-		double strafePower = 0;
-		if (Math.abs(tx) > 10)
-		{
-			strafePower = clamp(tx * Constants.ALIGN_STRAFE_KP, -Constants.MAX_ALIGN_POWER, Constants.MAX_ALIGN_POWER);
-		}
-
-		double flPower = forwardPower - strafePower - turnPower;
-		double frPower = forwardPower + strafePower - turnPower;
-		double blPower = forwardPower - strafePower - turnPower;
-		double brPower = forwardPower + strafePower - turnPower;
-
-		double[] norm = MotorUtil.normalizePowers(new double[]{flPower, frPower, blPower, brPower});
-
-		fl.setPower(norm[0] * powerScale);
-		fr.setPower(norm[1] * powerScale);
-		bl.setPower(norm[2] * powerScale);
-		br.setPower(norm[3] * powerScale);
-
-		if (isFullyAligned())
-		{
-			driver1.vibrate(80);
-		}
-	}
-
-	// Private non-utility methods without documentation at bottom
 	private void initializeMotors ()
 	{
 
@@ -162,7 +154,6 @@ public class TeleOp extends PurpleOpMode
 	{
 
 		LimeUtil.update();
-		updateAprilTagFeedback();
 		updatePlayer1Controls();
 		updatePlayer2Controls();
 		updateSubsystems();
@@ -172,14 +163,7 @@ public class TeleOp extends PurpleOpMode
 			updateDebug();
 		}
 
-		if (autoAlignActive)
-		{
-			autoAlignToTag();
-		} else
-		{
-			updateDrive();
-		}
-
+		updateDrive();
 		updateExplosherControl();
 		updateTelemetry();
 	}
@@ -256,29 +240,9 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd("RPM = " + String.format("%.3f", regressionSlope) + " * dist + " + String.format("%.3f", regressionIntercept));
 	}
 
-	private void updateAprilTagFeedback ()
-	{
-
-		boolean tagDetected = LimeUtil.hasValidTarget();
-
-		if (tagDetected)
-		{
-			lastTagSeenTime = System.currentTimeMillis();
-		}
-
-		if (tagDetected && !wasTagDetected)
-		{
-			driver1.vibrate(150);
-			driver2.vibrate(Constants.VIBRATION_TAG_DETECTED);
-		}
-
-		wasTagDetected = tagDetected;
-	}
-
 	private void updatePlayer1Controls ()
 	{
 
-		autoAlignActive = driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget();
 		checkForImpact();
 	}
 
@@ -333,12 +297,6 @@ public class TeleOp extends PurpleOpMode
 		{
 			swagShitFar -= 100;
 		}
-
-		if (isFullyAligned() && !wasAligned)
-		{
-			driver2.vibrate(Constants.VIBRATION_ALIGNED);
-		}
-		wasAligned = isFullyAligned();
 	}
 
 	private void updateDebug ()
@@ -346,6 +304,7 @@ public class TeleOp extends PurpleOpMode
 
 		DebugUtil.logAdd("Finger State: " + fingerState);
 		DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
+		DebugUtil.logAdd("Auto-Rotate Active: " + autoRotateToTag);
 	}
 
 	private void updateSubsystems ()
@@ -361,47 +320,24 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
 		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
-		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
 		DebugUtil.logAdd("Finger State: " + fingerState);
 		DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
+
+		if (autoRotateToTag)
+		{
+			DebugUtil.logAdd("Auto-Rotate: ACTIVE (tx: " + String.format("%.1f", LimeUtil.getTx()) + "°)");
+		}
 
 		if (LimeUtil.hasValidTarget())
 		{
 			DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTargetDistance()) +
 					"in, Angle: " + String.format("%.1f", LimeUtil.getTx()) + "°");
-			DebugUtil.logAdd("Aligned: " + (isFullyAligned() ? "YES" : "NO"));
 		} else
 		{
 			DebugUtil.logAdd("AprilTag: No target");
 		}
 
 		DebugUtil.update();
-	}
-
-	private boolean hasRecentTarget ()
-	{
-
-		return LimeUtil.hasValidTarget() &&
-				(System.currentTimeMillis() - lastTagSeenTime) < TAG_TIMEOUT_MS;
-	}
-
-	private double clamp (double value, double min, double max)
-	{
-
-		return Math.max(min, Math.min(max, value));
-	}
-
-	private boolean isFullyAligned ()
-	{
-
-		if (!hasRecentTarget()) return false;
-
-		double tx = LimeUtil.getTx();
-		double distance = LimeUtil.getTargetDistance();
-		double distanceError = Math.abs(distance - Constants.DESIRED_TAG_DISTANCE);
-
-		return Math.abs(tx) < Constants.ALIGN_ANGLE_TOLERANCE &&
-				distanceError < Constants.ALIGN_DISTANCE_TOLERANCE;
 	}
 
 	private void checkForImpact ()
@@ -419,6 +355,5 @@ public class TeleOp extends PurpleOpMode
 		br.stop();
 		explosher.stop();
 		vaccum.stop();
-		autoAlignActive = false;
 	}
 }

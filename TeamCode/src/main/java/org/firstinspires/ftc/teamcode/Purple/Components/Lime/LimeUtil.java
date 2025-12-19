@@ -8,23 +8,12 @@ import com.qualcomm.robotcore.hardware.IMU;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
-/**
- * FTC Limelight utility: wraps Limelight3A for easy, robust access
- * Consolidated version with static initialization and access methods
- */
 public final class LimeUtil
 {
-
+	public static IMU imu;
 	// Limelight instance
 	private static Limelight3A limelight = null;
-	public static IMU imu;
-
 	private static boolean initialized = false;
-
-	private LimeUtil ()
-	{
-		// Utility class - prevent instantiation
-	}
 
 	/**
 	 * Initialize Limelight3A from hardwareMap
@@ -54,8 +43,9 @@ public final class LimeUtil
 		}
 	}
 
-	public static void update()
+	public static void update ()
 	{
+
 		YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
 		double yaw = orientation.getYaw(AngleUnit.DEGREES);
 
