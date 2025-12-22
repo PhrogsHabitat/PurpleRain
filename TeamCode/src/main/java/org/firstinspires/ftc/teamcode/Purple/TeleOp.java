@@ -251,7 +251,7 @@ public class TeleOp extends PurpleOpMode
 				{65, 2850},
 				{77, 3000},
 				{80, 3200},
-				{94, 31/00}
+				{94, 3100}
 		};
 
 		int n = calibrationPoints.length;
