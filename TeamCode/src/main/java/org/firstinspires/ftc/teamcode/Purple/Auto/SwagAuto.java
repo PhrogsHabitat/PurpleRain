@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.Purple.Auto;
 
-import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.follower;
-
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
@@ -18,8 +16,6 @@ import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePath;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
-
-import java.util.Timer;
 
 @Autonomous(name = "SwagAuto", group = "Purple")
 public class SwagAuto extends OpMode
