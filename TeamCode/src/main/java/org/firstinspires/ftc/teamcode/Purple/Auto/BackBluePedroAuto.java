@@ -17,7 +17,7 @@ import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-@Autonomous(name = "BlueAuto", group = "Purple")
+@Autonomous(name = "BackBluePedroAuto", group = "Purple")
 public class BackBluePedroAuto extends OpMode
 {
 
@@ -43,7 +43,7 @@ public class BackBluePedroAuto extends OpMode
     // sample poses (adjust to your field/layout)
     private final Pose startPose = new Pose(62.5, 8, Math.toRadians(90));
 
-    private final Pose shootPose = new Pose(32.5, 23, Math.toRadians(118));
+    private final Pose shootPose = new Pose(62.5, 23, Math.toRadians(118));
 
     private final Pose Pickup_First_Halflife1Pose = new Pose(48, 35.5, Math.toRadians(180));
 

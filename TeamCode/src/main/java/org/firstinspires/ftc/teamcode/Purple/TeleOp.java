@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.Purple;
 
+import com.pedropathing.geometry.Pose;
+
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;

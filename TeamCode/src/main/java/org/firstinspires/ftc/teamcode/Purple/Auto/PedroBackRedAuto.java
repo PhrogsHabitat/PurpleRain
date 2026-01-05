@@ -21,7 +21,7 @@ import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-@Autonomous(name = "RedAuto", group = "Purple")
+@Autonomous(name = "PedroBackRedAuto", group = "Purple")
 public class PedroBackRedAuto extends OpMode
 {
 
@@ -64,13 +64,13 @@ public class PedroBackRedAuto extends OpMode
 
     private final Pose shootPose = new Pose(81, 23, Math.toRadians(63));
 
-    private final Pose Pickup_First_Halflife1Pose = new Pose(90, 35.5, Math.toRadians(10));
+    private final Pose Pickup_First_Halflife1Pose = new Pose(90, 35.5, Math.toRadians(0));
 
-    private final Pose Pickup_First_Halflife2Pose = new Pose(120, 35.5, Math.toRadians(10));
+    private final Pose Pickup_First_Halflife2Pose = new Pose(120, 35.5, Math.toRadians(0));
 
-    private final Pose Pickup_Second_Halflife1Pose = new Pose(90, 60, Math.toRadians(10));
+    private final Pose Pickup_Second_Halflife1Pose = new Pose(90, 60, Math.toRadians(0));
 
-    private final Pose Pickup_Second_Halflife2Pose = new Pose(122, 60, Math.toRadians(10));
+    private final Pose Pickup_Second_Halflife2Pose = new Pose(122, 60, Math.toRadians(0));
 
     private final Pose rankPose = new Pose(90, 35.5, Math.toRadians(90));
 
