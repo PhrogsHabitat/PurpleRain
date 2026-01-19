@@ -45,13 +45,15 @@ public class BlueAuto extends OpMode
 
     private final Pose shootPose = new Pose(53.43396226415094, 94.41509433962264, Math.toRadians(143));
 
-    private final Pose Pickup_First_Halflife1Pose = new Pose(53.440993788819874, 84, Math.toRadians(180));
+    private final Pose Pickup_First_Halflife1Pose = new Pose(53.440993788819874, 85, Math.toRadians(180));
 
-    private final Pose Pickup_First_Halflife2Pose = new Pose(25, 84, Math.toRadians(180));
+    private final Pose Pickup_First_Halflife2Pose = new Pose(25, 85, Math.toRadians(180));
 
-    private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 61, Math.toRadians(180));
+    private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 63.5, Math.toRadians(180));
 
-    private final Pose Pickup_Second_Halflife2Pose = new Pose(25, 60, Math.toRadians(180));
+    private final Pose Pickup_Second_Halflife2Pose = new Pose(24.5, 63, Math.toRadians(180));
+
+
 
     private final Pose rankPose = new Pose(39.751800453518925, 62.93312604141928, Math.toRadians(90));
     private PurplePathing pathManager;

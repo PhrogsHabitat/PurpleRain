@@ -222,19 +222,23 @@ public class TeleOp extends PurpleOpMode
 				{
 					explosher.setRPM(smoothedTargetRPM);
 				}
-			} else if (!manual)
+			}
+			else if (!manual)
 			{
 				explosher.stop();
 			}
-		} else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
+		}
+		else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
 		{
 			explosher.setRPM(-4000);
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
-		} else if (driver2.isPressed("b"))
+		}
+		else if (driver2.isPressed("b"))
 		{
 			explosher.setRPM(-4000);
 			vaccum.swagReverse(-Vaccum.DEFAULT_POW);
-		} else
+		}
+		else
 		{
 			explosher.stop();
 		}
@@ -442,3 +446,9 @@ public class TeleOp extends PurpleOpMode
 		autoAlignActive = false;
 	}
 }
+
+//{57, 2500},
+//{80, 2700},
+//{95, 2900},
+//{110, 2900},
+//{130, 3100}

@@ -37,7 +37,7 @@ public final class MotorConfig
 		}
 
 		motor.setInverted(b.inverted);
-		motor.setZeroPowerBehavior(b.zeroPowerBehavior);
+		motor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
 
 		// Set initial control mode
 		setControlMode(b.velocityEnabled ? ControlMode.VELOCITY_CONTROL : ControlMode.RAW_POWER);

@@ -47,15 +47,15 @@ public class RedAuto extends OpMode
 
     private final Pose shootPoseScuff = new Pose(90, 94.5, Math.toRadians(40));
 
-    private final Pose Pickup_First_Halflife1Pose = new Pose(90, 83.5, Math.toRadians(10));
+    private final Pose Pickup_First_Halflife1Pose = new Pose(100, 83.5, Math.toRadians(10));
 
-    private final Pose Pickup_First_Halflife2Pose = new Pose(123, 83.5, Math.toRadians(10));
+    private final Pose Pickup_First_Halflife2Pose = new Pose(126, 83.5, Math.toRadians(10));
 
-    private final Pose Pickup_Second_Halflife1Pose = new Pose(90, 60, Math.toRadians(10));
+    private final Pose Pickup_Second_Halflife1Pose = new Pose(100, 61, Math.toRadians(10));
 
-    private final Pose Pickup_Second_Halflife2Pose = new Pose(125, 60, Math.toRadians(10));
+    private final Pose Pickup_Second_Halflife2Pose = new Pose(126, 61, Math.toRadians(10));
 
-    private final Pose rankPose = new Pose(90, 60, Math.toRadians(90));
+    private final Pose rankPose = new Pose(100, 60, Math.toRadians(90));
     private PurplePathing pathManager;
 
     @Override
