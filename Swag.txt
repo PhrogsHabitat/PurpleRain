@@ -1,0 +1,18 @@
+KEY ASPECTS:
+
+    Code Structure -> (Cooperation and Team Understanding)
+
+TROUBLESHOOTING:
+
+    LimeLight ->
+        Distance Tracking
+        Auto-Align
+    
+    Explosher ->
+        Auto-RPM
+        Shooting Accuracy // High on the fly yeah
+
+    Auto ->
+        Pedro Pathing
+        Physical Limitations
+        Auto Consistencies
