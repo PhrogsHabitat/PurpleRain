@@ -14,8 +14,15 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
 
 public class Explosher
 {
+	
 	public static final double CLOSE_SWEET = 0.45;
 	public static final double FAR_SWEET = 1.0;
+	public static final double RPM_SMOOTHING_ALPHA = 0.2;
+	
+	public boolean shouldRegress = false;
+	public double dist;
+	public double regressionSlope;
+	public double regressionIntercept;
 
 	private final MotorConfig motor;
 	private final Servo finger;
@@ -23,6 +30,22 @@ public class Explosher
 	private FingerState fingerState = FingerState.STOP;
 	private double debugFingerPosition = Constants.FINGER_STOP_POSITION;
 	private double targetRPM = 0;
+	private double smoothedTargetRPM = 0;
+
+	public enum FingerState
+	{
+		STOP, PASS, DEBUG;
+
+		/**
+		 * Gets the next finger state in sequence
+		 *
+		 * @return Next finger state
+		 */
+		public FingerState next ()
+		{
+			return values()[(ordinal() + 1) % values().length];
+		}
+	}
 
 	public Explosher (HardwareMap hardwareMap, ServoConfig fingerConfig)
 	{
@@ -30,8 +53,37 @@ public class Explosher
 		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
 
+		// Stop everything and zero
 		stop();
 		setFingerState(FingerState.STOP);
+
+		calculateRegression();
+	}
+
+	/**
+	 * Updates the explosher subsystem - call in main loop
+	 */
+	public void update ()
+	{
+		motor.update();
+
+		if (shouldRegress)
+		{
+			dist = LimeUtil.getTargetDistance();
+			double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
+
+			smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
+		    smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, motor.getMaxRPM()));
+		}
+
+		DebugUtil.logAdd("Explosher RPM: " +
+				String.format("%.2f", getCurrentRPM()) +
+				" / " +
+				String.format("%.2f", getTargetRPM())
+		);
+
+		DebugUtil.logAdd("Finger State: " + fingerState +
+				" | Pos: " + String.format("%.3f", getFingerPosition()));
 	}
 
 	/**
@@ -178,24 +230,6 @@ public class Explosher
 
 		DebugUtil.logAdd("Debug Finger Pos: " + String.format("%.3f", debugFingerPosition));
 	}
-
-	/**
-	 * Updates the explosher subsystem - call in main loop
-	 */
-	public void update ()
-	{
-		motor.update();
-
-		DebugUtil.logAdd("Explosher RPM: " +
-				String.format("%.2f", getCurrentRPM()) +
-				" / " +
-				String.format("%.2f", getTargetRPM())
-		);
-
-		DebugUtil.logAdd("Finger State: " + fingerState +
-				" | Pos: " + String.format("%.3f", getFingerPosition()));
-	}
-
 	/**
 	 * Gets the maximum RPM capability of the shooter motor
 	 *
@@ -206,18 +240,31 @@ public class Explosher
 		return motor.getMaxRPM();
 	}
 
-	public enum FingerState
+	private void calculateRegression ()
 	{
-		STOP, PASS, DEBUG;
 
-		/**
-		 * Gets the next finger state in sequence
-		 *
-		 * @return Next finger state
-		 */
-		public FingerState next ()
+		double[][] calibrationPoints = {
+				{59, 2900},
+				{65, 2850},
+				{77, 3000},
+				{80, 3200},
+				{94, 3100}
+		};
+
+		int n = calibrationPoints.length;
+		double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+
+		for (double[] point : calibrationPoints)
 		{
-			return values()[(ordinal() + 1) % values().length];
+			double distance = point[0];
+			double rpm = point[1];
+			sumX += distance;
+			sumY += rpm;
+			sumXY += distance * rpm;
+			sumX2 += distance * distance;
 		}
+
+		regressionSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+		regressionIntercept = (sumY - regressionSlope * sumX) / n;
 	}
 }
