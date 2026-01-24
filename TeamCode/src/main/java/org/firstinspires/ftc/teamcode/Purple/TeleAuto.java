@@ -54,7 +54,7 @@ public class TeleAuto extends PurpleOpMode
         follower.setStartingPose(startingPose == null ? new Pose() : startingPose);
         follower.update();
 
-        follower.startTeleopDrive();
+        follower.startTeleopDrive(true);
 
         initializeMotors();
         initializeExplosher();
@@ -84,39 +84,15 @@ public class TeleAuto extends PurpleOpMode
 
         if (dir == "L")
         {
-            double forward = 0;
-            double strafe = 0;
-            double turn = -0.15;
+            double turn = 10;
 
-            double[] powers = MotorUtil.normalizePowers(new double[]{
-                    (-forward - strafe - turn),
-                    (-forward + strafe - turn),
-                    (forward - strafe - turn),
-                    (forward + strafe - turn)
-            });
-
-            fl.setPower(powers[0] * powerScale);
-            bl.setPower(powers[1] * powerScale);
-            fr.setPower(powers[2] * powerScale);
-            br.setPower(powers[3] * powerScale);
+            follower.turnDegrees(turn, true);
         }
         else if (dir == "R")
         {
-            double forward = 0;
-            double strafe = 0;
-            double turn = 0.15;
+            double turn = 10;
 
-            double[] powers = MotorUtil.normalizePowers(new double[]{
-                    (-forward - strafe - turn),
-                    (-forward + strafe - turn),
-                    (forward - strafe - turn),
-                    (forward + strafe - turn)
-            });
-
-            fl.setPower(powers[0] * powerScale);
-            bl.setPower(powers[1] * powerScale);
-            fr.setPower(powers[2] * powerScale);
-            br.setPower(powers[3] * powerScale);
+            follower.turnDegrees(turn, false);
         }
         else
         {
@@ -124,14 +100,10 @@ public class TeleAuto extends PurpleOpMode
                     -gamepad1.left_stick_y,
                     -gamepad1.left_stick_x,
                     -gamepad1.right_stick_x,
-                    false
+                    true
             );
         }
     }
-
-    /**
-     * Automatically aligns the robot to the detected AprilTag
-     */
 
     // Private non-utility methods without documentation at bottom
     private void initializeMotors ()
@@ -145,8 +117,6 @@ public class TeleAuto extends PurpleOpMode
                 .disableVelocityControl().build();
         br = new MotorConfig.Builder(hardwareMap, Names.BACKRIGHT, MotorConfig.Position.BACK_RIGHT, 2150.76, 312)
                 .disableVelocityControl().build();
-
-
     }
 
     private void initializeExplosher ()

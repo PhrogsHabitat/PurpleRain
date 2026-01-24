@@ -8,7 +8,7 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 public class Vaccum
 {
-	public static final double DEFAULT_POW = 1.0;
+	public static final double DEFAULT_POW = 0.5;
 
 	public final MotorConfig intakeMotor;
 	public final MotorConfig midtakeMotor;
@@ -64,7 +64,6 @@ public class Vaccum
 	 */
 	public void stop ()
 	{
-
 		setPower(0);
 	}
 

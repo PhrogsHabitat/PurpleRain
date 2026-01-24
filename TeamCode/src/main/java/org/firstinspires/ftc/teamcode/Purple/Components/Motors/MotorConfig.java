@@ -118,6 +118,17 @@ public final class MotorConfig
 	}
 
 	/**
+	 * Sets raw power to the motor (-1.0 to 1.0)
+	 *
+	 * @param power Power value between -1.0 and 1.0
+	 */
+	public double getPower ()
+	{
+
+		return motor.get();
+	}
+
+	/**
 	 * Gets the current RPM from motor velocity
 	 *
 	 * @return Current RPM value

@@ -123,8 +123,6 @@ public class RedAuto extends OpMode
                 .setLinearHeadingInterpolation(shootPose.getHeading(), rankPose.getHeading())
                 .build();
 
-
-
         // Create the PurplePath objects
         PurplePath path1 = new PurplePath("Drive Back", DriveStartShoot, 1.0, 6.5)
                 .onComplete(() -> flagShoot());
@@ -293,20 +291,20 @@ public class RedAuto extends OpMode
 
     private void toggleY(boolean should)
     {
-        double pow = should ? Vaccum.DEFAULT_POW : 0;
+        double pow = should ? 1.0 : 0;
         vaccum.setPower(pow);
     }
 
     private void toggleX(boolean should)
     {
-        double pow = should ? -.15  : 0;
+        double pow = should ? -.15 : 0;
         vaccum.setPower(pow);
     }
 
     private void toggleSuperX(boolean should)
     {
         double rpm = should ? -4000 : 0.0;
-        double pow = should ? -Vaccum.DEFAULT_POW : 0;
+        double pow = should ? -1.0 : 0;
         exploSwag(should, should ? "Back" : "Off");
         vaccum.setPower(pow);
     }
