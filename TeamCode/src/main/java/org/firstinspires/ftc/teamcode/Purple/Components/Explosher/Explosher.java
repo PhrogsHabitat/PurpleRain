@@ -17,6 +17,7 @@ public class Explosher
 	public static final double FAR_SWEET = 1.0;
 	public static final double RPM_SMOOTHING_ALPHA = 0.2;
 	private final MotorConfig motor;
+	private final MotorConfig motor2;
 	private final Servo finger;
 	private final ServoConfig fingerConfig;
 	public boolean shouldRegress = false;
@@ -32,6 +33,8 @@ public class Explosher
 	{
 
 		this.motor = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
+		this.motor2 = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER_2, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
+
 		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
 
@@ -49,6 +52,7 @@ public class Explosher
 	{
 
 		motor.update();
+		motor2.update();
 
 		if (shouldRegress)
 		{
@@ -79,6 +83,7 @@ public class Explosher
 
 		this.targetRPM = rpm;
 		motor.setTargetRPM(rpm);
+		motor2.setTargetRPM(rpm);
 	}
 
 	/**
@@ -110,6 +115,7 @@ public class Explosher
 	{
 
 		motor.stop();
+		motor2.stop();
 		targetRPM = 0;
 	}
 

@@ -293,7 +293,7 @@ public class BlueAuto extends OpMode
 
     private void toggleY(boolean should)
     {
-        double pow = should ? Vaccum.DEFAULT_POW : 0;
+        double pow = should ? 1.0 : 0;
         vaccum.setPower(pow);
     }
 

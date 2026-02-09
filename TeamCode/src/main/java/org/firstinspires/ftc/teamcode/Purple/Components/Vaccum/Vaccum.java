@@ -8,7 +8,7 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 public class Vaccum
 {
-	public static final double DEFAULT_POW = 0.5;
+	public static final double DEFAULT_POW = 1.0;
 
 	public final MotorConfig intakeMotor;
 	public final MotorConfig midtakeMotor;
@@ -23,7 +23,7 @@ public class Vaccum
 	{
 
 		intakeMotor = new MotorConfig.Builder(hardwareMap, Names.INTAKE, MotorConfig.Position.INTAKE).disableVelocityControl().build();
-		midtakeMotor = new MotorConfig.Builder(hardwareMap, Names.MIDTAKE, MotorConfig.Position.MIDTAKE).disableVelocityControl().build();
+		midtakeMotor = new MotorConfig.Builder(hardwareMap, Names.INTAKE, MotorConfig.Position.MIDTAKE).disableVelocityControl().build();
 
 		stop();
 	}
@@ -46,7 +46,6 @@ public class Vaccum
 	public void setPower (double power)
 	{
 		currentPower = power;
-		midtakeMotor.setPower(power);
 		intakeMotor.setPower(power);
 	}
 
@@ -56,7 +55,7 @@ public class Vaccum
 	public void swagReverse(double power)
 	{
 		currentPower = power;
-		midtakeMotor.setPower((power));
+//		midtakeMotor.setPower((power));
 	}
 
 	/**
@@ -86,7 +85,7 @@ public class Vaccum
 	public double getMidtakeCurrentRPM ()
 	{
 
-		return midtakeMotor.getCurrentRPM();
+		return 0.0;
 	}
 
 	/**
@@ -95,7 +94,7 @@ public class Vaccum
 	public void update ()
 	{
 
-		midtakeMotor.update();
+//		midtakeMotor.update();
 		intakeMotor.update();
 
 		DebugUtil.logAdd("Intake RPM: " +

@@ -4,12 +4,15 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Sensors.SensorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Sensors.SensorUtil;
+import org.firstinspires.ftc.teamcode.Purple.Names;
 
 public class Balls
 {
 	private static final double SMOOTHING_ALPHA = 0.3;
 	private static final double MIN_BRIGHTNESS = 0.1;
-	private final SensorConfig[] sensors = new SensorConfig[3];
+	private final SensorConfig sensor1;
+	private final SensorConfig sensor2;
+	private final SensorConfig sensor3;
 	private final double[] smoothedRed = new double[3];
 	private final double[] smoothedGreen = new double[3];
 	private final double[] smoothedBlue = new double[3];
@@ -20,16 +23,14 @@ public class Balls
 	 */
 	public Balls (HardwareMap hardwareMap)
 	{
-		// Initialize sensors (update names based on your hardware config)
-		sensors[0] = new SensorConfig(hardwareMap, "colorSensor1");
-		sensors[1] = new SensorConfig(hardwareMap, "colorSensor2");
-		sensors[2] = new SensorConfig(hardwareMap, "colorSensor3");
+		sensor1 = new SensorConfig(hardwareMap, Names.COLOR1);
+		sensor2 = new SensorConfig(hardwareMap, Names.COLOR2);
+		sensor3 = new SensorConfig(hardwareMap, Names.COLOR3);
 
 		// Enable LEDs for all sensors
-		for (SensorConfig sensor : sensors)
-		{
-			sensor.enableLED(true);
-		}
+		sensor1.enableLED(true);
+		sensor2.enableLED(true);
+		sensor3.enableLED(true);
 
 		// Initialize arrays
 		for (int i = 0; i < 3; i++)
@@ -44,38 +45,39 @@ public class Balls
 	 */
 	public void update ()
 	{
+		updateSensor(sensor1, 0);
+		updateSensor(sensor2, 1);
+		updateSensor(sensor3, 2);
+	}
 
-		for (int i = 0; i < 3; i++)
+	private void updateSensor(SensorConfig sensor, int i)
+	{
+		// Get raw RGB values
+		int red = sensor.getRed();
+		int green = sensor.getGreen();
+		int blue = sensor.getBlue();
+
+		// Calculate brightness to avoid false positives
+		double brightness = SensorUtil.getBrightness(red, green, blue);
+
+		if (brightness < MIN_BRIGHTNESS)
 		{
-			SensorConfig sensor = sensors[i];
-
-			// Get raw RGB values
-			int red = sensor.getRed();
-			int green = sensor.getGreen();
-			int blue = sensor.getBlue();
-
-			// Calculate brightness to avoid false positives
-			double brightness = SensorUtil.getBrightness(red, green, blue);
-
-			if (brightness < MIN_BRIGHTNESS)
-			{
-				// Too dark, assume no ball
-				ballStatus[i] = 0;
-				continue;
-			}
-
-			// Smooth readings to reduce noise
-			double[] normalized = sensor.getNormalizedRGB();
-			smoothedRed[i] = SensorUtil.smoothValue(normalized[0], smoothedRed[i], SMOOTHING_ALPHA);
-			smoothedGreen[i] = SensorUtil.smoothValue(normalized[1], smoothedGreen[i], SMOOTHING_ALPHA);
-			smoothedBlue[i] = SensorUtil.smoothValue(normalized[2], smoothedBlue[i], SMOOTHING_ALPHA);
-
-			// Detect ball color
-			ballStatus[i] = SensorUtil.detectBallColor(
-					smoothedRed[i], smoothedGreen[i], smoothedBlue[i],
-					sensor.getPurpleThreshold(), sensor.getGreenThreshold()
-			);
+			// Too dark, assume no ball
+			ballStatus[i] = 0;
+			return;
 		}
+
+		// Smooth readings to reduce noise
+		double[] normalized = sensor.getNormalizedRGB();
+		smoothedRed[i] = SensorUtil.smoothValue(normalized[0], smoothedRed[i], SMOOTHING_ALPHA);
+		smoothedGreen[i] = SensorUtil.smoothValue(normalized[1], smoothedGreen[i], SMOOTHING_ALPHA);
+		smoothedBlue[i] = SensorUtil.smoothValue(normalized[2], smoothedBlue[i], SMOOTHING_ALPHA);
+
+		// Detect ball color
+		ballStatus[i] = SensorUtil.detectBallColor(
+				smoothedRed[i], smoothedGreen[i], smoothedBlue[i],
+				sensor.getPurpleThreshold(), sensor.getGreenThreshold()
+		);
 	}
 
 	/**
