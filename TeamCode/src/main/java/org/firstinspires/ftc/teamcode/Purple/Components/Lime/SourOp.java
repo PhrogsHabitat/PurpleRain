@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Lime;
 
-import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
@@ -11,8 +10,7 @@ import com.qualcomm.robotcore.hardware.IMU;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
-
-@TeleOp(name = "Limelight Distance Test", group = "Tests")
+@TeleOp(name = "Limelight Distance Test", group = "PurpleTests")
 public class SourOp extends OpMode
 {
 
@@ -35,7 +33,7 @@ public class SourOp extends OpMode
 
 		// Paramters apparently exist
 		RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
-		RevHubOrientationOnRobot.UsbFacingDirection  usbDirection  = RevHubOrientationOnRobot.UsbFacingDirection.UP;
+		RevHubOrientationOnRobot.UsbFacingDirection usbDirection = RevHubOrientationOnRobot.UsbFacingDirection.UP;
 
 		RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
 
@@ -48,6 +46,7 @@ public class SourOp extends OpMode
 	@Override
 	public void start ()
 	{
+
 		limelight.start();
 	}
 
