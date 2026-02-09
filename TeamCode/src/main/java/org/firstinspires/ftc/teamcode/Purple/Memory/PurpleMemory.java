@@ -1,53 +1,78 @@
 package org.firstinspires.ftc.teamcode.Purple.Memory;
 
+import com.qualcomm.robotcore.hardware.HardwareMap;
+
+import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Balls;
+
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A simple key-value memory store for runtime data.
+ * Extended memory store with ball tracking
  */
 public class PurpleMemory
 {
 	private final Map<String, Object> memory = new HashMap<>();
+	private final Balls balls;
 
 	/**
-	 * Stores a value in memory under the given key.
-	 *
-	 * @param key   The key to store the value under.
-	 * @param value The value to store.
+	 * Constructs PurpleMemory with ball tracking
 	 */
+	public PurpleMemory (HardwareMap hardwareMap)
+	{
+
+		balls = new Balls(hardwareMap);
+	}
+
+	/**
+	 * Updates ball detection - call in main loop
+	 */
+	public void onUpdate ()
+	{
+
+		balls.update();
+	}
+
+	/**
+	 * Gets the current ball status array
+	 * 0 = none, 1 = purple, 2 = green
+	 */
+	public int[] Balls ()
+	{
+
+		return balls.getBallStatus();
+	}
+
+	/**
+	 * Direct access to the Balls object
+	 */
+	public Balls getBallsObject ()
+	{
+
+		return balls;
+	}
+
 	public void put (String key, Object value)
 	{
+
 		memory.put(key, value);
 	}
 
-	/**
-	 * Retrieves a value from memory by key.
-	 *
-	 * @param key The key to look up.
-	 * @return The value associated with the key, or null if not found.
-	 */
 	public Object get (String key)
 	{
+
 		return memory.get(key);
 	}
 
-	/**
-	 * Checks if the memory contains a value for the given key.
-	 *
-	 * @param key The key to check.
-	 * @return True if the key exists, false otherwise.
-	 */
 	public boolean containsKey (String key)
 	{
+
 		return memory.containsKey(key);
 	}
 
-	/**
-	 * Clears all values from memory.
-	 */
 	public void clear ()
 	{
+
 		memory.clear();
 	}
 }

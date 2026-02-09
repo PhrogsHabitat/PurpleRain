@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 
-import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
@@ -10,45 +9,28 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
-import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
 
 public class Explosher
 {
-	
+
 	public static final double CLOSE_SWEET = 0.45;
 	public static final double FAR_SWEET = 1.0;
 	public static final double RPM_SMOOTHING_ALPHA = 0.2;
-	
+	private final MotorConfig motor;
+	private final Servo finger;
+	private final ServoConfig fingerConfig;
 	public boolean shouldRegress = false;
 	public double dist;
 	public double regressionSlope;
 	public double regressionIntercept;
-
-	private final MotorConfig motor;
-	private final Servo finger;
-	private final ServoConfig fingerConfig;
+	public double smoothedTargetRPM = 0;
 	private FingerState fingerState = FingerState.STOP;
 	private double debugFingerPosition = Constants.FINGER_STOP_POSITION;
 	private double targetRPM = 0;
-	private double smoothedTargetRPM = 0;
-
-	public enum FingerState
-	{
-		STOP, PASS, DEBUG;
-
-		/**
-		 * Gets the next finger state in sequence
-		 *
-		 * @return Next finger state
-		 */
-		public FingerState next ()
-		{
-			return values()[(ordinal() + 1) % values().length];
-		}
-	}
 
 	public Explosher (HardwareMap hardwareMap, ServoConfig fingerConfig)
 	{
+
 		this.motor = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
 		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
@@ -65,6 +47,7 @@ public class Explosher
 	 */
 	public void update ()
 	{
+
 		motor.update();
 
 		if (shouldRegress)
@@ -73,7 +56,7 @@ public class Explosher
 			double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
 
 			smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
-		    smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, motor.getMaxRPM()));
+			smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, motor.getMaxRPM()));
 		}
 
 		DebugUtil.logAdd("Explosher RPM: " +
@@ -93,6 +76,7 @@ public class Explosher
 	 */
 	public void setRPM (double rpm)
 	{
+
 		this.targetRPM = rpm;
 		motor.setTargetRPM(rpm);
 	}
@@ -104,6 +88,7 @@ public class Explosher
 	 */
 	public double getCurrentRPM ()
 	{
+
 		return motor.getCurrentRPM();
 	}
 
@@ -114,6 +99,7 @@ public class Explosher
 	 */
 	public double getTargetRPM ()
 	{
+
 		return targetRPM;
 	}
 
@@ -122,6 +108,7 @@ public class Explosher
 	 */
 	public void stop ()
 	{
+
 		motor.stop();
 		targetRPM = 0;
 	}
@@ -133,6 +120,7 @@ public class Explosher
 	 */
 	public ServoConfig.ServoState getFingerState ()
 	{
+
 		return fingerConfig.getState();
 	}
 
@@ -143,41 +131,12 @@ public class Explosher
 	 */
 	public void setFingerState (ServoConfig.ServoState state)
 	{
+
 		fingerConfig.setState(state);
 		if (state == ServoConfig.ServoState.ON)
 			finger.setPosition(fingerConfig.getMaxPosition());
 		else
 			finger.setPosition(fingerConfig.getMinPosition());
-	}
-
-	/**
-	 * Gets the current finger servo position
-	 *
-	 * @return Current finger position
-	 */
-	public double getFingerPosition ()
-	{
-		return finger.getPosition();
-	}
-
-	/**
-	 * Sets the finger servo to a specific position
-	 *
-	 * @param position The position to set (clamped to valid range)
-	 */
-	public void setFingerPosition (double position)
-	{
-		finger.setPosition(fingerConfig.clamp(position));
-	}
-
-	/**
-	 * Gets the current finger state
-	 *
-	 * @return Current finger state
-	 */
-	public FingerState getFingerStateEnum ()
-	{
-		return fingerState;
 	}
 
 	/**
@@ -187,6 +146,7 @@ public class Explosher
 	 */
 	public void setFingerState (FingerState state)
 	{
+
 		this.fingerState = state;
 		fingerConfig.setState(ServoConfig.ServoState.ON); // Always keep servo powered
 
@@ -206,10 +166,44 @@ public class Explosher
 	}
 
 	/**
+	 * Gets the current finger servo position
+	 *
+	 * @return Current finger position
+	 */
+	public double getFingerPosition ()
+	{
+
+		return finger.getPosition();
+	}
+
+	/**
+	 * Sets the finger servo to a specific position
+	 *
+	 * @param position The position to set (clamped to valid range)
+	 */
+	public void setFingerPosition (double position)
+	{
+
+		finger.setPosition(fingerConfig.clamp(position));
+	}
+
+	/**
+	 * Gets the current finger state
+	 *
+	 * @return Current finger state
+	 */
+	public FingerState getFingerStateEnum ()
+	{
+
+		return fingerState;
+	}
+
+	/**
 	 * Cycles to the next finger state (STOP -> PASS -> DEBUG -> STOP)
 	 */
 	public void cycleFingerState ()
 	{
+
 		setFingerState(fingerState.next());
 	}
 
@@ -220,7 +214,9 @@ public class Explosher
 	 */
 	public void adjustDebugFingerPosition (double increment)
 	{
-		if (fingerState != FingerState.DEBUG) {
+
+		if (fingerState != FingerState.DEBUG)
+		{
 			return;
 		}
 
@@ -230,6 +226,7 @@ public class Explosher
 
 		DebugUtil.logAdd("Debug Finger Pos: " + String.format("%.3f", debugFingerPosition));
 	}
+
 	/**
 	 * Gets the maximum RPM capability of the shooter motor
 	 *
@@ -237,6 +234,7 @@ public class Explosher
 	 */
 	public double getMaxRPM ()
 	{
+
 		return motor.getMaxRPM();
 	}
 
@@ -266,5 +264,21 @@ public class Explosher
 
 		regressionSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
 		regressionIntercept = (sumY - regressionSlope * sumX) / n;
+	}
+
+	public enum FingerState
+	{
+		STOP, PASS, DEBUG;
+
+		/**
+		 * Gets the next finger state in sequence
+		 *
+		 * @return Next finger state
+		 */
+		public FingerState next ()
+		{
+
+			return values()[(ordinal() + 1) % values().length];
+		}
 	}
 }
