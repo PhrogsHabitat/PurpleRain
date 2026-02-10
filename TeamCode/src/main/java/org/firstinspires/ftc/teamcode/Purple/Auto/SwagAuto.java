@@ -21,39 +21,24 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 public class SwagAuto extends OpMode
 {
 
-	private Follower follower;
-
-	public Explosher explosher;
-	public Vaccum vaccum;
-
-	public ElapsedTime shootTimer;
-
-	private double regressionSlope;
-
-	private double regressionIntercept;
-
-	public double dist;
-
 	private static final double RPM_SMOOTHING_ALPHA = 0.2;
-
-	private double smoothedTargetRPM = 0;
-
-	private boolean shouldShoot = false;
-
 	// sample poses (adjust to your field/layout)
 	private final Pose startPose = new Pose(21.28301886792453, 123.84905660377358, Math.toRadians(143));
-
 	private final Pose shootPose = new Pose(53.43396226415094, 94.41509433962264, Math.toRadians(143));
-
 	private final Pose Pickup_First_Halflife1Pose = new Pose(53.440993788819874, 84, Math.toRadians(180));
-
 	private final Pose Pickup_First_Halflife2Pose = new Pose(25, 84, Math.toRadians(180));
-
 	private final Pose Pickup_Second_Halflife1Pose = new Pose(48.014815154531284, 61, Math.toRadians(180));
-
 	private final Pose Pickup_Second_Halflife2Pose = new Pose(25, 60, Math.toRadians(180));
-
 	private final Pose rankPose = new Pose(39.751800453518925, 62.93312604141928, Math.toRadians(90));
+	public Explosher explosher;
+	public Vaccum vaccum;
+	public ElapsedTime shootTimer;
+	public double dist;
+	private Follower follower;
+	private double regressionSlope;
+	private double regressionIntercept;
+	private double smoothedTargetRPM = 0;
+	private boolean shouldShoot = false;
 	private PurplePathing pathManager;
 
 	@Override
@@ -85,7 +70,6 @@ public class SwagAuto extends OpMode
 		LimeUtil.setPipeline(0);
 		explosher = new Explosher(hardwareMap, org.firstinspires.ftc.teamcode.Purple.Constants.FINGER_SERVO_CONFIG);
 		vaccum = new Vaccum(hardwareMap);
-
 
 		// Path Chain Presets
 		PathChain DriveStartShoot = follower.pathBuilder()
@@ -120,8 +104,6 @@ public class SwagAuto extends OpMode
 				.addPath(new BezierLine(shootPose, rankPose))
 				.setLinearHeadingInterpolation(shootPose.getHeading(), rankPose.getHeading())
 				.build();
-
-
 
 		// Create the PurplePath objects
 		PurplePath path1 = new PurplePath("Drive Back", DriveStartShoot, 1.0, 6.5)
@@ -177,57 +159,72 @@ public class SwagAuto extends OpMode
 		DebugUtil.update();
 	}
 
-	private void flagShoot()
+	private void flagShoot ()
 	{
+
 		shouldShoot = true;
 		shootTimer.reset();
 		shootTimer.startTime();
 	}
 
-	private void pickupBalls(boolean should) {
+	private void pickupBalls (boolean should)
+	{
+
 		exploSwag(false, "forward");
 		toggleY(should);
 		explosher.setFingerState(Explosher.FingerState.STOP);
 	}
 
-	private void shootFull() {
+	private void shootFull ()
+	{
 		// Start Stuff
 
-		if (shootTimer.seconds() <= 0 ) {
+		if (shootTimer.seconds() <= 0)
+		{
 			explosher.setFingerState(Explosher.FingerState.STOP);
 		}
-		if (shootTimer.seconds() > 2) {
+		if (shootTimer.seconds() > 2)
+		{
 			explosher.setFingerState(Explosher.FingerState.PASS);
 		}
-		if (shootTimer.seconds() > 0 && shootTimer.seconds() < 6.5) {
+		if (shootTimer.seconds() > 0 && shootTimer.seconds() < 6.5)
+		{
 			exploSwag(true, "Forward");
 		}
-		if (shootTimer.seconds() > 3.5 && shootTimer.seconds() < 3.6) {
+		if (shootTimer.seconds() > 3.5 && shootTimer.seconds() < 3.6)
+		{
 			toggleY(true);
 			DebugUtil.logAdd("first push on");
 		}
-		if (shootTimer.seconds() > 3.6 && shootTimer.seconds() < 4.1) {
+		if (shootTimer.seconds() > 3.6 && shootTimer.seconds() < 4.1)
+		{
 			toggleY(false);
 			DebugUtil.logAdd("first push off");
 		}
-		if (shootTimer.seconds() > 5 && shootTimer.seconds() < 5.5) {
+		if (shootTimer.seconds() > 5 && shootTimer.seconds() < 5.5)
+		{
 			toggleY(true);
 			DebugUtil.logAdd("first push on");
 		}
-		if (shootTimer.seconds() == 5.5) {
+		if (shootTimer.seconds() == 5.5)
+		{
 			toggleY(false);
 			DebugUtil.logAdd("first push off");
 		}
-		if (shootTimer.seconds() > 5.5 && shootTimer.seconds() < 6) {
+		if (shootTimer.seconds() > 5.5 && shootTimer.seconds() < 6)
+		{
 			toggleX(true);
 		}
-		if (shootTimer.seconds() == 6) {
+		if (shootTimer.seconds() == 6)
+		{
 			toggleX(false);
 		}
-		if (shootTimer.seconds() > 6 && shootTimer.seconds() < 6.5) {
+		if (shootTimer.seconds() > 6 && shootTimer.seconds() < 6.5)
+		{
 			toggleY(true);
 		}
-		if (shootTimer.seconds() >= 6.5) {
+		if (shootTimer.seconds() >= 6.5)
+		{
 			toggleY(false);
 			exploSwag(false, "Forward");
 			shouldShoot = false;
@@ -235,25 +232,27 @@ public class SwagAuto extends OpMode
 		}
 	}
 
-	public void exploSwag(boolean should, String Explostate)
+	public void exploSwag (boolean should, String Explostate)
 	{
+
 		if (should)
 		{
 			if (Explostate == "Forward")
 			{
-				if (LimeUtil.getTargetDistance() != 0) {
+				if (LimeUtil.getTargetDistance() != 0)
+				{
 					dist = LimeUtil.getTargetDistance();
 					double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
 					smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
 					smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
 					explosher.setRPM(smoothedTargetRPM);
 				}
-			}
-			else if (Explostate == "Back") {
+			} else if (Explostate == "Back")
+			{
 				explosher.setRPM(-4000);
 			}
-		}
-		else {
+		} else
+		{
 			explosher.stop();
 		}
 	}
@@ -289,31 +288,34 @@ public class SwagAuto extends OpMode
 		DebugUtil.logAdd("RPM = " + String.format("%.3f", regressionSlope) + " * dist + " + String.format("%.3f", regressionIntercept));
 	}
 
-	private void toggleY(boolean should)
+	private void toggleY (boolean should)
 	{
+
 		double pow = should ? Vaccum.DEFAULT_POW : 0;
 		vaccum.setPower(pow);
 	}
 
-	private void toggleX(boolean should)
+	private void toggleX (boolean should)
 	{
-		double pow = should ? -.15  : 0;
+
+		double pow = should ? -.15 : 0;
 		vaccum.setPower(pow);
 	}
 
-	private void toggleSuperX(boolean should)
+	private void toggleSuperX (boolean should)
 	{
+
 		double rpm = should ? -4000 : 0.0;
 		double pow = should ? -Vaccum.DEFAULT_POW : 0;
 		exploSwag(should, should ? "Back" : "Off");
 		vaccum.setPower(pow);
 	}
 
-	private void toggleB(boolean should)
+	private void toggleB (boolean should)
 	{
+
 		double rpm = should ? -4000 : 0.0;
 		double pow = should ? -.50 : 0;
 		exploSwag(should, should ? "Back" : "Off");
-		vaccum.swagReverse(pow);
 	}
 }

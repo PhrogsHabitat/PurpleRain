@@ -11,7 +11,6 @@ public class Vaccum
 	public static final double DEFAULT_POW = 1.0;
 
 	public final MotorConfig intakeMotor;
-	public final MotorConfig midtakeMotor;
 	private double currentPower = 0;
 
 	/**
@@ -23,7 +22,6 @@ public class Vaccum
 	{
 
 		intakeMotor = new MotorConfig.Builder(hardwareMap, Names.INTAKE, MotorConfig.Position.INTAKE).disableVelocityControl().build();
-		midtakeMotor = new MotorConfig.Builder(hardwareMap, Names.INTAKE, MotorConfig.Position.MIDTAKE).disableVelocityControl().build();
 
 		stop();
 	}
@@ -35,6 +33,7 @@ public class Vaccum
 	 */
 	public double getPower ()
 	{
+
 		return currentPower;
 	}
 
@@ -45,17 +44,9 @@ public class Vaccum
 	 */
 	public void setPower (double power)
 	{
+
 		currentPower = power;
 		intakeMotor.setPower(power);
-	}
-
-	/**
-	 * Runs only midtake at negative power
-	 */
-	public void swagReverse(double power)
-	{
-		currentPower = power;
-//		midtakeMotor.setPower((power));
 	}
 
 	/**
@@ -63,6 +54,7 @@ public class Vaccum
 	 */
 	public void stop ()
 	{
+
 		setPower(0);
 	}
 
@@ -78,29 +70,14 @@ public class Vaccum
 	}
 
 	/**
-	 * Gets the current RPM of the midtake motor
-	 *
-	 * @return Midtake motor RPM
-	 */
-	public double getMidtakeCurrentRPM ()
-	{
-
-		return 0.0;
-	}
-
-	/**
 	 * Updates the vaccum subsystem - call in main loop
 	 */
 	public void update ()
 	{
 
-//		midtakeMotor.update();
 		intakeMotor.update();
 
 		DebugUtil.logAdd("Intake RPM: " +
 				String.format("%.1f", getIntakeCurrentRPM()));
-
-		DebugUtil.logAdd("Midtake RPM: " +
-				String.format("%.1f", getMidtakeCurrentRPM()));
 	}
 }

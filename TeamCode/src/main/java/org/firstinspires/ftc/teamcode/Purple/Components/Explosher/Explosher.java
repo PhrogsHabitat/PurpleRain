@@ -18,6 +18,7 @@ public class Explosher
 	public static final double RPM_SMOOTHING_ALPHA = 0.2;
 	private final MotorConfig motor;
 	private final MotorConfig motor2;
+	private final MotorConfig exploRingMotor;
 	private final Servo finger;
 	private final ServoConfig fingerConfig;
 	public boolean shouldRegress = false;
@@ -31,9 +32,11 @@ public class Explosher
 
 	public Explosher (HardwareMap hardwareMap, ServoConfig fingerConfig)
 	{
-
+		// Main shooter motors with velocity control
 		this.motor = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
 		this.motor2 = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER_2, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
+
+		this.exploRingMotor = new MotorConfig.Builder(hardwareMap, Names.EXPLORING, MotorConfig.Position.EXPLOSHER, 28, 6000).setPositionCoefficient(0.05).setPositionTolerance(10).disableVelocityControl().build();
 
 		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
@@ -41,6 +44,9 @@ public class Explosher
 		// Stop everything and zero
 		stop();
 		setFingerState(FingerState.STOP);
+
+		// Reset turret encoder to zero at startup
+		resetRingPosition();
 
 		calculateRegression();
 	}
@@ -53,6 +59,7 @@ public class Explosher
 
 		motor.update();
 		motor2.update();
+		exploRingMotor.update();  // Handles position control updates
 
 		if (shouldRegress)
 		{
@@ -71,6 +78,9 @@ public class Explosher
 
 		DebugUtil.logAdd("Finger State: " + fingerState +
 				" | Pos: " + String.format("%.3f", getFingerPosition()));
+
+		DebugUtil.logAdd("RING Pos: " + getRingPosition() +
+				" | At Target: " + isRingAtTarget());
 	}
 
 	/**
@@ -84,6 +94,61 @@ public class Explosher
 		this.targetRPM = rpm;
 		motor.setTargetRPM(rpm);
 		motor2.setTargetRPM(rpm);
+	}
+
+	/**
+	 * Sets raw power to the turret ring motor (for manual control)
+	 *
+	 * @param power Power value between -1.0 and 1.0
+	 */
+	public void setRingPower (double power)
+	{
+
+		exploRingMotor.setPower(power);
+	}
+
+	/**
+	 * Sets the turret to a specific position (in encoder ticks)
+	 * Uses position control with the specified power
+	 *
+	 * @param position Target position in encoder ticks
+	 * @param power    Power to apply (0.0 to 1.0)
+	 */
+	public void setRingPosition (int position, double power)
+	{
+
+		exploRingMotor.runToPosition(position, power);
+	}
+
+	/**
+	 * Gets the current turret position in encoder ticks
+	 *
+	 * @return Current turret position
+	 */
+	public int getRingPosition ()
+	{
+
+		return exploRingMotor.getCurrentPosition();
+	}
+
+	/**
+	 * Checks if the turret is at its target position
+	 *
+	 * @return true if within tolerance of target
+	 */
+	public boolean isRingAtTarget ()
+	{
+
+		return exploRingMotor.atTargetPosition();
+	}
+
+	/**
+	 * Resets the turret encoder position to zero
+	 */
+	public void resetRingPosition ()
+	{
+
+		exploRingMotor.resetEncoder();
 	}
 
 	/**
@@ -109,13 +174,14 @@ public class Explosher
 	}
 
 	/**
-	 * Stops the shooter motor
+	 * Stops the shooter motor and turret
 	 */
 	public void stop ()
 	{
 
 		motor.stop();
 		motor2.stop();
+		exploRingMotor.setPower(0);
 		targetRPM = 0;
 	}
 

@@ -1,13 +1,12 @@
 package org.firstinspires.ftc.teamcode.Purple;
 
-import com.pedropathing.geometry.Pose;
-
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
+import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
@@ -16,10 +15,12 @@ public class TeleOp extends PurpleOpMode
 	// Private variables after
 	private static final long TAG_TIMEOUT_MS = 500;
 	private static final double RPM_SMOOTHING_ALPHA = 0.2;
-	private static final double THRESHOLD = 3;
+	private static final double EXPLORING_KP = 0.03;
+	private static final double EXPLORING_ALIGN_TOLERANCE = 1.0;
+	private static final double MAX_EXPLORING_POWER = 0.7;
 
 	// Public variables first
-	public double swagShitClose = Explosher.CLOSE_SWEET;
+	public double swagShitClose = 2500;
 	public double swagShitFar = Explosher.FAR_SWEET;
 	public double dist;
 	public boolean manual = false;
@@ -29,6 +30,7 @@ public class TeleOp extends PurpleOpMode
 	private double powerScale = Constants.DRIVE_POWER_SCALE;
 	private Explosher explosher;
 	private Vaccum vaccum;
+	private PurpleMemory memory;
 	private boolean wasAligned = false;
 	private boolean wasTagDetected = false;
 	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
@@ -40,6 +42,8 @@ public class TeleOp extends PurpleOpMode
 	@Override
 	public void create ()
 	{
+
+		memory = new PurpleMemory(hardwareMap);
 
 		driver1 = new Controls(gamepad1);
 		driver2 = new Controls(gamepad2);
@@ -71,81 +75,16 @@ public class TeleOp extends PurpleOpMode
 	public void update ()
 	{
 
+		// We always gotta update the controls first!
 		driver1.update();
 		driver2.update();
+		memory.update();
 
-		updateAllSystems();
-	}
-
-	private void updateDrive (String dir)
-	{
-
-		powerScale = driver1.isPressed("left_stick_button") ?
-				Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
-
-		if (dir == "L")
-		{
-			double forward = 0;
-			double strafe = 0;
-			double turn = -0.15;
-
-			double[] powers = MotorUtil.normalizePowers(new double[]{
-					(-forward - strafe - turn),
-					(-forward + strafe - turn),
-					(forward - strafe - turn),
-					(forward + strafe - turn)
-			});
-
-			fl.setPower(powers[0] * powerScale);
-			bl.setPower(powers[1] * powerScale);
-			fr.setPower(powers[2] * powerScale);
-			br.setPower(powers[3] * powerScale);
-		}
-		else if (dir == "R")
-		{
-			double forward = 0;
-			double strafe = 0;
-			double turn = 0.15;
-
-			double[] powers = MotorUtil.normalizePowers(new double[]{
-					(-forward - strafe - turn),
-					(-forward + strafe - turn),
-					(forward - strafe - turn),
-					(forward + strafe - turn)
-			});
-
-			fl.setPower(powers[0] * powerScale);
-			bl.setPower(powers[1] * powerScale);
-			fr.setPower(powers[2] * powerScale);
-			br.setPower(powers[3] * powerScale);
-		}
-		else
-		{
-			double forward = driver1.getLeftStickY();
-			double strafe = driver1.getLeftStickX();
-			double turn = driver1.getRightStickX();
-
-			double[] powers = MotorUtil.normalizePowers(new double[]{
-					(-forward - strafe - turn),
-					(-forward + strafe - turn),
-					(forward - strafe - turn),
-					(forward + strafe - turn)
-			});
-
-			fl.setPower(powers[0] * powerScale);
-			bl.setPower(powers[1] * powerScale);
-			fr.setPower(powers[2] * powerScale);
-			br.setPower(powers[3] * powerScale);
-		}
-	}
-
-	private void updateAllSystems ()
-	{
-
-		// Call the update loops in each subsystem
 		LimeUtil.update();
 		explosher.update();
 		vaccum.update();
+
+		autoAlignActive = driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget();
 
 		// Update each control-based module
 		updateAprilTagFeedback();
@@ -153,36 +92,36 @@ public class TeleOp extends PurpleOpMode
 		updateVaccum();
 		teleInfo();
 
-		autoAlignActive = driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget();
+		updateDrive();
 
-		// Update the Drive
-		if (autoAlignActive)
+		// Here we can update the debug controls, ONLY if DEBUG_MODE is true
+		if (Constants.DEBUG_MODE)
 		{
-			if (Math.abs(LimeUtil.getTx()) > THRESHOLD)
-			{
-				if(LimeUtil.getTx() < 0)
-				{
-					updateDrive("L");
-				}
-				else if(LimeUtil.getTx() > 0)
-				{
-					updateDrive("R");
-				}
-				else
-				{
-					updateDrive("def");
-				}
-			}
-			else
-			{
-				driver1.vibrate(150);
-				updateDrive("def");
-			}
+			updateDebug();
 		}
-		else
-		{
-			updateDrive("def");
-		}
+	}
+
+	private void updateDrive ()
+	{
+
+		powerScale = driver1.isPressed("left_stick_button") ? Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
+
+		double forward = driver1.getLeftStickY();
+		double strafe = driver1.getLeftStickX();
+		double turn = driver1.getRightStickX();
+
+		double[] powers = MotorUtil.normalizePowers(new double[]{
+				(-forward - strafe - turn),
+				(-forward + strafe - turn),
+				(forward - strafe - turn),
+				(forward + strafe - turn)
+		});
+
+		fl.setPower(powers[0] * powerScale);
+		bl.setPower(powers[1] * powerScale);
+		fr.setPower(powers[2] * powerScale);
+		br.setPower(powers[3] * powerScale);
+
 	}
 
 	private void updateExplosher ()
@@ -192,39 +131,46 @@ public class TeleOp extends PurpleOpMode
 
 		if (leftStickY > Constants.JOYSTICK_DEADZONE)
 		{
-			if (LimeUtil.getTargetDistance() != 0)
+			if (LimeUtil.hasValidTarget() && !manual)
 			{
 				explosher.shouldRegress = true;
-
-				if (!manual)
-				{
-					explosher.setRPM(explosher.smoothedTargetRPM);
-				}
-			}
-			else if (!manual)
+				explosher.setRPM(explosher.smoothedTargetRPM);
+			} else
 			{
 				explosher.shouldRegress = false;
-				explosher.stop();
+				explosher.setRPM(swagShitClose);
 			}
-		}
-		else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
+		} else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
 		{
 			explosher.setRPM(-4000);
-			vaccum.setPower(-Vaccum.DEFAULT_POW);
-		}
-		else if (driver2.isPressed("b"))
-		{
-			explosher.setRPM(-4000);
-			vaccum.swagReverse(-Vaccum.DEFAULT_POW);
-		}
-		else
+		} else
 		{
 			explosher.stop();
 		}
 
-		if (driver2.isPressed("x"))
+		if (autoAlignActive)
 		{
-			vaccum.setPower(-Vaccum.DEFAULT_POW);
+			double tx = LimeUtil.getTx();
+			if (Math.abs(tx) > EXPLORING_ALIGN_TOLERANCE)
+			{
+				double power = EXPLORING_KP * tx;
+				power = clamp(power, -MAX_EXPLORING_POWER, MAX_EXPLORING_POWER);
+				explosher.setRingPower(power);
+			} else
+			{
+				explosher.setRingPower(0);
+			}
+		} else
+		{
+			// Manual control
+			double rightStickX = driver2.getRightStickX();
+			if (Math.abs(rightStickX) > Constants.JOYSTICK_DEADZONE)
+			{
+				explosher.setRingPower(rightStickX);
+			} else
+			{
+				explosher.setRingPower(0);
+			}
 		}
 
 		if (driver2.justPressed("left_trigger"))
@@ -243,6 +189,16 @@ public class TeleOp extends PurpleOpMode
 			{
 				explosher.adjustDebugFingerPosition(Constants.FINGER_DEBUG_INCREMENT);
 			}
+		}
+
+		if (driver2.isPressed("a"))
+		{
+			explosher.resetRingPosition();
+		}
+
+		if (driver2.isPressed("b"))
+		{
+			explosher.setRingPosition(20, 0.5);
 		}
 	}
 
@@ -271,32 +227,12 @@ public class TeleOp extends PurpleOpMode
 		if (driver2.isPressed("y"))
 		{
 			vaccum.setPower(Vaccum.DEFAULT_POW);
+		} else if (driver2.isPressed("x"))
+		{
+			vaccum.setPower(-Vaccum.DEFAULT_POW);
 		} else
 		{
 			vaccum.stop();
-		}
-
-		if (driver2.justPressed("dpad_up") && Constants.DEBUG_MODE)
-		{
-			manual = true;
-			swagShitClose += 100;
-			explosher.setRPM(swagShitClose);
-		}
-		if (driver2.justPressed("dpad_down") && Constants.DEBUG_MODE)
-		{
-			manual = true;
-			swagShitClose -= 100;
-			explosher.setRPM(swagShitClose);
-		}
-		if (driver2.justPressed("dpad_left") && Constants.DEBUG_MODE)
-		{
-			manual = false;
-			swagShitFar += 100;
-			explosher.stop();
-		}
-		if (driver2.justPressed("dpad_right") && Constants.DEBUG_MODE)
-		{
-			swagShitFar -= 100;
 		}
 
 		if (isFullyAligned() && !wasAligned)
@@ -306,25 +242,60 @@ public class TeleOp extends PurpleOpMode
 		wasAligned = isFullyAligned();
 	}
 
+	private void updateDebug ()
+	{
+
+		if (driver2.justPressed("dpad_up"))
+		{
+			manual = true;
+			swagShitClose += 100;
+		}
+
+		if (driver2.justPressed("dpad_down"))
+		{
+			manual = true;
+			swagShitClose -= 100;
+		}
+
+		if (driver2.justPressed("dpad_left"))
+		{
+			manual = false;
+			swagShitFar += 100;
+			explosher.stop();
+		}
+
+		if (driver2.justPressed("dpad_right"))
+		{
+			swagShitFar -= 100;
+		}
+	}
+
 	private void teleInfo ()
 	{
-		DebugUtil.logAdd("TX: " + LimeUtil.getTx());
-		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
-		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
-		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
+
+		DebugUtil.logAdd("======== [LIME]");
+		DebugUtil.logAdd(" ");
+		DebugUtil.logAdd("Target X: " + LimeUtil.getTx());
+		DebugUtil.logAdd("Target D: " + LimeUtil.getTargetDistance());
+		DebugUtil.logAdd(" ");
+
+		DebugUtil.logAdd("======= [EXPLOSHER]");
+		DebugUtil.logAdd(" ");
+		DebugUtil.logAdd("Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
+		DebugUtil.logAdd("Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
+		DebugUtil.logAdd(" ");
+
+		DebugUtil.logAdd("======= [FINGER]");
+		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("Finger State: " + fingerState);
 		DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
+		DebugUtil.logAdd(" ");
 
-		if (LimeUtil.hasValidTarget())
-		{
-			DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTargetDistance()) +
-					"in, Angle: " + String.format("%.1f", LimeUtil.getTx()) + "°");
-			DebugUtil.logAdd("Aligned: " + (isFullyAligned() ? "YES" : "NO"));
-		} else
-		{
-			DebugUtil.logAdd("AprilTag: No target");
-		}
+		DebugUtil.logAdd("======= [MEMORY]");
+		DebugUtil.logAdd(" ");
+		DebugUtil.logAdd("Position" + memory.get("position"));
+		DebugUtil.logAdd(" ");
 
 		DebugUtil.update();
 	}

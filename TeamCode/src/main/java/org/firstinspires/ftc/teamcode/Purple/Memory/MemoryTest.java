@@ -30,7 +30,7 @@ public class MemoryTest extends PurpleOpMode
 	public void update ()
 	{
 		// Update ball detection
-		memory.onUpdate();
+		memory.update();
 
 		DebugUtil.logAdd(memory.Balls().toString());
 

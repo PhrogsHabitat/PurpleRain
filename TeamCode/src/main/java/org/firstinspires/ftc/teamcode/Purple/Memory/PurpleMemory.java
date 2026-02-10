@@ -3,34 +3,40 @@ package org.firstinspires.ftc.teamcode.Purple.Memory;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Balls;
+import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Extended memory store with ball tracking
+ * Extended memory store
  */
 public class PurpleMemory
 {
 	private final Map<String, Object> memory = new HashMap<>();
 	private final Balls balls;
+	private final Position position;
 
 	/**
-	 * Constructs PurpleMemory with ball tracking
+	 * Constructs PurpleMemory
 	 */
 	public PurpleMemory (HardwareMap hardwareMap)
 	{
 
 		balls = new Balls(hardwareMap);
+		position = new Position(hardwareMap);
+		memory.put("position", position);
 	}
 
 	/**
-	 * Updates ball detection - call in main loop
+	 * Updates the robots memory of each component
 	 */
-	public void onUpdate ()
+	public void update ()
 	{
 
+		position.update();
 		balls.update();
+		memory.put("position", position);
 	}
 
 	/**
@@ -50,6 +56,15 @@ public class PurpleMemory
 	{
 
 		return balls;
+	}
+
+	/**
+	 * Direct access to the Position object
+	 */
+	public Position getPositionObject ()
+	{
+
+		return position;
 	}
 
 	public void put (String key, Object value)

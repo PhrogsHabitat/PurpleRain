@@ -5,7 +5,7 @@ import com.arcrobotics.ftclib.hardware.motors.MotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 /**
- * Simplified motor configuration class for basic power and velocity control
+ * Simplified motor configuration class for basic power, velocity, and position control
  * Uses MotorEx for all motors to ensure consistent velocity measurement
  */
 public final class MotorConfig
@@ -18,6 +18,7 @@ public final class MotorConfig
 
 	private ControlMode controlMode = ControlMode.RAW_POWER;
 	private double targetRPM = 0;
+	private double targetPower = 0; // Track the power for position control updates
 
 	private MotorConfig (Builder b)
 	{
@@ -37,7 +38,23 @@ public final class MotorConfig
 		}
 
 		motor.setInverted(b.inverted);
-		motor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+		motor.setZeroPowerBehavior(b.zeroPowerBehavior);
+
+		// Set position control parameters if provided
+		if (b.positionCoefficient > 0)
+		{
+			motor.setPositionCoefficient(b.positionCoefficient);
+		}
+
+		if (b.positionTolerance > 0)
+		{
+			motor.setPositionTolerance(b.positionTolerance);
+		}
+
+		if (b.distancePerPulse > 0 && b.cpr > 0)
+		{
+			motor.setDistancePerPulse(b.distancePerPulse);
+		}
 
 		// Set initial control mode
 		setControlMode(b.velocityEnabled ? ControlMode.VELOCITY_CONTROL : ControlMode.RAW_POWER);
@@ -105,16 +122,14 @@ public final class MotorConfig
 	}
 
 	/**
-	 * Sets raw power to the motor (-1.0 to 1.0)
+	 * Gets the current motor power
 	 *
-	 * @param power Power value between -1.0 and 1.0
+	 * @return Current power value between -1.0 and 1.0
 	 */
-	public void setPower (double power)
+	public double getPower ()
 	{
 
-		setControlMode(ControlMode.RAW_POWER);
-		motor.set(power);
-		this.targetRPM = power * maxRPM;
+		return motor.get();
 	}
 
 	/**
@@ -122,10 +137,15 @@ public final class MotorConfig
 	 *
 	 * @param power Power value between -1.0 and 1.0
 	 */
-	public double getPower ()
+	public void setPower (double power)
 	{
 
-		return motor.get();
+		targetPower = power;
+		motor.set(power);
+		if (controlMode != ControlMode.POSITION_CONTROL)
+		{
+			this.targetRPM = power * maxRPM;
+		}
 	}
 
 	/**
@@ -175,6 +195,156 @@ public final class MotorConfig
 		}
 	}
 
+	// ==================== POSITION CONTROL METHODS ====================
+
+	/**
+	 * Gets the current position coefficient
+	 *
+	 * @return Current position coefficient value
+	 */
+	public double getPositionCoefficient ()
+	{
+
+		return motor.getPositionCoefficient();
+	}
+
+	/**
+	 * Sets the position coefficient (kP) for position control
+	 *
+	 * @param coefficient Position coefficient value
+	 */
+	public void setPositionCoefficient (double coefficient)
+	{
+
+		motor.setPositionCoefficient(coefficient);
+	}
+
+	/**
+	 * Sets the target position in encoder ticks
+	 *
+	 * @param target Desired position in ticks
+	 */
+	public void setTargetPosition (int target)
+	{
+
+		motor.setTargetPosition(target);
+	}
+
+	/**
+	 * Sets the position tolerance in encoder ticks
+	 *
+	 * @param tolerance Allowed error in ticks
+	 */
+	public void setPositionTolerance (double tolerance)
+	{
+
+		motor.setPositionTolerance(tolerance);
+	}
+
+	/**
+	 * Checks if the motor is at its target position
+	 *
+	 * @return true if within tolerance of target position
+	 */
+	public boolean atTargetPosition ()
+	{
+
+		return motor.atTargetPosition();
+	}
+
+	/**
+	 * Gets the current encoder position
+	 *
+	 * @return Current position in ticks
+	 */
+	public int getCurrentPosition ()
+	{
+
+		return motor.getCurrentPosition();
+	}
+
+	/**
+	 * Resets the encoder position to zero
+	 */
+	public void resetEncoder ()
+	{
+
+		motor.resetEncoder();
+	}
+
+	/**
+	 * Sets the distance traveled per encoder pulse (in units of your choice)
+	 * This enables distance-based position control
+	 *
+	 * @param distancePerPulse Distance traveled per encoder tick
+	 */
+	public void setDistancePerPulse (double distancePerPulse)
+	{
+
+		motor.setDistancePerPulse(distancePerPulse);
+	}
+
+	/**
+	 * Sets a target distance to travel
+	 * Requires distancePerPulse to be configured first
+	 *
+	 * @param distance Target distance to travel
+	 */
+	public void setTargetDistance (double distance)
+	{
+
+		motor.setTargetDistance(distance);
+	}
+
+	/**
+	 * Gets the current distance traveled
+	 *
+	 * @return Current distance traveled
+	 */
+	public double getDistance ()
+	{
+
+		return motor.getDistance();
+	}
+
+	/**
+	 * Runs the motor to a specific position with given power
+	 * This method must be called in a control loop when using position control
+	 *
+	 * @param targetPosition Target position in encoder ticks
+	 * @param power          Power to apply (0.0 to 1.0)
+	 */
+	public void runToPosition (int targetPosition, double power)
+	{
+
+		if (getControlMode() != ControlMode.POSITION_CONTROL)
+		{
+			setControlMode(ControlMode.POSITION_CONTROL);
+		}
+
+		setTargetPosition(targetPosition);
+		setPower(power);
+	}
+
+	/**
+	 * Runs the motor to a specific distance with given power
+	 * This method must be called in a control loop when using position control
+	 *
+	 * @param targetDistance Target distance to travel
+	 * @param power          Power to apply (0.0 to 1.0)
+	 */
+	public void runToDistance (double targetDistance, double power)
+	{
+
+		if (getControlMode() != ControlMode.POSITION_CONTROL)
+		{
+			setControlMode(ControlMode.POSITION_CONTROL);
+		}
+
+		setTargetDistance(targetDistance);
+		setPower(power);
+	}
+
 	/**
 	 * Gets the motor name
 	 *
@@ -205,6 +375,7 @@ public final class MotorConfig
 
 		motor.stopMotor();
 		targetRPM = 0;
+		targetPower = 0;
 	}
 
 	/**
@@ -230,15 +401,27 @@ public final class MotorConfig
 	}
 
 	/**
-	 * Updates motor state - call in main loop for velocity control
+	 * Updates motor state - call in main loop for velocity and position control
 	 */
 	public void update ()
 	{
-		// MotorEx handles its own updates internally
-		// This method is kept for interface consistency
+		// For position control, we need to keep calling set() with power
+		if (controlMode == ControlMode.POSITION_CONTROL)
+		{
+			if (!atTargetPosition())
+			{
+				motor.set(targetPower);
+			} else
+			{
+				// Stop when at target
+				motor.set(0);
+			}
+		}
+		// MotorEx handles velocity control updates internally
 	}
 
-	// ---------------- Enums ----------------
+	// ==================== ENUMS ====================
+
 	public enum Position
 	{
 		FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, EXPLOSHER, INTAKE, MIDTAKE
@@ -249,7 +432,7 @@ public final class MotorConfig
 		RAW_POWER, VELOCITY_CONTROL, POSITION_CONTROL
 	}
 
-	// ---------------- Builder ----------------
+	// ==================== BUILDER ====================
 
 	/**
 	 * Builder class for MotorConfig
@@ -265,6 +448,9 @@ public final class MotorConfig
 		private boolean inverted = false;
 		private Motor.ZeroPowerBehavior zeroPowerBehavior = Motor.ZeroPowerBehavior.BRAKE;
 		private boolean velocityEnabled = true;
+		private double positionCoefficient = 0.05; // Default kP for position control
+		private double positionTolerance = 13.6;   // Default tolerance in ticks
+		private double distancePerPulse = 0;       // Default: no distance per pulse configured
 
 		/**
 		 * Creates a new MotorConfig builder with CPR and max RPM
@@ -332,6 +518,46 @@ public final class MotorConfig
 		{
 
 			this.velocityEnabled = false;
+			return this;
+		}
+
+		/**
+		 * Sets the position coefficient for position control
+		 *
+		 * @param coefficient Position coefficient (kP)
+		 * @return Builder instance
+		 */
+		public Builder setPositionCoefficient (double coefficient)
+		{
+
+			this.positionCoefficient = coefficient;
+			return this;
+		}
+
+		/**
+		 * Sets the position tolerance for position control
+		 *
+		 * @param tolerance Position tolerance in encoder ticks
+		 * @return Builder instance
+		 */
+		public Builder setPositionTolerance (double tolerance)
+		{
+
+			this.positionTolerance = tolerance;
+			return this;
+		}
+
+		/**
+		 * Sets the distance per pulse for distance-based position control
+		 * Typically: (wheel circumference) / (encoder counts per revolution)
+		 *
+		 * @param distancePerPulse Distance traveled per encoder tick
+		 * @return Builder instance
+		 */
+		public Builder setDistancePerPulse (double distancePerPulse)
+		{
+
+			this.distancePerPulse = distancePerPulse;
 			return this;
 		}
 

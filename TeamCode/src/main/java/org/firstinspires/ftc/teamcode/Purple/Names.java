@@ -13,7 +13,6 @@ public final class Names
 	public static final String EXPLORING = "EXPLORING";
 
 	public static final String INTAKE = "FE";
-	public static final String MIDTAKE = "BE";
 	public static final String FINGER = "FINN";
 
 	public static final String COLOR1 = "cs1";
