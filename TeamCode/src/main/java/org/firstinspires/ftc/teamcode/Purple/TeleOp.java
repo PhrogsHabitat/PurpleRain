@@ -8,18 +8,21 @@ import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
 import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
+import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
 public class TeleOp extends PurpleOpMode
 {
 	// Private variables after
 	private static final long TAG_TIMEOUT_MS = 500;
-
+	private static final double THRESHOLD = 3;
 	// Public variables first
 	public double swagShitClose = 2500;
 	public double swagShitFar = Explosher.FAR_SWEET;
 	public double dist;
 	public boolean manual = false;
+	private double lastPower = 0;
+	private double ALIGN_KP = 0.04;
 	private double prevX;
 	private Controls driver1;
 	private Controls driver2;
@@ -153,14 +156,34 @@ public class TeleOp extends PurpleOpMode
 		{
 			double tx = LimeUtil.getTx();
 
-			if (tx != 0.0 && LimeUtil.hasValidTarget())
+			if (LimeUtil.hasValidTarget())
 			{
 				prevX = tx;
-				double power = clamp(tx / 2, -1, 1);
+
+				if (Math.abs(tx) > THRESHOLD)
+				{
+					double targetPower = MathUtil.clamp(ALIGN_KP * tx, -1, 1);
+
+					double maxChange = 0.07;   // LATER tune between 0.05–0.1
+					double power = MathUtil.clamp(
+							targetPower,
+							lastPower - maxChange,
+							lastPower + maxChange
+					);
+
+					lastPower = power;
+					explosher.setRingPower(power);
+				} else
+				{
+					explosher.setRingPower(0);
+				}
+			} else if (hasRecentTarget())
+			{
+				double power = MathUtil.clamp(prevX * ALIGN_KP * 0.5, -1, 1);
 				explosher.setRingPower(power);
 			} else
 			{
-				double power = clamp(prevX / 2, -1, 1);
+				explosher.setRingPower(0);
 			}
 
 		} else
@@ -271,6 +294,15 @@ public class TeleOp extends PurpleOpMode
 		{
 			swagShitFar -= 100;
 		}
+
+		if (driver2.justPressed("left_stick_button"))
+		{
+			ALIGN_KP += 0.01;
+		}
+		if (driver2.justPressed("right_stick_button"))
+		{
+			ALIGN_KP -= 0.01;
+		}
 	}
 
 	private void teleInfo ()
@@ -296,6 +328,7 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.logAdd("======= [MEMORY]");
+		DebugUtil.logAdd("KP: " + ALIGN_KP);
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("Position" + memory.get("position"));
 		DebugUtil.logAdd(" ");
@@ -308,12 +341,6 @@ public class TeleOp extends PurpleOpMode
 
 		return LimeUtil.hasValidTarget() &&
 				(System.currentTimeMillis() - lastTagSeenTime) < TAG_TIMEOUT_MS;
-	}
-
-	private double clamp (double value, double min, double max)
-	{
-
-		return Math.max(min, Math.min(max, value));
 	}
 
 	private boolean isFullyAligned ()
