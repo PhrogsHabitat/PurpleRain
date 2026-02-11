@@ -14,16 +14,13 @@ public class TeleOp extends PurpleOpMode
 {
 	// Private variables after
 	private static final long TAG_TIMEOUT_MS = 500;
-	private static final double RPM_SMOOTHING_ALPHA = 0.2;
-	private static final double EXPLORING_KP = 0.03;
-	private static final double EXPLORING_ALIGN_TOLERANCE = 1.0;
-	private static final double MAX_EXPLORING_POWER = 0.7;
 
 	// Public variables first
 	public double swagShitClose = 2500;
 	public double swagShitFar = Explosher.FAR_SWEET;
 	public double dist;
 	public boolean manual = false;
+	private double prevX;
 	private Controls driver1;
 	private Controls driver2;
 	private MotorConfig fl, fr, bl, br;
@@ -131,14 +128,18 @@ public class TeleOp extends PurpleOpMode
 
 		if (leftStickY > Constants.JOYSTICK_DEADZONE)
 		{
-			if (LimeUtil.hasValidTarget() && !manual)
+			if (LimeUtil.getTargetDistance() != 0)
 			{
 				explosher.shouldRegress = true;
-				explosher.setRPM(explosher.smoothedTargetRPM);
-			} else
+
+				if (!manual)
+				{
+					explosher.setRPM(explosher.smoothedTargetRPM);
+				}
+			} else if (!manual)
 			{
 				explosher.shouldRegress = false;
-				explosher.setRPM(swagShitClose);
+				explosher.stop();
 			}
 		} else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
 		{
@@ -151,15 +152,17 @@ public class TeleOp extends PurpleOpMode
 		if (autoAlignActive)
 		{
 			double tx = LimeUtil.getTx();
-			if (Math.abs(tx) > EXPLORING_ALIGN_TOLERANCE)
+
+			if (tx != 0.0 && LimeUtil.hasValidTarget())
 			{
-				double power = EXPLORING_KP * tx;
-				power = clamp(power, -MAX_EXPLORING_POWER, MAX_EXPLORING_POWER);
+				prevX = tx;
+				double power = clamp(tx / 2, -1, 1);
 				explosher.setRingPower(power);
 			} else
 			{
-				explosher.setRingPower(0);
+				double power = clamp(prevX / 2, -1, 1);
 			}
+
 		} else
 		{
 			// Manual control
