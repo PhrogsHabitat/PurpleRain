@@ -8,10 +8,10 @@ import org.firstinspires.ftc.teamcode.Purple.Names;
 public class Balls
 {
 
-	private static final RGB SAMPLE_PURPLE = new RGB(210, 55, 215);
-	private static final RGB SAMPLE_GREEN = new RGB(40, 150, 45);
+	private static final RGB SAMPLE_PURPLE = new RGB(195, 255, 510);
+	private static final RGB SAMPLE_GREEN = new RGB(110, 420, 355);
 	private static final RGB SAMPLE_NONE = new RGB(22, 22, 22);
-	
+
 	private final RevColorSensorV3[] sensors = new RevColorSensorV3[3];
 	private final Ball[] curBalls = new Ball[]{
 			Ball.NONE,

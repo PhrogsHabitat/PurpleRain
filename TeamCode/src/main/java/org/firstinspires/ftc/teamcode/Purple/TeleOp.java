@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.Purple;
 
+import com.qualcomm.robotcore.hardware.ColorSensor;
+
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
@@ -33,6 +35,7 @@ public class TeleOp extends PurpleOpMode
 	private double powerScale = Constants.DRIVE_POWER_SCALE;
 	private Explosher explosher;
 	private Vaccum vaccum;
+	private ColorSensor colorSensor2;
 	private PurpleMemory memory;
 	private boolean wasAligned = false;
 	private boolean wasTagDetected = false;
@@ -70,6 +73,9 @@ public class TeleOp extends PurpleOpMode
 
 		// Initialize Vaccum
 		vaccum = new Vaccum(hardwareMap);
+
+		// Debug color sensor (slot 2)
+		colorSensor2 = hardwareMap.get(ColorSensor.class, Names.COLOR2);
 
 		DebugUtil.setTelemetry(telemetry);
 	}
@@ -348,6 +354,12 @@ public class TeleOp extends PurpleOpMode
 				memory.curPos().getHeading()
 		));
 		DebugUtil.logAdd(" ");
+		DebugUtil.logAdd(String.format(
+				"Sensor2 RGB: R=%d G=%d B=%d",
+				colorSensor2.red(),
+				colorSensor2.green(),
+				colorSensor2.blue()
+		));
 
 		DebugUtil.update();
 	}
