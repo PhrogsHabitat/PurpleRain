@@ -21,6 +21,7 @@ public class TeleOp extends PurpleOpMode
 	public double swagShitFar = Explosher.FAR_SWEET;
 	public double dist;
 	public boolean manual = false;
+	private int inc = 0;
 	private double lastPower = 0;
 	private double ALIGN_KP = 0.04;
 	private double prevX;
@@ -222,9 +223,14 @@ public class TeleOp extends PurpleOpMode
 			explosher.resetRingPosition();
 		}
 
-		if (driver2.isPressed("b"))
+		if (driver2.justPressed("left_trigger"))
 		{
-			explosher.setRingPosition(20, 0.5);
+			inc -= 20;
+		}
+
+		if (driver2.justPressed("b"))
+		{
+			explosher.setRingPosition(inc, 0.5);
 		}
 	}
 
