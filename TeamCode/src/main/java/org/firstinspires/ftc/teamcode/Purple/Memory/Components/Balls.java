@@ -4,6 +4,7 @@ import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.Purple.Names;
+import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 public class Balls
 {
@@ -119,25 +120,44 @@ public class Balls
 		return count;
 	}
 
-	private Ball detectBall (RevColorSensorV3 sensor)
+	private Ball detectBall(RevColorSensorV3 sensor)
 	{
+		int r = sensor.red();
+		int g = sensor.green();
+		int b = sensor.blue();
 
-		RGB current = new RGB(sensor.red(), sensor.green(), sensor.blue());
+		// --- Brightness Threshold Fix ---
+		int brightness = r + g + b;
+
+		DebugUtil.logAdd("RGB: " + brightness);
+
+		DebugUtil.logAdd("R: " + r);
+		DebugUtil.logAdd("G: " + g);
+		DebugUtil.logAdd("B: " + b);
+
+		// Tune this value using telemetry if needed
+		if (brightness < 120) {
+			return Ball.NONE;
+		}
+
+		// Continue with normal color comparison
+		RGB current = new RGB(r, g, b);
 
 		double noneDistance = rgbDistanceSquared(current, SAMPLE_NONE);
 		double purpleDistance = rgbDistanceSquared(current, SAMPLE_PURPLE);
 		double greenDistance = rgbDistanceSquared(current, SAMPLE_GREEN);
 
-		if (noneDistance <= purpleDistance && noneDistance <= greenDistance)
-		{
+		if (noneDistance <= purpleDistance && noneDistance <= greenDistance) {
 			return Ball.NONE;
 		}
-		if (purpleDistance <= greenDistance)
-		{
+
+		if (purpleDistance <= greenDistance) {
 			return Ball.PURPLE;
 		}
+
 		return Ball.GREEN;
 	}
+
 
 	private double rgbDistanceSquared (RGB a, RGB b)
 	{

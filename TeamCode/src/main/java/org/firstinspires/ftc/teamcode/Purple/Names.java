@@ -13,7 +13,10 @@ public final class Names
 	public static final String EXPLORING = "EXPLORING";
 
 	public static final String INTAKE = "FE";
-	public static final String FINGER = "FINN";
+
+	public static final String FINGER_1 = "FIN1";
+	public static final String FINGER_2 = "FIN2";
+	public static final String FINGER_3 = "FIN3";
 
 	public static final String COLOR1 = "cs1";
 	public static final String COLOR2 = "cs2";

@@ -264,13 +264,22 @@ public class TeleOp extends PurpleOpMode
 	private void updateVaccum ()
 	{
 
+		if (driver2.isPressed("left_stick_button"))
+		{
+			vaccum.flickFinger(0);
+			vaccum.flickFinger(1);
+			vaccum.flickFinger(2);
+		}
+
 		if (driver2.isPressed("y"))
 		{
 			vaccum.setPower(Vaccum.DEFAULT_POW);
-		} else if (driver2.isPressed("x"))
+		}
+		else if (driver2.isPressed("x"))
 		{
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
-		} else
+		}
+		else
 		{
 			vaccum.stop();
 		}
