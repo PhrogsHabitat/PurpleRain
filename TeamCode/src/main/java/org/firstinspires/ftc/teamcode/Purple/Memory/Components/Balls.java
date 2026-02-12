@@ -1,153 +1,166 @@
 package org.firstinspires.ftc.teamcode.Purple.Memory.Components;
 
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
-import org.firstinspires.ftc.teamcode.Purple.Components.Sensors.SensorConfig;
-import org.firstinspires.ftc.teamcode.Purple.Components.Sensors.SensorUtil;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 
 public class Balls
 {
-	private static final double SMOOTHING_ALPHA = 0.3;
-	private static final double MIN_BRIGHTNESS = 0.1;
-	private final SensorConfig sensor1;
-	private final SensorConfig sensor2;
-	private final SensorConfig sensor3;
-	private final double[] smoothedRed = new double[3];
-	private final double[] smoothedGreen = new double[3];
-	private final double[] smoothedBlue = new double[3];
-	public int[] ballStatus = new int[3]; // 0 = none, 1 = purple, 2 = green
+
+	private static final RGB SAMPLE_PURPLE = new RGB(210, 55, 215);
+	private static final RGB SAMPLE_GREEN = new RGB(40, 150, 45);
+	private static final RGB SAMPLE_NONE = new RGB(22, 22, 22);
+	
+	private final RevColorSensorV3[] sensors = new RevColorSensorV3[3];
+	private final Ball[] curBalls = new Ball[]{
+			Ball.NONE,
+			Ball.NONE,
+			Ball.NONE
+	};
 
 	/**
-	 * Initializes all 3 color sensors
+	 * Initializes all 3 REV Color Sensor V3 devices.
 	 */
 	public Balls (HardwareMap hardwareMap)
 	{
-		sensor1 = new SensorConfig(hardwareMap, Names.COLOR1);
-		sensor2 = new SensorConfig(hardwareMap, Names.COLOR2);
-		sensor3 = new SensorConfig(hardwareMap, Names.COLOR3);
+
+		sensors[0] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR1);
+		sensors[1] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR2);
+		sensors[2] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR3);
 
 		// Enable LEDs for all sensors
-		sensor1.enableLED(true);
-		sensor2.enableLED(true);
-		sensor3.enableLED(true);
-
-		// Initialize arrays
 		for (int i = 0; i < 3; i++)
 		{
-			ballStatus[i] = 0;
-			smoothedRed[i] = smoothedGreen[i] = smoothedBlue[i] = 0;
+			sensors[i].enableLed(true);
 		}
 	}
 
 	/**
-	 * Updates ball detection for all slots
+	 * Updates ball detection for all slots.
 	 */
 	public void update ()
 	{
-		updateSensor(sensor1, 0);
-		updateSensor(sensor2, 1);
-		updateSensor(sensor3, 2);
-	}
 
-	private void updateSensor(SensorConfig sensor, int i)
-	{
-		// Get raw RGB values
-		int red = sensor.getRed();
-		int green = sensor.getGreen();
-		int blue = sensor.getBlue();
-
-		// Calculate brightness to avoid false positives
-		double brightness = SensorUtil.getBrightness(red, green, blue);
-
-		if (brightness < MIN_BRIGHTNESS)
+		for (int i = 0; i < 3; i++)
 		{
-			// Too dark, assume no ball
-			ballStatus[i] = 0;
-			return;
+			curBalls[i] = detectBall(sensors[i]);
 		}
-
-		// Smooth readings to reduce noise
-		double[] normalized = sensor.getNormalizedRGB();
-		smoothedRed[i] = SensorUtil.smoothValue(normalized[0], smoothedRed[i], SMOOTHING_ALPHA);
-		smoothedGreen[i] = SensorUtil.smoothValue(normalized[1], smoothedGreen[i], SMOOTHING_ALPHA);
-		smoothedBlue[i] = SensorUtil.smoothValue(normalized[2], smoothedBlue[i], SMOOTHING_ALPHA);
-
-		// Detect ball color
-		ballStatus[i] = SensorUtil.detectBallColor(
-				smoothedRed[i], smoothedGreen[i], smoothedBlue[i],
-				sensor.getPurpleThreshold(), sensor.getGreenThreshold()
-		);
 	}
 
 	/**
-	 * Gets the array of current ball status
+	 * Returns the current 3-slot ball state.
 	 */
-	public int[] getBallStatus ()
+	public Ball[] curBalls ()
 	{
 
-		return ballStatus;
+		return curBalls.clone();
 	}
 
 	/**
-	 * Gets status of a specific slot
+	 * Returns a single slot's ball state.
 	 */
-	public int getSlotStatus (int slot)
+	public Ball getSlotStatus (int slot)
 	{
 
 		if (slot >= 0 && slot < 3)
 		{
-			return ballStatus[slot];
+			return curBalls[slot];
 		}
-		return 0;
+		return Ball.NONE;
 	}
 
 	/**
-	 * Checks if all slots are empty
+	 * Checks if all slots are empty.
 	 */
 	public boolean isEmpty ()
 	{
 
-		return ballStatus[0] == 0 && ballStatus[1] == 0 && ballStatus[2] == 0;
+		return curBalls[0] == Ball.NONE && curBalls[1] == Ball.NONE && curBalls[2] == Ball.NONE;
 	}
 
 	/**
-	 * Checks if any slot contains a purple ball
+	 * Checks if any slot contains a purple ball.
 	 */
 	public boolean hasPurple ()
 	{
 
-		for (int status : ballStatus)
+		for (Ball ball : curBalls)
 		{
-			if (status == 1) return true;
+			if (ball == Ball.PURPLE) return true;
 		}
 		return false;
 	}
 
 	/**
-	 * Checks if any slot contains a green ball
+	 * Checks if any slot contains a green ball.
 	 */
 	public boolean hasGreen ()
 	{
 
-		for (int status : ballStatus)
+		for (Ball ball : curBalls)
 		{
-			if (status == 2) return true;
+			if (ball == Ball.GREEN) return true;
 		}
 		return false;
 	}
 
 	/**
-	 * Counts how many balls are currently detected
+	 * Counts how many balls are currently detected.
 	 */
 	public int countBalls ()
 	{
 
 		int count = 0;
-		for (int status : ballStatus)
+		for (Ball ball : curBalls)
 		{
-			if (status != 0) count++;
+			if (ball != Ball.NONE) count++;
 		}
 		return count;
+	}
+
+	private Ball detectBall (RevColorSensorV3 sensor)
+	{
+
+		RGB current = new RGB(sensor.red(), sensor.green(), sensor.blue());
+
+		double noneDistance = rgbDistanceSquared(current, SAMPLE_NONE);
+		double purpleDistance = rgbDistanceSquared(current, SAMPLE_PURPLE);
+		double greenDistance = rgbDistanceSquared(current, SAMPLE_GREEN);
+
+		if (noneDistance <= purpleDistance && noneDistance <= greenDistance)
+		{
+			return Ball.NONE;
+		}
+		if (purpleDistance <= greenDistance)
+		{
+			return Ball.PURPLE;
+		}
+		return Ball.GREEN;
+	}
+
+	private double rgbDistanceSquared (RGB a, RGB b)
+	{
+
+		int dr = a.red - b.red;
+		int dg = a.green - b.green;
+		int db = a.blue - b.blue;
+
+		return dr * dr + dg * dg + db * db;
+	}
+
+	private static class RGB
+	{
+		final int red;
+		final int green;
+		final int blue;
+
+		RGB (int red, int green, int blue)
+		{
+
+			this.red = red;
+			this.green = green;
+			this.blue = blue;
+		}
 	}
 }

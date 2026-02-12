@@ -1,37 +1,54 @@
 package org.firstinspires.ftc.teamcode.Purple.Memory.Components;
 
+import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
+
 /**
- * Represents a motif or pattern for memory storage.
+ * Tracks the current motif from AprilTag IDs.
+ * 21 = GPP, 22 = PGP, 23 = PPG
  */
 public class Motif
 {
-	private String pattern;
+	public enum Type
+	{
+		GPP,
+		PGP,
+		PPG
+	}
+
+	public static final Type GPP = Type.GPP;
+	public static final Type PGP = Type.PGP;
+	public static final Type PPG = Type.PPG;
+
+	private Type curMotif = Type.GPP;
 
 	/**
-	 * Constructs an empty motif.
+	 * Updates the motif from the current AprilTag ID.
 	 */
-	public Motif ()
+	public void update ()
 	{
-		this.pattern = "";
+		int tagId = LimeUtil.getPrimaryFiducialId();
+		switch (tagId)
+		{
+			case 21:
+				curMotif = Type.GPP;
+				break;
+			case 22:
+				curMotif = Type.PGP;
+				break;
+			case 23:
+				curMotif = Type.PPG;
+				break;
+			default:
+				// Keep last known motif when no valid motif tag is visible.
+				break;
+		}
 	}
 
 	/**
-	 * Gets the motif pattern.
-	 *
-	 * @return The pattern string.
+	 * Returns the current motif.
 	 */
-	public String getPattern ()
+	public Type curMotif ()
 	{
-		return pattern;
-	}
-
-	/**
-	 * Sets the motif pattern.
-	 *
-	 * @param pattern The pattern string.
-	 */
-	public void setPattern (String pattern)
-	{
-		this.pattern = pattern;
+		return curMotif;
 	}
 }

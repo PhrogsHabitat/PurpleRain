@@ -1,12 +1,15 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Lime;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+
+import java.util.List;
 
 public final class LimeUtil
 {
@@ -172,6 +175,20 @@ public final class LimeUtil
 
 		LLResult result = getResult();
 		return (result != null && result.isValid()) ? result.getBotposeAvgDist() * 39.3701 : 0;
+	}
+
+	/**
+	 * Gets the first visible fiducial id, or -1 if unavailable.
+	 */
+	public static int getPrimaryFiducialId ()
+	{
+		LLResult result = getResult();
+		if (result == null || !result.isValid()) return -1;
+
+		List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
+		if (fiducials == null || fiducials.isEmpty()) return -1;
+
+		return fiducials.get(0).getFiducialId();
 	}
 
 	/**

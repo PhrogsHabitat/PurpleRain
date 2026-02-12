@@ -2,7 +2,9 @@ package org.firstinspires.ftc.teamcode.Purple.Memory;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Ball;
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Balls;
+import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Motif;
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
 
 /**
@@ -11,6 +13,7 @@ import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
 public class PurpleMemory
 {
 	private final Balls balls;
+	private final Motif motif;
 	private final Position position;
 
 	/**
@@ -19,6 +22,7 @@ public class PurpleMemory
 	public PurpleMemory (HardwareMap hardwareMap)
 	{
 		balls = new Balls(hardwareMap);
+		motif = new Motif();
 		position = new Position(hardwareMap);
 	}
 
@@ -29,54 +33,30 @@ public class PurpleMemory
 	{
 		position.update();
 		balls.update();
+		motif.update();
 	}
 
 	/**
-	 * Gets current ball status array.
-	 * 0 = none, 1 = purple, 2 = green
+	 * Gets current ball states for the 3 slots.
 	 */
-	public int[] balls ()
+	public Ball[] curBalls ()
 	{
-		return balls.getBallStatus();
+		return balls.curBalls();
 	}
 
 	/**
-	 * Gets the ball memory component.
+	 * Gets the currently detected motif.
 	 */
-	public Balls ballsState ()
+	public Motif.Type curMotif ()
 	{
-		return balls;
+		return motif.curMotif();
 	}
 
 	/**
-	 * Gets the position memory component.
+	 * Gets the current odometry position.
 	 */
-	public Position position ()
+	public Position curPos ()
 	{
 		return position;
-	}
-
-	/**
-	 * Backward-compatible alias for older call sites.
-	 */
-	public int[] Balls ()
-	{
-		return balls();
-	}
-
-	/**
-	 * Backward-compatible alias for older call sites.
-	 */
-	public Balls getBallsObject ()
-	{
-		return ballsState();
-	}
-
-	/**
-	 * Backward-compatible alias for older call sites.
-	 */
-	public Position getPositionObject ()
-	{
-		return position();
 	}
 }

@@ -10,6 +10,8 @@ import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
 
+import java.util.Arrays;
+
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
 public class TeleOp extends PurpleOpMode
 {
@@ -336,12 +338,14 @@ public class TeleOp extends PurpleOpMode
 
 		DebugUtil.logAdd("======= [MEMORY]");
 		DebugUtil.logAdd("KP: " + ALIGN_KP);
+		DebugUtil.logAdd("Motif: " + memory.curMotif());
+		DebugUtil.logAdd("Balls: " + Arrays.toString(memory.curBalls()));
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd(String.format(
 				"Position: x=%.2f y=%.2f h=%.2f",
-				memory.position().getX(),
-				memory.position().getY(),
-				memory.position().getHeading()
+				memory.curPos().getX(),
+				memory.curPos().getY(),
+				memory.curPos().getHeading()
 		));
 		DebugUtil.logAdd(" ");
 

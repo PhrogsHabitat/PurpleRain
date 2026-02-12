@@ -142,17 +142,6 @@ public class Position
 	}
 
 	/**
-	 * Sets the x coordinate.
-	 *
-	 * @param x The new x value.
-	 */
-	public void setX (double x)
-	{
-
-		this.x = x;
-	}
-
-	/**
 	 * Gets the y coordinate.
 	 *
 	 * @return The y value.
@@ -164,17 +153,6 @@ public class Position
 	}
 
 	/**
-	 * Sets the y coordinate.
-	 *
-	 * @param y The new y value.
-	 */
-	public void setY (double y)
-	{
-
-		this.y = y;
-	}
-
-	/**
 	 * Gets the heading in degrees.
 	 *
 	 * @return The heading value.
@@ -183,17 +161,6 @@ public class Position
 	{
 
 		return heading;
-	}
-
-	/**
-	 * Sets the heading in degrees.
-	 *
-	 * @param heading The new heading value.
-	 */
-	public void setHeading (double heading)
-	{
-
-		this.heading = heading;
 	}
 
 }

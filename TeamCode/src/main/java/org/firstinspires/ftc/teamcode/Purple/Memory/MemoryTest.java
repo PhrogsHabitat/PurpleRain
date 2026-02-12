@@ -34,12 +34,13 @@ public class MemoryTest extends PurpleOpMode
 		// Update ball detection
 		memory.update();
 
-		DebugUtil.logAdd("Balls: " + Arrays.toString(memory.balls()));
+		DebugUtil.logAdd("Motif: " + memory.curMotif());
+		DebugUtil.logAdd("Balls: " + Arrays.toString(memory.curBalls()));
 		DebugUtil.logAdd(String.format(
 				"Position: x=%.2f y=%.2f h=%.2f",
-				memory.position().getX(),
-				memory.position().getY(),
-				memory.position().getHeading()
+				memory.curPos().getX(),
+				memory.curPos().getY(),
+				memory.curPos().getHeading()
 		));
 
 		// Update telemetry display
