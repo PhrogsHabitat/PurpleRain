@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode.Purple.Memory;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
+import java.util.Arrays;
+
 /**
  * Test teleop for ball memory system using PurpleOpMode structure
  */
@@ -32,7 +34,13 @@ public class MemoryTest extends PurpleOpMode
 		// Update ball detection
 		memory.update();
 
-		DebugUtil.logAdd(memory.Balls().toString());
+		DebugUtil.logAdd("Balls: " + Arrays.toString(memory.balls()));
+		DebugUtil.logAdd(String.format(
+				"Position: x=%.2f y=%.2f h=%.2f",
+				memory.position().getX(),
+				memory.position().getY(),
+				memory.position().getHeading()
+		));
 
 		// Update telemetry display
 		DebugUtil.update();

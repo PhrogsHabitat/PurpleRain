@@ -165,7 +165,7 @@ public class TeleOp extends PurpleOpMode
 				{
 					double targetPower = MathUtil.clamp(ALIGN_KP * tx, -1, 1);
 
-					double maxChange = 0.07;   // LATER tune between 0.05–0.1
+					double maxChange = 0.07;   // LATER tune between 0.05-0.1
 					double power = MathUtil.clamp(
 							targetPower,
 							lastPower - maxChange,
@@ -322,8 +322,9 @@ public class TeleOp extends PurpleOpMode
 
 		DebugUtil.logAdd("======= [EXPLOSHER]");
 		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
-		DebugUtil.logAdd("Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
+		DebugUtil.logAdd("Target RPM: " + explosher.getTargetRPM());
+		DebugUtil.logAdd("Current RPM: " + explosher.getCurrentRPM());
+		DebugUtil.logAdd("Smoothed Regress: " + explosher.smoothedTargetRPM);
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
 		DebugUtil.logAdd(" ");
 
@@ -336,7 +337,12 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd("======= [MEMORY]");
 		DebugUtil.logAdd("KP: " + ALIGN_KP);
 		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("Position" + memory.get("position"));
+		DebugUtil.logAdd(String.format(
+				"Position: x=%.2f y=%.2f h=%.2f",
+				memory.position().getX(),
+				memory.position().getY(),
+				memory.position().getHeading()
+		));
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.update();
@@ -386,3 +392,4 @@ public class TeleOp extends PurpleOpMode
 //{95, 2900},
 //{110, 2900},
 //{130, 3100}
+

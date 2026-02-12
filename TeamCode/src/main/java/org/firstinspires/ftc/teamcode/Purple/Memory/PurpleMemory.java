@@ -5,89 +5,78 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Balls;
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
- * Extended memory store
+ * Shared robot state container for frequently read, changing values.
  */
 public class PurpleMemory
 {
-	private final Map<String, Object> memory = new HashMap<>();
 	private final Balls balls;
 	private final Position position;
 
 	/**
-	 * Constructs PurpleMemory
+	 * Constructs PurpleMemory.
 	 */
 	public PurpleMemory (HardwareMap hardwareMap)
 	{
-
 		balls = new Balls(hardwareMap);
 		position = new Position(hardwareMap);
-		memory.put("position", position);
 	}
 
 	/**
-	 * Updates the robots memory of each component
+	 * Updates all memory components.
 	 */
 	public void update ()
 	{
-
 		position.update();
 		balls.update();
-		memory.put("position", position);
 	}
 
 	/**
-	 * Gets the current ball status array
+	 * Gets current ball status array.
 	 * 0 = none, 1 = purple, 2 = green
 	 */
-	public int[] Balls ()
+	public int[] balls ()
 	{
-
 		return balls.getBallStatus();
 	}
 
 	/**
-	 * Direct access to the Balls object
+	 * Gets the ball memory component.
 	 */
-	public Balls getBallsObject ()
+	public Balls ballsState ()
 	{
-
 		return balls;
 	}
 
 	/**
-	 * Direct access to the Position object
+	 * Gets the position memory component.
 	 */
-	public Position getPositionObject ()
+	public Position position ()
 	{
-
 		return position;
 	}
 
-	public void put (String key, Object value)
+	/**
+	 * Backward-compatible alias for older call sites.
+	 */
+	public int[] Balls ()
 	{
-
-		memory.put(key, value);
+		return balls();
 	}
 
-	public Object get (String key)
+	/**
+	 * Backward-compatible alias for older call sites.
+	 */
+	public Balls getBallsObject ()
 	{
-
-		return memory.get(key);
+		return ballsState();
 	}
 
-	public boolean containsKey (String key)
+	/**
+	 * Backward-compatible alias for older call sites.
+	 */
+	public Position getPositionObject ()
 	{
-
-		return memory.containsKey(key);
-	}
-
-	public void clear ()
-	{
-
-		memory.clear();
+		return position();
 	}
 }
