@@ -348,7 +348,8 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd("======= [FINGER]");
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("Finger State: " + fingerState);
-		DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
+		DebugUtil.logAdd("Finger Position: '" + String.format("%.3f", explosher.getFingerPosition()));
+		y2
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.logAdd("======= [MEMORY]");
@@ -356,6 +357,8 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd("Motif: " + memory.curMotif());
 		DebugUtil.logAdd("Balls: " + Arrays.toString(memory.curBalls()));
 		DebugUtil.logAdd(" ");
+
+		DebugUtil.logAdd(" " + vaccum.finger2.getController().getConnectionInfo());
 		DebugUtil.logAdd(String.format(
 				"Position: x=%.2f y=%.2f h=%.2f",
 				memory.curPos().getX(),

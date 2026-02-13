@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.Purple.Components.Vaccum;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
@@ -12,25 +13,28 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 public class Vaccum
 {
 	public static final double DEFAULT_POW = 1.0;
-	private static final double FINGER_TOLERANCE = 0.01;  // position tolerance for state transitions
+	private static final double FLICK_TIME_SECONDS = 0.5; // Adjust based on servo speed
 
 	public final MotorConfig intakeMotor;
 
-	// Three distinct finger servos – assumes Names.FINGER1, FINGER2, FINGER3 are defined
-	private final Servo[] fingers;
+	// Individual finger servos – much clearer than an array
+	private final Servo finger1;
+	public final Servo finger2;
+	private final Servo finger3;
 	private final ServoConfig fingerConfig;
 
-	// State machine for each finger
-	private FingerFlickState[] fingerStates;
-	private double[] fingerTargetPositions;  // only used for debugging/logging
+	// State machine for each finger (still needed for timing)
+	private enum FingerState { IDLE, FLICKING }
+	private FingerState state1 = FingerState.IDLE;
+	private FingerState state2 = FingerState.IDLE;
+	private FingerState state3 = FingerState.IDLE;
+
+	private final ElapsedTime timer1 = new ElapsedTime();
+	private final ElapsedTime timer2 = new ElapsedTime();
+	private final ElapsedTime timer3 = new ElapsedTime();
 
 	private double currentPower = 0;
 
-	/**
-	 * Creates a new Vaccum subsystem
-	 *
-	 * @param hardwareMap The robot's hardware map
-	 */
 	public Vaccum(HardwareMap hardwareMap)
 	{
 		intakeMotor = new MotorConfig.Builder(hardwareMap, Names.INTAKE, MotorConfig.Position.INTAKE)
@@ -39,32 +43,34 @@ public class Vaccum
 
 		this.fingerConfig = Constants.FINGER_SERVO_CONFIG;
 
-		// Initialize the three finger servos
-		fingers = new Servo[3];
-		fingers[0] = hardwareMap.get(Servo.class, Names.FINGER_1);
-		fingers[1] = hardwareMap.get(Servo.class, Names.FINGER_2);
-		fingers[2] = hardwareMap.get(Servo.class, Names.FINGER_3);
+		// Map each finger to its own hardware name
+		finger1 = hardwareMap.get(Servo.class, Names.FINGER_1);
+		finger2 = hardwareMap.get(Servo.class, Names.FINGER_2);
+		finger3 = hardwareMap.get(Servo.class, Names.FINGER_3);
 
-		// Initialize state trackers
-		fingerStates = new FingerFlickState[3];
-		fingerTargetPositions = new double[3];
-		for (int i = 0; i < 3; i++)
-		{
-			fingerStates[i] = FingerFlickState.IDLE;
-			fingerTargetPositions[i] = fingerConfig.getMinPosition();
-			// Set initial position to minimum (rest)
-			fingers[i].setPosition(fingerConfig.getMinPosition());
-		}
+		// Set initial positions to rest (min)
+
+		finger3.getController().resetDeviceConfigurationForOpMode();
+
+		finger1.getController().pwmEnable();
+		finger2.getController().pwmEnable();
+		finger3.getController().pwmEnable();
+
+		DebugUtil.logAdd("AHHHHHH" + finger1.getController().getPwmStatus());
+		DebugUtil.logAdd("AHHHHHH2" + finger1.getController().getServoPosition(3));
+
+		finger1.getController().setServoPosition(3, 1.0);
+
+		finger1.setPosition(0);
+		finger2.setPosition(0);
+		finger3.setPosition(0);
 
 		stop();
 	}
 
 	// ==================== INTAKE MOTOR ====================
 
-	public double getPower()
-	{
-		return currentPower;
-	}
+	public double getPower() { return currentPower; }
 
 	public void setPower(double power)
 	{
@@ -72,128 +78,77 @@ public class Vaccum
 		intakeMotor.setPower(power);
 	}
 
-	public void stop()
+	public void stop() { setPower(0); }
+
+	public double getIntakeCurrentRPM() { return intakeMotor.getCurrentRPM(); }
+
+	// ==================== FINGER CONTROL ====================
+
+	// Simple direct position control (for testing)
+	public void setFinger1Position(double pos) { finger1.setPosition(pos); }
+	public void setFinger2Position(double pos) { finger2.setPosition(pos); }
+	public void setFinger3Position(double pos) { finger3.setPosition(pos); }
+
+	// Flick methods – start the flick sequence
+	public void flickFinger1()
 	{
-		setPower(0);
+		finger1.setPosition(180);
+		state1 = FingerState.FLICKING;
+		timer1.reset();
 	}
 
-	public double getIntakeCurrentRPM()
+	public void flickFinger2()
 	{
-		return intakeMotor.getCurrentRPM();
+		finger2.setPosition(fingerConfig.getMaxPosition());
+		state2 = FingerState.FLICKING;
+		timer2.reset();
 	}
 
-	// ==================== FINGER FLICK STATE MACHINE ====================
-
-	/**
-	 * Triggers a flick for the specified finger.
-	 * The finger will move to max position, then immediately back to min.
-	 *
-	 * @param fingerIndex 0, 1, or 2
-	 */
-	public void flickFinger(int fingerIndex)
+	public void flickFinger3()
 	{
-		if (fingerIndex < 0 || fingerIndex >= fingers.length) return;
-
-		// Start the flick sequence – move to max position
-		fingerStates[fingerIndex] = FingerFlickState.FLICKING_UP;
-		fingers[fingerIndex].setPosition(fingerConfig.getMaxPosition());
-		fingerTargetPositions[fingerIndex] = fingerConfig.getMaxPosition();
+		finger3.setPosition(fingerConfig.getMaxPosition());
+		state3 = FingerState.FLICKING;
+		timer3.reset();
 	}
 
-	/**
-	 * Alternative method that accepts the Servo object.
-	 * Finds which index the servo belongs to and flicks it.
-	 */
-	public void flickFinger(Servo finger)
+	// Optional: flick by index if you prefer
+	public void flickFinger(int index)
 	{
-		for (int i = 0; i < fingers.length; i++)
-		{
-			if (fingers[i] == finger)
-			{
-				flickFinger(i);
-				return;
-			}
+		switch (index) {
+			case 0: flickFinger1(); break;
+			case 1: flickFinger2(); break;
+			case 2: flickFinger3(); break;
 		}
-	}
-
-	/**
-	 * Gets the current flick state of a finger.
-	 */
-	public FingerFlickState getFingerState(int index)
-	{
-		return fingerStates[index];
-	}
-
-	/**
-	 * Gets the current servo position of a finger.
-	 */
-	public double getFingerPosition(int index)
-	{
-		return fingers[index].getPosition();
 	}
 
 	// ==================== UPDATE LOOP ====================
 
-	/**
-	 * Updates the vaccum subsystem – call in main loop.
-	 * Handles state transitions for finger flicking.
-	 */
 	public void update()
 	{
 		intakeMotor.update();
 
-		// Process each finger's state machine
-		for (int i = 0; i < fingers.length; i++)
+		// Finger 1 state machine
+		if (state1 == FingerState.FLICKING && timer1.seconds() >= FLICK_TIME_SECONDS)
 		{
-			double currentPos = fingers[i].getPosition();
-
-			switch (fingerStates[i])
-			{
-				case FLICKING_UP:
-					// Wait until the servo reaches the max position
-					if (Math.abs(currentPos - fingerConfig.getMaxPosition()) <= FINGER_TOLERANCE)
-					{
-						// Transition to moving down
-						fingerStates[i] = FingerFlickState.FLICKING_DOWN;
-						fingers[i].setPosition(fingerConfig.getMinPosition());
-						fingerTargetPositions[i] = fingerConfig.getMinPosition();
-					}
-					break;
-
-				case FLICKING_DOWN:
-					// Wait until the servo returns to the min position
-					if (Math.abs(currentPos - fingerConfig.getMinPosition()) <= FINGER_TOLERANCE)
-					{
-						// Flick complete – return to idle
-						fingerStates[i] = FingerFlickState.IDLE;
-					}
-					break;
-
-				case IDLE:
-				default:
-					// Nothing to do
-					break;
-			}
+			finger1.setPosition(fingerConfig.getMinPosition());
+			state1 = FingerState.IDLE;
 		}
 
-		// Debug logging (optional)
-		DebugUtil.logAdd("Intake RPM: " + String.format("%.1f", getIntakeCurrentRPM()));
-		for (int i = 0; i < fingers.length; i++)
+		// Finger 2
+		if (state2 == FingerState.FLICKING && timer2.seconds() >= FLICK_TIME_SECONDS)
 		{
-			DebugUtil.logAdd("Finger" + i + " State: " + fingerStates[i] +
-					" Pos: " + String.format("%.3f", fingers[i].getPosition()));
+			finger2.setPosition(fingerConfig.getMinPosition());
+			state2 = FingerState.IDLE;
 		}
-	}
 
-	// ==================== INTERNAL ENUM ====================
+		// Finger 3
+		if (state3 == FingerState.FLICKING && timer3.seconds() >= FLICK_TIME_SECONDS)
+		{
+			finger3.setPosition(fingerConfig.getMinPosition());
+			state3 = FingerState.IDLE;
+		}
 
-	/**
-	 * States for the finger flick state machine.
-	 */
-	public enum FingerFlickState
-	{
-		IDLE,
-		FLICKING_UP,
-		FLICKING_DOWN
+		// Optional debug
+		 DebugUtil.logAdd("Finger positions: " + finger1.getPosition() + ", " + finger2.getPosition() + ", " + finger3.getPosition());
 	}
 }
