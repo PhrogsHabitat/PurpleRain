@@ -1,30 +1,31 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Servos;
 
-/**
- * Configuration and state management for a servo.
- */
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
+
 public final class ServoConfig
 {
+	private static final double POSITION_EPSILON = 1e-4;
+
 	private final String name;
+	private final Servo servo;
 	private final double minPosition;
 	private final double maxPosition;
-	private final double initialPosition;
 	private ServoState state = ServoState.OFF;
+	public static double zeroOffset;
 
-	/**
-	 * Constructs a ServoConfig with the given parameters.
-	 *
-	 * @param name            The name of the servo.
-	 * @param minPosition     The minimum allowed position.
-	 * @param maxPosition     The maximum allowed position.
-	 * @param initialPosition The initial position (clamped).
-	 */
-	public ServoConfig (String name, double minPosition, double maxPosition, double initialPosition)
+	private ServoConfig (Builder b)
 	{
-		this.name = name;
-		this.minPosition = minPosition;
-		this.maxPosition = maxPosition;
-		this.initialPosition = clamp(initialPosition);
+		if (b.minPosition > b.maxPosition)
+		{
+			throw new IllegalArgumentException("Servo minPosition cannot be greater than maxPosition");
+		}
+
+		this.name = b.name;
+		this.minPosition = b.minPosition;
+		this.maxPosition = b.maxPosition;
+		this.servo = b.hardwareMap.get(Servo.class, b.name);
+		this.servo.setDirection(b.direction);
 	}
 
 	/**
@@ -58,13 +59,33 @@ public final class ServoConfig
 	}
 
 	/**
-	 * Gets the initial position for the servo.
+	 * Gets the wrapped servo hardware object.
 	 *
-	 * @return The initial position.
+	 * @return Wrapped servo.
 	 */
-	public double getInitialPosition ()
+	public Servo getServo ()
 	{
-		return initialPosition;
+		return servo;
+	}
+
+	/**
+	 * Gets the current servo position.
+	 *
+	 * @return Current servo position.
+	 */
+	public double getPosition ()
+	{
+		return servo.getPosition();
+	}
+
+	/**
+	 * Sets the servo position (clamped to configured range).
+	 *
+	 * @param position Requested position.
+	 */
+	public void setPosition (double position)
+	{
+		servo.setPosition(clamp(position));
 	}
 
 	/**
@@ -99,32 +120,62 @@ public final class ServoConfig
 	}
 
 	/**
-	 * Checks if the given position is at the minimum allowed position.
-	 *
-	 * @param position The position to check.
-	 * @return True if at minimum, false otherwise.
-	 */
-	public boolean isAtMin (double position)
-	{
-		return Math.abs(position - minPosition) < 1e-4;
-	}
-
-	/**
-	 * Checks if the given position is at the maximum allowed position.
-	 *
-	 * @param position The position to check.
-	 * @return True if at maximum, false otherwise.
-	 */
-	public boolean isAtMax (double position)
-	{
-		return Math.abs(position - maxPosition) < 1e-4;
-	}
-
-	/**
 	 * Represents the state of the servo (ON/OFF).
 	 */
 	public enum ServoState
 	{
 		ON, OFF
+	}
+
+	public static class Builder
+	{
+		private final HardwareMap hardwareMap;
+		private final String name;
+
+		private double minPosition = 0.0;
+		private double maxPosition = 1.0;
+		private Servo.Direction direction = Servo.Direction.FORWARD;
+
+		public Builder (HardwareMap hardwareMap, String name)
+		{
+			this.hardwareMap = hardwareMap;
+			this.name = name;
+		}
+
+		public Builder setMinPosition (double minPosition)
+		{
+			this.minPosition = minPosition;
+			return this;
+		}
+
+		public Builder setMaxPosition (double maxPosition)
+		{
+			this.maxPosition = maxPosition;
+			return this;
+		}
+
+		public Builder setRange (double minPosition, double maxPosition)
+		{
+			this.minPosition = minPosition;
+			this.maxPosition = maxPosition;
+			return this;
+		}
+
+		public Builder reversed ()
+		{
+			this.direction = Servo.Direction.REVERSE;
+			return this;
+		}
+
+		public Builder direction (Servo.Direction direction)
+		{
+			this.direction = direction;
+			return this;
+		}
+
+		public ServoConfig build ()
+		{
+			return new ServoConfig(this);
+		}
 	}
 }

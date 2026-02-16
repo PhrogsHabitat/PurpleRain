@@ -7,6 +7,7 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
+import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
 import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
@@ -20,8 +21,9 @@ public class TeleOp extends PurpleOpMode
 	// Private variables after
 	private static final long TAG_TIMEOUT_MS = 500;
 	private static final double THRESHOLD = 3;
+	private static final double SERVO_DEBUG_STEP = 0.01;
 	// Public variables first
-	public double swagShitClose = 2500;
+	public double turretIncrement = 2500;
 	public double swagShitFar = Explosher.FAR_SWEET;
 	public double dist;
 	public boolean manual = false;
@@ -43,6 +45,7 @@ public class TeleOp extends PurpleOpMode
 	private boolean autoAlignActive = false;
 	private long lastTagSeenTime = 0;
 	private double smoothedTargetRPM = 0;
+	private int selectedDebugServo = 0;
 
 	// Core methods ALWAYS come first (excluding destroy)
 	@Override
@@ -65,11 +68,11 @@ public class TeleOp extends PurpleOpMode
 				.disableVelocityControl().build();
 
 		// Initialize LimeLight
-		LimeUtil.start(hardwareMap, "SwagLime", 60);
+		LimeUtil.start(hardwareMap, 60);
 		LimeUtil.setPipeline(0);
 
 		// Initialize Explosher
-		explosher = new Explosher(hardwareMap, Constants.FINGER_SERVO_CONFIG);
+		explosher = new Explosher(hardwareMap);
 
 		// Initialize Vaccum
 		vaccum = new Vaccum(hardwareMap);
@@ -214,18 +217,6 @@ public class TeleOp extends PurpleOpMode
 			fingerState = explosher.getFingerStateEnum();
 		}
 
-		if (fingerState == Explosher.FingerState.DEBUG)
-		{
-			if (driver2.justPressed("left_bumper"))
-			{
-				explosher.adjustDebugFingerPosition(-Constants.FINGER_DEBUG_INCREMENT);
-			}
-			if (driver2.justPressed("right_bumper"))
-			{
-				explosher.adjustDebugFingerPosition(Constants.FINGER_DEBUG_INCREMENT);
-			}
-		}
-
 		if (driver2.isPressed("a"))
 		{
 			explosher.resetRingPosition();
@@ -264,7 +255,7 @@ public class TeleOp extends PurpleOpMode
 	private void updateVaccum ()
 	{
 
-		if (driver2.isPressed("left_stick_button"))
+		if (driver2.justPressed("left_stick_button"))
 		{
 			vaccum.flickFinger(0);
 			vaccum.flickFinger(1);
@@ -293,38 +284,24 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateDebug ()
 	{
-
-		if (driver2.justPressed("dpad_up"))
+		if (driver2.isPressed("dpad_up"))
 		{
-			manual = true;
-			swagShitClose += 100;
+			vaccum.adjustFingerPosition(selectedDebugServo, SERVO_DEBUG_STEP);
 		}
 
-		if (driver2.justPressed("dpad_down"))
+		if (driver2.isPressed("dpad_down"))
 		{
-			manual = true;
-			swagShitClose -= 100;
+			vaccum.adjustFingerPosition(selectedDebugServo, -SERVO_DEBUG_STEP);
 		}
 
 		if (driver2.justPressed("dpad_left"))
 		{
-			manual = false;
-			swagShitFar += 100;
-			explosher.stop();
+			selectedDebugServo = (selectedDebugServo + 2) % 3;
 		}
 
 		if (driver2.justPressed("dpad_right"))
 		{
-			swagShitFar -= 100;
-		}
-
-		if (driver2.justPressed("left_stick_button"))
-		{
-			ALIGN_KP += 0.01;
-		}
-		if (driver2.justPressed("right_stick_button"))
-		{
-			ALIGN_KP -= 0.01;
+			selectedDebugServo = (selectedDebugServo + 1) % 3;
 		}
 	}
 
@@ -349,7 +326,6 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("Finger State: " + fingerState);
 		DebugUtil.logAdd("Finger Position: '" + String.format("%.3f", explosher.getFingerPosition()));
-		y2
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.logAdd("======= [MEMORY]");
@@ -357,15 +333,12 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd("Motif: " + memory.curMotif());
 		DebugUtil.logAdd("Balls: " + Arrays.toString(memory.curBalls()));
 		DebugUtil.logAdd(" ");
-
-		DebugUtil.logAdd(" " + vaccum.finger2.getController().getConnectionInfo());
-		DebugUtil.logAdd(String.format(
-				"Position: x=%.2f y=%.2f h=%.2f",
-				memory.curPos().getX(),
-				memory.curPos().getY(),
-				memory.curPos().getHeading()
-		));
+		DebugUtil.logAdd("Debug Servo: " + (selectedDebugServo + 1) +
+				" | Pos: " + String.format("%.3f", vaccum.getFingerPosition(selectedDebugServo)));
 		DebugUtil.logAdd(" ");
+
+		DebugUtil.logAdd("ZeroOffset: " + ServoConfig.zeroOffset);
+
 		DebugUtil.logAdd(String.format(
 				"Sensor2 RGB: R=%d G=%d B=%d",
 				colorSensor2.red(),
@@ -420,4 +393,6 @@ public class TeleOp extends PurpleOpMode
 //{95, 2900},
 //{110, 2900},
 //{130, 3100}
+
+
 

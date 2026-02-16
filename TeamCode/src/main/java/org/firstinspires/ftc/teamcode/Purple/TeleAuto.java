@@ -14,11 +14,11 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 public class TeleAuto extends PurpleOpMode
 {
 	// Private variables after
-
 	private static final long TAG_TIMEOUT_MS = 500;
 	private static final double RPM_SMOOTHING_ALPHA = 0.2;
 	private static final double THRESHOLD = 3;
 	public static Pose startingPose;
+
 	// Public variables first
 	public double swagShitClose = Explosher.CLOSE_SWEET;
 	public double swagShitFar = Explosher.FAR_SWEET;
@@ -118,9 +118,9 @@ public class TeleAuto extends PurpleOpMode
 	private void initializeExplosher ()
 	{
 
-		LimeUtil.start(hardwareMap, "SwagLime", 60);
+		LimeUtil.start(hardwareMap, 60);
 		LimeUtil.setPipeline(0);
-		explosher = new Explosher(hardwareMap, Constants.FINGER_SERVO_CONFIG);
+		explosher = new Explosher(hardwareMap);
 	}
 
 	private void initializeVaccum ()

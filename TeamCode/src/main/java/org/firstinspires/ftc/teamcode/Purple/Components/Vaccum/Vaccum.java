@@ -1,8 +1,6 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Vaccum;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
@@ -13,25 +11,17 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 public class Vaccum
 {
 	public static final double DEFAULT_POW = 1.0;
-	private static final double FLICK_TIME_SECONDS = 0.5; // Adjust based on servo speed
-
+	private static final double SERVO_POSITION_EPSILON = 0.001;
 	public final MotorConfig intakeMotor;
 
-	// Individual finger servos – much clearer than an array
-	private final Servo finger1;
-	public final Servo finger2;
-	private final Servo finger3;
-	private final ServoConfig fingerConfig;
+	private final ServoConfig finger1;
+	private final ServoConfig finger2;
+	private final ServoConfig finger3;
 
-	// State machine for each finger (still needed for timing)
 	private enum FingerState { IDLE, FLICKING }
-	private FingerState state1 = FingerState.IDLE;
-	private FingerState state2 = FingerState.IDLE;
-	private FingerState state3 = FingerState.IDLE;
-
-	private final ElapsedTime timer1 = new ElapsedTime();
-	private final ElapsedTime timer2 = new ElapsedTime();
-	private final ElapsedTime timer3 = new ElapsedTime();
+	private FingerState finger1State = FingerState.IDLE;
+	private FingerState finger2State = FingerState.IDLE;
+	private FingerState finger3State = FingerState.IDLE;
 
 	private double currentPower = 0;
 
@@ -41,34 +31,21 @@ public class Vaccum
 				.disableVelocityControl()
 				.build();
 
-		this.fingerConfig = Constants.FINGER_SERVO_CONFIG;
-
-		// Map each finger to its own hardware name
-		finger1 = hardwareMap.get(Servo.class, Names.FINGER_1);
-		finger2 = hardwareMap.get(Servo.class, Names.FINGER_2);
-		finger3 = hardwareMap.get(Servo.class, Names.FINGER_3);
-
-		// Set initial positions to rest (min)
-
-		finger3.getController().resetDeviceConfigurationForOpMode();
-
-		finger1.getController().pwmEnable();
-		finger2.getController().pwmEnable();
-		finger3.getController().pwmEnable();
-
-		DebugUtil.logAdd("AHHHHHH" + finger1.getController().getPwmStatus());
-		DebugUtil.logAdd("AHHHHHH2" + finger1.getController().getServoPosition(3));
-
-		finger1.getController().setServoPosition(3, 1.0);
-
-		finger1.setPosition(0);
-		finger2.setPosition(0);
-		finger3.setPosition(0);
+		finger1 = new ServoConfig.Builder(hardwareMap, Names.FINGER_1)
+				.setRange(Constants.FINGER_MIN, Constants.FINGER_MAX)
+				.reversed()
+				.build();
+		finger2 = new ServoConfig.Builder(hardwareMap, Names.FINGER_2)
+				.setRange(Constants.FINGER_MIN, Constants.FINGER_MAX)
+				.reversed()
+				.build();
+		finger3 = new ServoConfig.Builder(hardwareMap, Names.FINGER_3)
+				.setRange(Constants.FINGER_MIN, Constants.FINGER_MAX)
+				.reversed()
+				.build();
 
 		stop();
 	}
-
-	// ==================== INTAKE MOTOR ====================
 
 	public double getPower() { return currentPower; }
 
@@ -78,77 +55,88 @@ public class Vaccum
 		intakeMotor.setPower(power);
 	}
 
-	public void stop() { setPower(0); }
+	public void stop()
+	{
+		setPower(0);
+	}
 
-	public double getIntakeCurrentRPM() { return intakeMotor.getCurrentRPM(); }
+	public double getIntakeCurrentRPM()
+	{
+		return intakeMotor.getCurrentRPM();
+	}
 
-	// ==================== FINGER CONTROL ====================
+	public double getFingerPosition(int index)
+	{
+		switch (index)
+		{
+			case 0: return finger1.getPosition();
+			case 1: return finger2.getPosition();
+			case 2: return finger3.getPosition();
+			default: return 0;
+		}
+	}
 
-	// Simple direct position control (for testing)
-	public void setFinger1Position(double pos) { finger1.setPosition(pos); }
-	public void setFinger2Position(double pos) { finger2.setPosition(pos); }
-	public void setFinger3Position(double pos) { finger3.setPosition(pos); }
+	public void adjustFingerPosition(int index, double delta)
+	{
+		switch (index)
+		{
+			case 0: finger1.setPosition(finger1.getPosition() + delta); break;
+			case 1: finger2.setPosition(finger2.getPosition() + delta); break;
+			case 2: finger3.setPosition(finger3.getPosition() + delta); break;
+		}
+	}
 
-	// Flick methods – start the flick sequence
 	public void flickFinger1()
 	{
-		finger1.setPosition(180);
-		state1 = FingerState.FLICKING;
-		timer1.reset();
+		finger1.setPosition(finger1.getMaxPosition());
 	}
 
 	public void flickFinger2()
 	{
-		finger2.setPosition(fingerConfig.getMaxPosition());
-		state2 = FingerState.FLICKING;
-		timer2.reset();
+		finger2.setPosition(finger2.getMaxPosition());
 	}
 
 	public void flickFinger3()
 	{
-		finger3.setPosition(fingerConfig.getMaxPosition());
-		state3 = FingerState.FLICKING;
-		timer3.reset();
+		finger3.setPosition(finger3.getMaxPosition());
 	}
 
-	// Optional: flick by index if you prefer
 	public void flickFinger(int index)
 	{
-		switch (index) {
+		switch (index)
+		{
 			case 0: flickFinger1(); break;
 			case 1: flickFinger2(); break;
 			case 2: flickFinger3(); break;
 		}
 	}
 
-	// ==================== UPDATE LOOP ====================
+	public void flickFingers()
+	{
+		flickFinger1();
+		flickFinger2();
+		flickFinger3();
+	}
 
 	public void update()
 	{
 		intakeMotor.update();
 
-		// Finger 1 state machine
-		if (state1 == FingerState.FLICKING && timer1.seconds() >= FLICK_TIME_SECONDS)
+		if (finger1.getPosition() == finger1.getMaxPosition())
 		{
-			finger1.setPosition(fingerConfig.getMinPosition());
-			state1 = FingerState.IDLE;
+			finger1.setPosition(finger1.getMinPosition());
 		}
 
-		// Finger 2
-		if (state2 == FingerState.FLICKING && timer2.seconds() >= FLICK_TIME_SECONDS)
+		if (finger2.getPosition() == finger2.getMaxPosition())
 		{
-			finger2.setPosition(fingerConfig.getMinPosition());
-			state2 = FingerState.IDLE;
+			finger2.setPosition(finger2.getMinPosition());
 		}
 
-		// Finger 3
-		if (state3 == FingerState.FLICKING && timer3.seconds() >= FLICK_TIME_SECONDS)
+		if (finger3.getPosition() == finger3.getMaxPosition())
 		{
-			finger3.setPosition(fingerConfig.getMinPosition());
-			state3 = FingerState.IDLE;
+			finger3.setPosition(finger3.getMinPosition());
 		}
 
-		// Optional debug
-		 DebugUtil.logAdd("Finger positions: " + finger1.getPosition() + ", " + finger2.getPosition() + ", " + finger3.getPosition());
+		DebugUtil.logAdd("Finger positions: " + finger1.getPosition() + ", " + finger2.getPosition() + ", " + finger3.getPosition());
 	}
 }

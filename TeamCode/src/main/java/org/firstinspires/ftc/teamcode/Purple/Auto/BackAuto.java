@@ -196,9 +196,9 @@ public class BackAuto extends OpMode
 	private void initializeExplosher ()
 	{
 
-		LimeUtil.start(hardwareMap, "SwagLime", 60);
+		LimeUtil.start(hardwareMap, 60);
 		LimeUtil.setPipeline(0);
-		explosher = new Explosher(hardwareMap, org.firstinspires.ftc.teamcode.Purple.Constants.FINGER_SERVO_CONFIG);
+		explosher = new Explosher(hardwareMap);
 	}
 
 	private void initializeVaccum ()

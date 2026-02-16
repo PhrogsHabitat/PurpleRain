@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
@@ -19,7 +18,6 @@ public class Explosher
 	private final MotorConfig motor;
 	private final MotorConfig motor2;
 	private final MotorConfig exploRingMotor;
-	private final Servo finger;
 	private final ServoConfig fingerConfig;
 	public boolean shouldRegress = false;
 	public double dist;
@@ -30,6 +28,16 @@ public class Explosher
 	private double debugFingerPosition = Constants.FINGER_STOP_POSITION;
 	private double targetRPM = 0;
 
+	public Explosher (HardwareMap hardwareMap)
+	{
+		this(
+				hardwareMap,
+				new ServoConfig.Builder(hardwareMap, Names.HOOD)
+						.setRange(Constants.HOOD_MIN, Constants.HOOD_MAX)
+						.build()
+		);
+	}
+
 	public Explosher (HardwareMap hardwareMap, ServoConfig fingerConfig)
 	{
 		// Main shooter motors with velocity control
@@ -38,7 +46,6 @@ public class Explosher
 
 		this.exploRingMotor = new MotorConfig.Builder(hardwareMap, Names.EXPLORING, MotorConfig.Position.EXPLOSHER, 1538, 435).setPositionCoefficient(0.05).setPositionTolerance(10).disableVelocityControl().build();
 
-		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
 
 		// Stop everything and zero
@@ -206,9 +213,9 @@ public class Explosher
 
 		fingerConfig.setState(state);
 		if (state == ServoConfig.ServoState.ON)
-			finger.setPosition(fingerConfig.getMaxPosition());
+			fingerConfig.setPosition(fingerConfig.getMaxPosition());
 		else
-			finger.setPosition(fingerConfig.getMinPosition());
+			fingerConfig.setPosition(fingerConfig.getMinPosition());
 	}
 
 	/**
@@ -245,7 +252,7 @@ public class Explosher
 	public double getFingerPosition ()
 	{
 
-		return finger.getPosition();
+		return fingerConfig.getPosition();
 	}
 
 	/**
@@ -256,7 +263,7 @@ public class Explosher
 	public void setFingerPosition (double position)
 	{
 
-		finger.setPosition(fingerConfig.clamp(position));
+		fingerConfig.setPosition(position);
 	}
 
 	/**

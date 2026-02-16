@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.teamcode.Purple.Names;
 
 import java.util.List;
 
@@ -22,16 +23,15 @@ public final class LimeUtil
 	 * Initialize Limelight3A from hardwareMap
 	 *
 	 * @param hardwareMap FTC hardwareMap
-	 * @param name        device name (e.g. "Limelight")
 	 * @param pollHz      polling rate
 	 * @return true if initialization successful
 	 */
-	public static boolean start (HardwareMap hardwareMap, String name, int pollHz)
+	public static boolean start (HardwareMap hardwareMap, int pollHz)
 	{
 
 		try
 		{
-			limelight = hardwareMap.get(Limelight3A.class, name);
+			limelight = hardwareMap.get(Limelight3A.class, Names.LIME);
 			limelight.setPollRateHz(pollHz);
 			limelight.start();
 			imu = hardwareMap.get(IMU.class, "imu");
