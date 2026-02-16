@@ -52,10 +52,10 @@ public class TeleOp extends PurpleOpMode
 	public void create ()
 	{
 
-		memory = new PurpleMemory(hardwareMap);
-
 		driver1 = new Controls(gamepad1);
 		driver2 = new Controls(gamepad2);
+
+		memory = new PurpleMemory(hardwareMap);
 
 		// Initialize motors (IF MANUAL TELEOP ONLY)
 		fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.76, 312)
@@ -149,7 +149,7 @@ public class TeleOp extends PurpleOpMode
 
 				if (!manual)
 				{
-					explosher.setRPM(explosher.smoothedTargetRPM);
+					explosher.setRPM(-explosher.smoothedTargetRPM);
 				}
 			} else if (!manual)
 			{
@@ -158,7 +158,7 @@ public class TeleOp extends PurpleOpMode
 			}
 		} else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
 		{
-			explosher.setRPM(-4000);
+			explosher.setRPM(4000);
 		} else
 		{
 			explosher.stop();
@@ -258,8 +258,6 @@ public class TeleOp extends PurpleOpMode
 		if (driver2.justPressed("left_stick_button"))
 		{
 			vaccum.flickFinger(0);
-			vaccum.flickFinger(1);
-			vaccum.flickFinger(2);
 		}
 
 		if (driver2.isPressed("y"))
@@ -286,12 +284,16 @@ public class TeleOp extends PurpleOpMode
 	{
 		if (driver2.isPressed("dpad_up"))
 		{
-			vaccum.adjustFingerPosition(selectedDebugServo, SERVO_DEBUG_STEP);
+			vaccum.adjustFingerPosition(0, SERVO_DEBUG_STEP);
+			vaccum.adjustFingerPosition(1, SERVO_DEBUG_STEP);
+			vaccum.adjustFingerPosition(2, SERVO_DEBUG_STEP);
 		}
 
 		if (driver2.isPressed("dpad_down"))
 		{
-			vaccum.adjustFingerPosition(selectedDebugServo, -SERVO_DEBUG_STEP);
+			vaccum.adjustFingerPosition(0, -SERVO_DEBUG_STEP);
+			vaccum.adjustFingerPosition(1, -SERVO_DEBUG_STEP);
+			vaccum.adjustFingerPosition(2, -SERVO_DEBUG_STEP);
 		}
 
 		if (driver2.justPressed("dpad_left"))

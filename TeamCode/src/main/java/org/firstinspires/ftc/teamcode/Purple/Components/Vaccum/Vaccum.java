@@ -10,18 +10,22 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 public class Vaccum
 {
+	private static final long FINGER_HOLD_MS = 500;
+
 	public static final double DEFAULT_POW = 1.0;
-	private static final double SERVO_POSITION_EPSILON = 0.001;
 	public final MotorConfig intakeMotor;
 
 	private final ServoConfig finger1;
 	private final ServoConfig finger2;
 	private final ServoConfig finger3;
 
-	private enum FingerState { IDLE, FLICKING }
-	private FingerState finger1State = FingerState.IDLE;
-	private FingerState finger2State = FingerState.IDLE;
-	private FingerState finger3State = FingerState.IDLE;
+	private enum FingerState { READY, HOLDING_MAX, HOLDING_MIN }
+	private final FingerState[] fingerStates = new FingerState[]{
+			FingerState.READY,
+			FingerState.READY,
+			FingerState.READY
+	};
+	private final long[] fingerStateStartTimesMs = new long[3];
 
 	private double currentPower = 0;
 
@@ -43,6 +47,10 @@ public class Vaccum
 				.setRange(Constants.FINGER_MIN, Constants.FINGER_MAX)
 				.reversed()
 				.build();
+
+		finger1.setPosition(finger1.getMinPosition());
+		finger2.setPosition(finger2.getMinPosition());
+		finger3.setPosition(finger3.getMinPosition());
 
 		stop();
 	}
@@ -88,17 +96,17 @@ public class Vaccum
 
 	public void flickFinger1()
 	{
-		finger1.setPosition(finger1.getMaxPosition());
+		startFlick(0);
 	}
 
 	public void flickFinger2()
 	{
-		finger2.setPosition(finger2.getMaxPosition());
+		startFlick(1);
 	}
 
 	public void flickFinger3()
 	{
-		finger3.setPosition(finger3.getMaxPosition());
+		startFlick(2);
 	}
 
 	public void flickFinger(int index)
@@ -121,22 +129,78 @@ public class Vaccum
 	public void update()
 	{
 		intakeMotor.update();
+		long nowMs = System.currentTimeMillis();
 
-		if (finger1.getPosition() == finger1.getMaxPosition())
-		{
-			finger1.setPosition(finger1.getMinPosition());
-		}
-
-		if (finger2.getPosition() == finger2.getMaxPosition())
-		{
-			finger2.setPosition(finger2.getMinPosition());
-		}
-
-		if (finger3.getPosition() == finger3.getMaxPosition())
-		{
-			finger3.setPosition(finger3.getMinPosition());
-		}
+		updateFingerState(0, nowMs);
+		updateFingerState(1, nowMs);
+		updateFingerState(2, nowMs);
 
 		DebugUtil.logAdd("Finger positions: " + finger1.getPosition() + ", " + finger2.getPosition() + ", " + finger3.getPosition());
+	}
+
+	private boolean startFlick(int index)
+	{
+		if (!isValidFingerIndex(index) || fingerStates[index] != FingerState.READY)
+		{
+			return false;
+		}
+
+		ServoConfig finger = getFinger(index);
+		if (finger == null)
+		{
+			return false;
+		}
+
+		finger.setPosition(finger.getMaxPosition());
+		fingerStates[index] = FingerState.HOLDING_MAX;
+		fingerStateStartTimesMs[index] = System.currentTimeMillis();
+		return true;
+	}
+
+	private void updateFingerState(int index, long nowMs)
+	{
+		if (!isValidFingerIndex(index))
+		{
+			return;
+		}
+
+		ServoConfig finger = getFinger(index);
+		if (finger == null)
+		{
+			return;
+		}
+
+		if (fingerStates[index] == FingerState.HOLDING_MAX)
+		{
+			if (nowMs - fingerStateStartTimesMs[index] >= FINGER_HOLD_MS)
+			{
+				finger.setPosition(finger.getMinPosition());
+				fingerStates[index] = FingerState.HOLDING_MIN;
+				fingerStateStartTimesMs[index] = nowMs;
+			}
+			return;
+		}
+
+		if (fingerStates[index] == FingerState.HOLDING_MIN &&
+				nowMs - fingerStateStartTimesMs[index] >= FINGER_HOLD_MS)
+		{
+			fingerStates[index] = FingerState.READY;
+		}
+	}
+
+	private boolean isValidFingerIndex(int index)
+	{
+		return index >= 0 && index < 3;
+	}
+
+	private ServoConfig getFinger(int index)
+	{
+		switch (index)
+		{
+			case 0: return finger1;
+			case 1: return finger2;
+			case 2: return finger3;
+			default: return null;
+		}
 	}
 }

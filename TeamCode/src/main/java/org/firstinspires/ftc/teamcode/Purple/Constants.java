@@ -5,11 +5,10 @@ import com.qualcomm.robotcore.hardware.I2cAddr;
 public final class Constants
 {
 	// Finger servo configuration values
-	public static final double HOOD_MIN = -1.0;
+	public static final double HOOD_MIN = 0.0;
 	public static final double HOOD_MAX = 1.0;
-	public static final double HOOD_ZERO = 0.0;
 
-	public static final double FINGER_MIN = -1.0;
+	public static final double FINGER_MIN = 0.0;
 	public static final double FINGER_MAX = 1.0;
 
 	public static final double FINGER_STOP_POSITION = 0.48;
@@ -35,7 +34,7 @@ public final class Constants
 
 	// Note: MotorConfig instances will be created in the opmodes with HardwareMap
 	// Debug mode toggle
-	public static final boolean DEBUG_MODE = false;
+	public static final boolean DEBUG_MODE = true;
 
 	private Constants ()
 	{
