@@ -36,11 +36,9 @@ public class Constants {
             .rightRearMotorDirection(DcMotorSimple.Direction.FORWARD)
             .useBrakeModeInTeleOp(true);
 
-
-
     public static PinpointConstants localizerConstants = new PinpointConstants()
-            .forwardPodY(0) // Strafe
-            .strafePodX(2) // Forward
+            .forwardPodY(7) // Strafe
+            .strafePodX(7.75) // Forward
             .distanceUnit(DistanceUnit.INCH)
             .hardwareMapName("odo")
             .encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)

@@ -15,6 +15,8 @@ public class Explosher
 	public static final double CLOSE_SWEET = 0.45;
 	public static final double FAR_SWEET = 1.0;
 	public static final double RPM_SMOOTHING_ALPHA = 0.2;
+	private static final double TURRET_TICKS_PER_DEGREE = 1200.0 / 180.0;
+	private static final double DEFAULT_RING_ANGLE_POWER = 1;
 	private final MotorConfig motor;
 	private final MotorConfig motor2;
 	private final MotorConfig exploRingMotor;
@@ -123,8 +125,30 @@ public class Explosher
 	 */
 	public void setRingPosition (int position, double power)
 	{
-
 		exploRingMotor.runToPosition(position, power);
+	}
+
+	/**
+	 * Sets the turret to a specific angle in degrees using position control.
+	 * Conversion ratio: 1200 ticks == 180 degrees.
+	 *
+	 * @param angleDegrees Target angle in degrees
+	 * @param power        Power to apply (0.0 to 1.0)
+	 */
+	public void setAngle (double angleDegrees, double power)
+	{
+		int targetTicks = (int) Math.round(angleDegrees * TURRET_TICKS_PER_DEGREE);
+		setRingPosition(targetTicks, power);
+	}
+
+	/**
+	 * Sets the turret to a specific angle in degrees using default power.
+	 *
+	 * @param angleDegrees Target angle in degrees
+	 */
+	public void setAngle (double angleDegrees)
+	{
+		setAngle(angleDegrees, DEFAULT_RING_ANGLE_POWER);
 	}
 
 	/**
@@ -136,6 +160,17 @@ public class Explosher
 	{
 
 		return exploRingMotor.getCurrentPosition();
+	}
+
+	/**
+	 * Gets the current turret angle in degrees.
+	 * Conversion ratio: 1200 ticks == 180 degrees.
+	 *
+	 * @return Current turret angle in degrees
+	 */
+	public double getAngle ()
+	{
+		return getRingPosition() / TURRET_TICKS_PER_DEGREE;
 	}
 
 	/**
