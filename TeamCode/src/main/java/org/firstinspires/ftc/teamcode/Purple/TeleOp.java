@@ -1,4 +1,6 @@
-package org.firstinspires.ftc.teamcode.Purple;
+﻿package org.firstinspires.ftc.teamcode.Purple;
+
+import android.annotation.SuppressLint;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
@@ -8,7 +10,6 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
-import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
 import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
@@ -21,16 +22,23 @@ public class TeleOp extends PurpleOpMode
 {
 	// Private variables after
 	private static final long TAG_TIMEOUT_MS = 500;
-	private static final double THRESHOLD = 3;
+	private static final double DRIVE_ALIGN_TX_THRESHOLD = 3.0;
+	private static final double TURRET_ALIGN_TX_DEADBAND = 1.0;
 	private static final double SERVO_DEBUG_STEP = 0.01;
-	private static final double TURRET_PID_KP = 0.028;
+	private static final double TURRET_PID_KP = 0.036;
 	private static final double TURRET_PID_KI = 0.0012;
 	private static final double TURRET_PID_KD = 0.0020;
-	private static final double TURRET_PID_DEADBAND = 0.75;
-	private static final double TURRET_PID_MAX_POWER = 0.8;
-	private static final double TURRET_PID_MAX_SLEW_PER_SEC = 2.5;
+	private static final double TURRET_PID_DEADBAND = 0.3;
+	private static final double TURRET_PID_MAX_POWER = 1.0;
+	private static final double TURRET_PID_MAX_SLEW_PER_SEC = 6.0;
 	private static final double TURRET_PID_INTEGRAL_LIMIT = 35.0;
 	private static final double TURRET_PID_DERIVATIVE_ALPHA = 0.2;
+	private static final double TURRET_FLIP_BOOST_ERROR_DEG = 80.0;
+	private static final double TURRET_FLIP_BOOST_POWER = 1.0;
+	private static final double TURRET_FLIP_BOOST_SLEW_PER_SEC = 14.0;
+	private static final double TURRET_ALIGN_MAX_STEP = 0.12;
+	private static final double TURRET_MIN_ANGLE_DEG = -180.0;
+	private static final double TURRET_MAX_ANGLE_DEG = 180.0;
 	// Public variables first
 	public static Pose startingPose;
 	public double turretIncrement = 2500;
@@ -136,9 +144,10 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateDrive ()
 	{
+
 		if (autoAlignActive)
 		{
-			if (Math.abs(LimeUtil.getTx()) > THRESHOLD)
+			if (Math.abs(LimeUtil.getTx()) > DRIVE_ALIGN_TX_THRESHOLD)
 			{
 				if (LimeUtil.getTx() < 0)
 				{
@@ -163,6 +172,7 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateDrive (String dir)
 	{
+
 		powerScale = driver1.isPressed("left_stick_button") ? Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
 
 		switch (dir)
@@ -212,25 +222,24 @@ public class TeleOp extends PurpleOpMode
 			explosher.stop();
 		}
 
-		boolean turretCommandedByVisionOrDriver = false;
+		boolean busy = false;
 		if (autoAlignActive)
 		{
-			turretCommandedByVisionOrDriver = true;
+			busy = true;
 			double tx = LimeUtil.getTx();
 
 			if (LimeUtil.hasValidTarget())
 			{
 				prevX = tx;
 
-				if (Math.abs(tx) > THRESHOLD)
+				if (Math.abs(tx) > TURRET_ALIGN_TX_DEADBAND)
 				{
 					double targetPower = MathUtil.clamp(ALIGN_KP * tx, -1, 1);
 
-					double maxChange = 0.07;   // LATER tune between 0.05-0.1
 					double power = MathUtil.clamp(
 							targetPower,
-							lastPower - maxChange,
-							lastPower + maxChange
+							lastPower - TURRET_ALIGN_MAX_STEP,
+							lastPower + TURRET_ALIGN_MAX_STEP
 					);
 
 					lastPower = power;
@@ -254,7 +263,7 @@ public class TeleOp extends PurpleOpMode
 			double rightStickX = driver2.getRightStickX();
 			if (Math.abs(rightStickX) > Constants.JOYSTICK_DEADZONE)
 			{
-				turretCommandedByVisionOrDriver = true;
+				busy = true;
 				explosher.setRingPower(rightStickX);
 			} else
 			{
@@ -284,7 +293,7 @@ public class TeleOp extends PurpleOpMode
 			inc += 5;
 		}
 
-		if (!turretCommandedByVisionOrDriver)
+		if (!busy)
 		{
 			double targetX = 128;
 			double targetY = 130;
@@ -293,12 +302,13 @@ public class TeleOp extends PurpleOpMode
 			double robotHeadingDeg = Math.toDegrees(follower.getPose().getHeading());
 
 			double targetBearingDeg = Math.toDegrees(Math.atan2(targetY - robotY, targetX - robotX));
-			double turretTargetDeg = normalizeAngleDegrees(targetBearingDeg - robotHeadingDeg);
+			double turretTargetDeg = getSafeTurretTargetDeg(targetBearingDeg + robotHeadingDeg);
 			double turretPower = getTurretPidPower(turretTargetDeg);
 
 			explosher.setRingPower(turretPower);
+
 		}
-		
+
 	}
 
 	private void updateAprilTagFeedback ()
@@ -331,12 +341,10 @@ public class TeleOp extends PurpleOpMode
 		if (driver2.isPressed("y"))
 		{
 			vaccum.setPower(Vaccum.DEFAULT_POW);
-		}
-		else if (driver2.isPressed("x"))
+		} else if (driver2.isPressed("x"))
 		{
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
-		}
-		else
+		} else
 		{
 			vaccum.stop();
 		}
@@ -350,6 +358,7 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateDebug ()
 	{
+
 		if (driver2.isPressed("dpad_up"))
 		{
 			vaccum.adjustFingerPosition(0, SERVO_DEBUG_STEP);
@@ -375,7 +384,7 @@ public class TeleOp extends PurpleOpMode
 		}
 	}
 
-	private void teleInfo ()
+	@SuppressLint("DefaultLocale") private void teleInfo ()
 	{
 
 		DebugUtil.logAdd("======== [LIME]");
@@ -400,24 +409,33 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd("Finger Position: '" + String.format("%.3f", explosher.getFingerPosition()));
 		DebugUtil.logAdd(" ");
 
-		DebugUtil.logAdd("======= [MEMORY]");
-		DebugUtil.logAdd("Motif: " + memory.curMotif());
-		DebugUtil.logAdd("Balls: " + Arrays.toString(memory.curBalls()));
-		DebugUtil.logAdd("Heading: " + memory.curPos().getHeading());
-		DebugUtil.logAdd("Pedro Heading: " + follower.getHeading());
+		DebugUtil.logAdd("======= [COLOR]");
 		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("Debug Servo: " + (selectedDebugServo + 1) +
-				" | Pos: " + String.format("%.3f", vaccum.getFingerPosition(selectedDebugServo)));
-		DebugUtil.logAdd(" ");
-
-		DebugUtil.logAdd("ZeroOffset: " + ServoConfig.zeroOffset);
-
 		DebugUtil.logAdd(String.format(
 				"Sensor2 RGB: R=%d G=%d B=%d",
 				colorSensor2.red(),
 				colorSensor2.green(),
 				colorSensor2.blue()
 		));
+		DebugUtil.logAdd(" ");
+
+		DebugUtil.logAdd("======= [MEMORY]");
+		DebugUtil.logAdd("[MOTIF]: " + memory.curMotif());
+		DebugUtil.logAdd("[BALLS]: " + Arrays.toString(memory.curBalls()));
+		DebugUtil.logAdd(" ");
+
+		DebugUtil.logAdd("[POSITION] HEADING: " + memory.curPos().getHeading());
+		DebugUtil.logAdd("[POSITION] X: " + memory.curPos().getX());
+		DebugUtil.logAdd("[POSITION] Y: " + memory.curPos().getY());
+		DebugUtil.logAdd(" ");
+
+		DebugUtil.logAdd("[FOLLOWER] X: " + follower.getPose().getX());
+		DebugUtil.logAdd("[FOLLOWER] Y: " + follower.getPose().getY());
+		DebugUtil.logAdd(" ");
+
+		DebugUtil.logAdd("Debug Servo: " + (selectedDebugServo + 1) +
+				" | Pos: " + String.format("%.3f", vaccum.getFingerPosition(selectedDebugServo)));
+		DebugUtil.logAdd(" ");
 
 		DebugUtil.update();
 	}
@@ -444,8 +462,10 @@ public class TeleOp extends PurpleOpMode
 
 	private double getTurretPidPower (double targetAngleDeg)
 	{
+
 		double currentAngleDeg = explosher.getAngle();
-		double error = normalizeAngleDegrees(targetAngleDeg - currentAngleDeg);
+		double clampedTargetAngleDeg = MathUtil.clamp(targetAngleDeg, TURRET_MIN_ANGLE_DEG, TURRET_MAX_ANGLE_DEG);
+		double error = clampedTargetAngleDeg - currentAngleDeg;
 
 		long nowNs = System.nanoTime();
 		double dt = turretPidPrevTimeNs == 0 ? 0.02 : (nowNs - turretPidPrevTimeNs) / 1_000_000_000.0;
@@ -461,6 +481,16 @@ public class TeleOp extends PurpleOpMode
 			return turretPidOutput;
 		}
 
+		if (Math.abs(error) >= TURRET_FLIP_BOOST_ERROR_DEG)
+		{
+			turretPidIntegral = 0;
+			double boostPower = Math.copySign(TURRET_FLIP_BOOST_POWER, error);
+			boostPower = applyTurretHardStop(currentAngleDeg, boostPower);
+			turretPidOutput = slewPower(turretPidOutput, boostPower, dt, TURRET_FLIP_BOOST_SLEW_PER_SEC);
+			turretPidPrevError = error;
+			return turretPidOutput;
+		}
+
 		turretPidIntegral += error * dt;
 		turretPidIntegral = MathUtil.clamp(turretPidIntegral, -TURRET_PID_INTEGRAL_LIMIT, TURRET_PID_INTEGRAL_LIMIT);
 
@@ -471,6 +501,7 @@ public class TeleOp extends PurpleOpMode
 				(TURRET_PID_KI * turretPidIntegral) +
 				(TURRET_PID_KD * turretPidFilteredDerivative);
 		targetPower = MathUtil.clamp(targetPower, -TURRET_PID_MAX_POWER, TURRET_PID_MAX_POWER);
+		targetPower = applyTurretHardStop(currentAngleDeg, targetPower);
 
 		turretPidOutput = slewPower(turretPidOutput, targetPower, dt);
 		turretPidPrevError = error;
@@ -479,12 +510,19 @@ public class TeleOp extends PurpleOpMode
 
 	private double slewPower (double current, double target, double dt)
 	{
-		double maxStep = TURRET_PID_MAX_SLEW_PER_SEC * dt;
+		return slewPower(current, target, dt, TURRET_PID_MAX_SLEW_PER_SEC);
+	}
+
+	private double slewPower (double current, double target, double dt, double maxSlewPerSec)
+	{
+
+		double maxStep = maxSlewPerSec * dt;
 		return MathUtil.clamp(target, current - maxStep, current + maxStep);
 	}
 
 	private double normalizeAngleDegrees (double angleDeg)
 	{
+
 		while (angleDeg > 180)
 		{
 			angleDeg -= 360;
@@ -496,6 +534,32 @@ public class TeleOp extends PurpleOpMode
 		}
 
 		return angleDeg;
+	}
+
+	private double getSafeTurretTargetDeg (double desiredAngleDeg)
+	{
+
+		return MathUtil.clamp(
+				normalizeAngleDegrees(desiredAngleDeg),
+				TURRET_MIN_ANGLE_DEG,
+				TURRET_MAX_ANGLE_DEG
+		);
+	}
+
+	private double applyTurretHardStop (double currentAngleDeg, double requestedPower)
+	{
+
+		if (currentAngleDeg >= TURRET_MAX_ANGLE_DEG && requestedPower > 0)
+		{
+			return 0;
+		}
+
+		if (currentAngleDeg <= TURRET_MIN_ANGLE_DEG && requestedPower < 0)
+		{
+			return 0;
+		}
+
+		return requestedPower;
 	}
 
 	private void checkForImpact ()
