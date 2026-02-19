@@ -38,7 +38,7 @@ public final class MotorConfig
 		}
 
 		motor.setInverted(b.inverted);
-		motor.setZeroPowerBehavior(b.zeroPowerBehavior);
+		motor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
 
 		// Set position control parameters if provided
 		if (b.positionCoefficient > 0)

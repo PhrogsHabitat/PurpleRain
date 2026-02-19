@@ -19,11 +19,6 @@ public class Explosher
 	public static final double RPM_SMOOTHING_ALPHA = 0.2;
 	private static final double EXPLORE_TICKS_PER_DEG = 1200.0 / 180.0;
 	private static final double DEFAULT_EXPLORE_DEG_POW = 1;
-	private static final long TAG_LOCK_MS = 500;
-	private static final double TX_KP = 0.04;
-	private static final double TX_DEAD = 1.0;
-	private static final double TX_STEP_MAX = 0.12;
-	private static final double TX_LOST_SCALE = 0.5;
 	private static final double PID_KP = 0.036;
 	private static final double PID_KI = 0.0012;
 	private static final double PID_KD = 0.0020;
@@ -44,7 +39,6 @@ public class Explosher
 	private final MotorConfig exploringMotor;
 	private final ServoConfig fingerConfig;
 	public boolean shouldRegress = false;
-	public boolean shouldAim = true;
 	public double dist;
 	public double regressionSlope;
 	public double regressionIntercept;
@@ -54,8 +48,6 @@ public class Explosher
 	private double targetRPM = 0;
 	private double aimX = AIM_X;
 	private double aimY = AIM_Y;
-	private long tagMs = 0;
-	private double lastTx = 0;
 	private double aimPow = 0;
 	private double aimErr = 0;
 	private double pidInt = 0;
@@ -140,43 +132,15 @@ public class Explosher
 	}
 
 	/**
-	 * Runs the full exploring aim pipeline.
-	 * When shouldAim is false, manual stick power is used directly.
+	 * Runs the exploring auto-aim pipeline using robot pose only.
 	 *
 	 * @param pose      Current robot pose
-	 * @param stickPow  Manual stick power (-1 to 1)
 	 */
-	public void updateAim (Pose pose, double stickPow)
+	public void updateAim (Pose pose)
 	{
-		boolean hasTag = LimeUtil.hasValidTarget();
-		if (hasTag)
-		{
-			lastTx = LimeUtil.getTx();
-			tagMs = System.currentTimeMillis();
-		}
-
-		if (!shouldAim)
-		{
-			resetAimState();
-			double manualPow = Math.abs(stickPow) > Constants.JOYSTICK_DEADZONE ? stickPow : 0;
-			setExploringPow(manualPow);
-			return;
-		}
-
-		if (hasTag)
-		{
-			setExploringPow(getTxPow(lastTx));
-			return;
-		}
-
-		if (hasTagLock())
-		{
-			setExploringPow(getTxPow(lastTx * TX_LOST_SCALE));
-			return;
-		}
-
 		if (pose == null)
 		{
+			resetAimState();
 			setExploringPow(0);
 			return;
 		}
@@ -279,11 +243,6 @@ public class Explosher
 
 		aimX = x;
 		aimY = y;
-	}
-
-	public void setShouldAim (boolean shouldAim)
-	{
-		this.shouldAim = shouldAim;
 	}
 
 	public double getAimPow ()
@@ -526,28 +485,21 @@ public class Explosher
 		regressionIntercept = (sumY - regressionSlope * sumX) / n;
 	}
 
-	private boolean hasTagLock ()
-	{
-		return (System.currentTimeMillis() - tagMs) < TAG_LOCK_MS;
-	}
-
-	private double getTxPow (double tx)
-	{
-		if (Math.abs(tx) <= TX_DEAD)
-		{
-			return 0;
-		}
-
-		double targetPow = MathUtil.clamp(TX_KP * tx, -1, 1);
-		return MathUtil.clamp(targetPow, aimPow - TX_STEP_MAX, aimPow + TX_STEP_MAX);
-	}
-
 	private double getAimDeg (Pose pose)
 	{
 		double botX = pose.getX();
 		double botY = pose.getY();
+
+		double dY = aimY - botY;
+		double dX = aimX - botX;
+
 		double botHeadDeg = Math.toDegrees(pose.getHeading());
-		double bearingDeg = Math.toDegrees(Math.atan2(aimY - botY, aimX - botX));
+		double bearingDeg = Math.toDegrees(Math.atan2(dY, dX));
+
+		DebugUtil.logAdd("DX: " + dX);
+		DebugUtil.logAdd("DY: " + dY);
+		DebugUtil.logAdd("Angle: " + bearingDeg);
+
 
 		return MathUtil.clamp(normDeg(bearingDeg + botHeadDeg), MIN_DEG, MAX_DEG);
 	}

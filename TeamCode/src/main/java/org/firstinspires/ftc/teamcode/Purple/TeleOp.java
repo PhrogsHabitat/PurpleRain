@@ -22,7 +22,6 @@ public class TeleOp extends PurpleOpMode
 	// Private variables after
 	private static final long TAG_TIMEOUT_MS = 500;
 	private static final double DRIVE_ALIGN_TX_THRESHOLD = 3.0;
-	private static final double AIM_TOGGLE_Y = 0.9;
 	// Public variables first
 	public static Pose startingPose;
 	public double exploringIncrement = 2500;
@@ -165,12 +164,6 @@ public class TeleOp extends PurpleOpMode
 	{
 
 		double leftStickY = driver2.getLeftStickY();
-		if (leftStickY >= AIM_TOGGLE_Y && driver2.justPressed("left_stick_button"))
-		{
-			explosher.shouldAim = !explosher.shouldAim;
-			driver2.vibrate(120);
-		}
-
 		if (leftStickY > Constants.JOYSTICK_DEADZONE)
 		{
 			if (LimeUtil.getTargetDistance() != 0)
@@ -194,13 +187,7 @@ public class TeleOp extends PurpleOpMode
 			explosher.stop();
 		}
 
-		if (explosher.shouldAim)
-		{
-			explosher.updateAim(follower.getPose(), 0);
-		} else
-		{
-			updateExploringStickAim();
-		}
+		explosher.updateAim(follower.getPose());
 
 		if (driver2.justPressed("left_trigger"))
 		{
@@ -236,9 +223,19 @@ public class TeleOp extends PurpleOpMode
 	private void updateVaccum ()
 	{
 
-		if (driver2.justPressed("right_stick_button"))
+		if (driver2.justPressed("dpad_left"))
 		{
 			vaccum.flickFinger(0);
+		}
+
+		if (driver2.justPressed("dpad_up"))
+		{
+			vaccum.flickFinger(1);
+		}
+
+		if (driver2.justPressed("dpad_right"))
+		{
+			vaccum.flickFinger(2);
 		}
 
 		if (driver2.isPressed("y"))
@@ -273,7 +270,7 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd("Target RPM: " + explosher.getTargetRPM());
 		DebugUtil.logAdd("Current RPM: " + explosher.getCurrentRPM());
 		DebugUtil.logAdd("Smoothed Regress: " + explosher.smoothedTargetRPM);
-		DebugUtil.logAdd("Auto Aim: " + (explosher.shouldAim ? "ON" : "OFF"));
+		DebugUtil.logAdd("Auto Aim: ON");
 		DebugUtil.logAdd("Drive Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
 		DebugUtil.logAdd("Exploring Pos: " + explosher.getExploringPos());
 		DebugUtil.logAdd(String.format("Exploring PID: out=%.3f err=%.2f", explosher.getAimPow(), explosher.getAimErr()));
@@ -330,37 +327,6 @@ public class TeleOp extends PurpleOpMode
 
 		return Math.abs(tx) < Constants.ALIGN_ANGLE_TOLERANCE &&
 				distanceError < Constants.ALIGN_DISTANCE_TOLERANCE;
-	}
-
-	private void updateExploringStickAim ()
-	{
-		double stickX = driver2.getRightStickX();
-		double stickY = driver2.getRightStickY();
-		double mag = Math.hypot(stickX, stickY);
-		if (mag <= Constants.JOYSTICK_DEADZONE)
-		{
-			return;
-		}
-
-		double fieldDeg = Math.toDegrees(Math.atan2(stickY, stickX));
-		double botDeg = Math.toDegrees(follower.getPose().getHeading());
-		double exploringDeg = normDeg(fieldDeg + botDeg);
-		explosher.setExploringDeg(exploringDeg);
-	}
-
-	private double normDeg (double deg)
-	{
-		while (deg > 180)
-		{
-			deg -= 360;
-		}
-
-		while (deg < -180)
-		{
-			deg += 360;
-		}
-
-		return deg;
 	}
 
 	private void checkForImpact ()
