@@ -31,7 +31,7 @@ public class Controls
 		updateButton("left_stick_button", gamepad.left_stick_button);
 		updateButton("right_stick_button", gamepad.right_stick_button);
 
-		// Triggers as buttons (with threshold)
+		// Triggers as buttons
 		updateButton("left_trigger", gamepad.left_trigger > 0.5);
 		updateButton("right_trigger", gamepad.right_trigger > 0.5);
 

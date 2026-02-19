@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
@@ -8,6 +9,7 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
+import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
 
 public class Explosher
 {
@@ -15,13 +17,34 @@ public class Explosher
 	public static final double CLOSE_SWEET = 0.45;
 	public static final double FAR_SWEET = 1.0;
 	public static final double RPM_SMOOTHING_ALPHA = 0.2;
-	private static final double TURRET_TICKS_PER_DEGREE = 1200.0 / 180.0;
-	private static final double DEFAULT_RING_ANGLE_POWER = 1;
+	private static final double EXPLORE_TICKS_PER_DEG = 1200.0 / 180.0;
+	private static final double DEFAULT_EXPLORE_DEG_POW = 1;
+	private static final long TAG_LOCK_MS = 500;
+	private static final double TX_KP = 0.04;
+	private static final double TX_DEAD = 1.0;
+	private static final double TX_STEP_MAX = 0.12;
+	private static final double TX_LOST_SCALE = 0.5;
+	private static final double PID_KP = 0.036;
+	private static final double PID_KI = 0.0012;
+	private static final double PID_KD = 0.0020;
+	private static final double PID_DEAD = 0.3;
+	private static final double PID_MAX_POW = 1.0;
+	private static final double PID_MAX_SLEW = 6.0;
+	private static final double PID_INT_LIM = 35.0;
+	private static final double PID_DER_A = 0.2;
+	private static final double PID_FLIP_ERR = 80.0;
+	private static final double PID_FLIP_POW = 1.0;
+	private static final double PID_FLIP_SLEW = 14.0;
+	private static final double MIN_DEG = -180.0;
+	private static final double MAX_DEG = 180.0;
+	private static final double AIM_X = 128.0;
+	private static final double AIM_Y = 130.0;
 	private final MotorConfig motor;
 	private final MotorConfig motor2;
-	private final MotorConfig exploRingMotor;
+	private final MotorConfig exploringMotor;
 	private final ServoConfig fingerConfig;
 	public boolean shouldRegress = false;
+	public boolean shouldAim = true;
 	public double dist;
 	public double regressionSlope;
 	public double regressionIntercept;
@@ -29,6 +52,17 @@ public class Explosher
 	private FingerState fingerState = FingerState.STOP;
 	private double debugFingerPosition = Constants.FINGER_STOP_POSITION;
 	private double targetRPM = 0;
+	private double aimX = AIM_X;
+	private double aimY = AIM_Y;
+	private long tagMs = 0;
+	private double lastTx = 0;
+	private double aimPow = 0;
+	private double aimErr = 0;
+	private double pidInt = 0;
+	private double pidErr = 0;
+	private double pidDer = 0;
+	private double pidPow = 0;
+	private long pidNs = 0;
 
 	public Explosher (HardwareMap hardwareMap)
 	{
@@ -46,7 +80,7 @@ public class Explosher
 		this.motor = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
 		this.motor2 = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER_2, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
 
-		this.exploRingMotor = new MotorConfig.Builder(hardwareMap, Names.EXPLORING, MotorConfig.Position.EXPLOSHER, 1538, 435).setPositionCoefficient(0.05).setPositionTolerance(10).disableVelocityControl().build();
+		this.exploringMotor = new MotorConfig.Builder(hardwareMap, Names.EXPLORING, MotorConfig.Position.EXPLOSHER, 1538, 435).setPositionCoefficient(0.05).setPositionTolerance(10).disableVelocityControl().build();
 
 		this.fingerConfig = fingerConfig;
 
@@ -54,8 +88,8 @@ public class Explosher
 		stop();
 		setFingerState(FingerState.STOP);
 
-		// Reset turret encoder to zero at startup
-		resetRingPosition();
+		// Reset exploring encoder to zero at startup
+		resetExploringPos();
 
 		calculateRegression();
 	}
@@ -68,7 +102,7 @@ public class Explosher
 
 		motor.update();
 		motor2.update();
-		exploRingMotor.update();  // Handles position control updates
+		exploringMotor.update(); // Handles position control updates
 
 		if (shouldRegress)
 		{
@@ -88,8 +122,8 @@ public class Explosher
 		DebugUtil.logAdd("Finger State: " + fingerState +
 				" | Pos: " + String.format("%.3f", getFingerPosition()));
 
-		DebugUtil.logAdd("RING Pos: " + getRingPosition() +
-				" | At Target: " + isRingAtTarget());
+		DebugUtil.logAdd("Exploring Pos: " + getExploringPos() +
+				" | At Target: " + isExploringAtPos());
 	}
 
 	/**
@@ -106,91 +140,162 @@ public class Explosher
 	}
 
 	/**
-	 * Sets raw power to the turret ring motor (for manual control)
+	 * Runs the full exploring aim pipeline.
+	 * When shouldAim is false, manual stick power is used directly.
 	 *
-	 * @param power Power value between -1.0 and 1.0
+	 * @param pose      Current robot pose
+	 * @param stickPow  Manual stick power (-1 to 1)
 	 */
-	public void setRingPower (double power)
+	public void updateAim (Pose pose, double stickPow)
 	{
+		boolean hasTag = LimeUtil.hasValidTarget();
+		if (hasTag)
+		{
+			lastTx = LimeUtil.getTx();
+			tagMs = System.currentTimeMillis();
+		}
 
-		exploRingMotor.setPower(power);
+		if (!shouldAim)
+		{
+			resetAimState();
+			double manualPow = Math.abs(stickPow) > Constants.JOYSTICK_DEADZONE ? stickPow : 0;
+			setExploringPow(manualPow);
+			return;
+		}
+
+		if (hasTag)
+		{
+			setExploringPow(getTxPow(lastTx));
+			return;
+		}
+
+		if (hasTagLock())
+		{
+			setExploringPow(getTxPow(lastTx * TX_LOST_SCALE));
+			return;
+		}
+
+		if (pose == null)
+		{
+			setExploringPow(0);
+			return;
+		}
+
+		double targetDeg = getAimDeg(pose);
+		setExploringPow(getPidPow(targetDeg));
 	}
 
 	/**
-	 * Sets the turret to a specific position (in encoder ticks)
+	 * Sets raw power to the exploring motor.
+	 *
+	 * @param power Power value between -1.0 and 1.0
+	 */
+	public void setExploringPow (double power)
+	{
+		aimPow = power;
+		exploringMotor.setPower(power);
+	}
+
+	/**
+	 * Sets the exploring motor to a specific position (in encoder ticks)
 	 * Uses position control with the specified power
 	 *
 	 * @param position Target position in encoder ticks
 	 * @param power    Power to apply (0.0 to 1.0)
 	 */
-	public void setRingPosition (int position, double power)
+	public void setExploringPos (int position, double power)
 	{
-		exploRingMotor.runToPosition(position, power);
+		exploringMotor.runToPosition(position, power);
 	}
 
 	/**
-	 * Sets the turret to a specific angle in degrees using position control.
+	 * Sets exploring to a specific angle in degrees using position control.
 	 * Conversion ratio: 1200 ticks == 180 degrees.
 	 *
 	 * @param angleDegrees Target angle in degrees
 	 * @param power        Power to apply (0.0 to 1.0)
 	 */
-	public void setAngle (double angleDegrees, double power)
+	public void setExploringDeg (double angleDegrees, double power)
 	{
-		int targetTicks = (int) Math.round(angleDegrees * TURRET_TICKS_PER_DEGREE);
-		setRingPosition(targetTicks, power);
+		int targetTicks = (int) Math.round(angleDegrees * EXPLORE_TICKS_PER_DEG);
+		setExploringPos(targetTicks, power);
 	}
 
 	/**
-	 * Sets the turret to a specific angle in degrees using default power.
+	 * Sets exploring to a specific angle in degrees using default power.
 	 *
 	 * @param angleDegrees Target angle in degrees
 	 */
-	public void setAngle (double angleDegrees)
+	public void setExploringDeg (double angleDegrees)
 	{
-		setAngle(angleDegrees, DEFAULT_RING_ANGLE_POWER);
+		setExploringDeg(angleDegrees, DEFAULT_EXPLORE_DEG_POW);
 	}
 
 	/**
-	 * Gets the current turret position in encoder ticks
+	 * Gets the current exploring position in encoder ticks
 	 *
-	 * @return Current turret position
+	 * @return Current exploring position
 	 */
-	public int getRingPosition ()
+	public int getExploringPos ()
 	{
 
-		return exploRingMotor.getCurrentPosition();
+		return exploringMotor.getCurrentPosition();
 	}
 
 	/**
-	 * Gets the current turret angle in degrees.
+	 * Gets the current exploring angle in degrees.
 	 * Conversion ratio: 1200 ticks == 180 degrees.
 	 *
-	 * @return Current turret angle in degrees
+	 * @return Current exploring angle in degrees
 	 */
-	public double getAngle ()
+	public double getExploringDeg ()
 	{
-		return getRingPosition() / TURRET_TICKS_PER_DEGREE;
+		return getExploringPos() / EXPLORE_TICKS_PER_DEG;
 	}
 
 	/**
-	 * Checks if the turret is at its target position
+	 * Checks if exploring is at its target position
 	 *
 	 * @return true if within tolerance of target
 	 */
-	public boolean isRingAtTarget ()
+	public boolean isExploringAtPos ()
 	{
 
-		return exploRingMotor.atTargetPosition();
+		return exploringMotor.atTargetPosition();
 	}
 
 	/**
-	 * Resets the turret encoder position to zero
+	 * Resets the exploring encoder position to zero
 	 */
-	public void resetRingPosition ()
+	public void resetExploringPos ()
 	{
 
-		exploRingMotor.resetEncoder();
+		exploringMotor.resetEncoder();
+		resetAimState();
+	}
+
+	public void setAimPoint (double x, double y)
+	{
+
+		aimX = x;
+		aimY = y;
+	}
+
+	public void setShouldAim (boolean shouldAim)
+	{
+		this.shouldAim = shouldAim;
+	}
+
+	public double getAimPow ()
+	{
+
+		return aimPow;
+	}
+
+	public double getAimErr ()
+	{
+
+		return aimErr;
 	}
 
 	/**
@@ -216,14 +321,14 @@ public class Explosher
 	}
 
 	/**
-	 * Stops the shooter motor and turret
+	 * Stops the shooter motor and exploring motor
 	 */
 	public void stop ()
 	{
 
 		motor.stop();
 		motor2.stop();
-		exploRingMotor.setPower(0);
+		setExploringPow(0);
 		targetRPM = 0;
 	}
 
@@ -352,6 +457,47 @@ public class Explosher
 		return motor.getMaxRPM();
 	}
 
+	// Backward-compatible aliases
+	public void setRingPower (double power)
+	{
+		setExploringPow(power);
+	}
+
+	public void setRingPosition (int position, double power)
+	{
+		setExploringPos(position, power);
+	}
+
+	public void setAngle (double angleDegrees, double power)
+	{
+		setExploringDeg(angleDegrees, power);
+	}
+
+	public void setAngle (double angleDegrees)
+	{
+		setExploringDeg(angleDegrees);
+	}
+
+	public int getRingPosition ()
+	{
+		return getExploringPos();
+	}
+
+	public double getAngle ()
+	{
+		return getExploringDeg();
+	}
+
+	public boolean isRingAtTarget ()
+	{
+		return isExploringAtPos();
+	}
+
+	public void resetRingPosition ()
+	{
+		resetExploringPos();
+	}
+
 	private void calculateRegression ()
 	{
 
@@ -378,6 +524,133 @@ public class Explosher
 
 		regressionSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
 		regressionIntercept = (sumY - regressionSlope * sumX) / n;
+	}
+
+	private boolean hasTagLock ()
+	{
+		return (System.currentTimeMillis() - tagMs) < TAG_LOCK_MS;
+	}
+
+	private double getTxPow (double tx)
+	{
+		if (Math.abs(tx) <= TX_DEAD)
+		{
+			return 0;
+		}
+
+		double targetPow = MathUtil.clamp(TX_KP * tx, -1, 1);
+		return MathUtil.clamp(targetPow, aimPow - TX_STEP_MAX, aimPow + TX_STEP_MAX);
+	}
+
+	private double getAimDeg (Pose pose)
+	{
+		double botX = pose.getX();
+		double botY = pose.getY();
+		double botHeadDeg = Math.toDegrees(pose.getHeading());
+		double bearingDeg = Math.toDegrees(Math.atan2(aimY - botY, aimX - botX));
+
+		return MathUtil.clamp(normDeg(bearingDeg + botHeadDeg), MIN_DEG, MAX_DEG);
+	}
+
+	private double getPidPow (double targetDeg)
+	{
+		double curDeg = getExploringDeg();
+		double goalDeg = MathUtil.clamp(targetDeg, MIN_DEG, MAX_DEG);
+		double err = goalDeg - curDeg;
+
+		long nowNs = System.nanoTime();
+		double dt = pidNs == 0 ? 0.02 : (nowNs - pidNs) / 1_000_000_000.0;
+		pidNs = nowNs;
+		dt = MathUtil.clamp(dt, 0.001, 0.1);
+
+		if (Math.abs(err) < PID_DEAD)
+		{
+			pidInt = 0;
+			pidDer = 0;
+			pidErr = err;
+			pidPow = slewPow(pidPow, 0, dt);
+			aimErr = err;
+			return pidPow;
+		}
+
+		if (Math.abs(err) >= PID_FLIP_ERR)
+		{
+			pidInt = 0;
+			double boostPow = Math.copySign(PID_FLIP_POW, err);
+			boostPow = hardStop(curDeg, boostPow);
+			pidPow = slewPow(pidPow, boostPow, dt, PID_FLIP_SLEW);
+			pidErr = err;
+			aimErr = err;
+			return pidPow;
+		}
+
+		pidInt += err * dt;
+		pidInt = MathUtil.clamp(pidInt, -PID_INT_LIM, PID_INT_LIM);
+
+		double rawDer = (err - pidErr) / dt;
+		pidDer += PID_DER_A * (rawDer - pidDer);
+
+		double targetPow = (PID_KP * err) +
+				(PID_KI * pidInt) +
+				(PID_KD * pidDer);
+		targetPow = MathUtil.clamp(targetPow, -PID_MAX_POW, PID_MAX_POW);
+		targetPow = hardStop(curDeg, targetPow);
+
+		pidPow = slewPow(pidPow, targetPow, dt);
+		pidErr = err;
+		aimErr = err;
+		return pidPow;
+	}
+
+	private double slewPow (double curPow, double targetPow, double dt)
+	{
+		return slewPow(curPow, targetPow, dt, PID_MAX_SLEW);
+	}
+
+	private double slewPow (double curPow, double targetPow, double dt, double maxSlew)
+	{
+		double maxStep = maxSlew * dt;
+		return MathUtil.clamp(targetPow, curPow - maxStep, curPow + maxStep);
+	}
+
+	private double normDeg (double deg)
+	{
+		while (deg > 180)
+		{
+			deg -= 360;
+		}
+
+		while (deg < -180)
+		{
+			deg += 360;
+		}
+
+		return deg;
+	}
+
+	private double hardStop (double curDeg, double reqPow)
+	{
+		if (curDeg >= MAX_DEG && reqPow > 0)
+		{
+			return 0;
+		}
+
+		if (curDeg <= MIN_DEG && reqPow < 0)
+		{
+			return 0;
+		}
+
+		return reqPow;
+	}
+
+	private void resetAimState ()
+	{
+		aimErr = 0;
+		pidInt = 0;
+		pidErr = 0;
+		pidDer = 0;
+		pidPow = 0;
+		pidNs = 0;
 	}
 
 	public enum FingerState
