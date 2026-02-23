@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.Purple.Memory.Components;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
@@ -128,34 +129,40 @@ public class Balls
 
 		// --- Brightness Threshold Fix ---
 		int brightness = r + g + b;
-
 		DebugUtil.logAdd("RGB: " + brightness);
 
-		DebugUtil.logAdd("R: " + r);
-		DebugUtil.logAdd("G: " + g);
-		DebugUtil.logAdd("B: " + b);
+		// --- Distance Swag ---
+		double dist = sensor.getDistance(DistanceUnit.INCH);
+		DebugUtil.logAdd("DISTANCE: " + dist);
 
-		// Tune this value using telemetry if needed
-		if (brightness < 120) {
+		if (dist < 2.0) {
+
+			if (brightness < 120) {
+				return Ball.NONE;
+			}
+
+			// Continue with normal color comparison
+			RGB current = new RGB(r, g, b);
+
+			double noneDistance = rgbDistanceSquared(current, SAMPLE_NONE);
+			double purpleDistance = rgbDistanceSquared(current, SAMPLE_PURPLE);
+			double greenDistance = rgbDistanceSquared(current, SAMPLE_GREEN);
+
+			if (noneDistance <= purpleDistance && noneDistance <= greenDistance) {
+				return Ball.NONE;
+			}
+
+			if (purpleDistance <= greenDistance) {
+				return Ball.PURPLE;
+			}
+
+			return Ball.GREEN;
+		}
+
+		else
+		{
 			return Ball.NONE;
 		}
-
-		// Continue with normal color comparison
-		RGB current = new RGB(r, g, b);
-
-		double noneDistance = rgbDistanceSquared(current, SAMPLE_NONE);
-		double purpleDistance = rgbDistanceSquared(current, SAMPLE_PURPLE);
-		double greenDistance = rgbDistanceSquared(current, SAMPLE_GREEN);
-
-		if (noneDistance <= purpleDistance && noneDistance <= greenDistance) {
-			return Ball.NONE;
-		}
-
-		if (purpleDistance <= greenDistance) {
-			return Ball.PURPLE;
-		}
-
-		return Ball.GREEN;
 	}
 
 

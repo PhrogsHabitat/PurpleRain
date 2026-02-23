@@ -42,6 +42,7 @@ public class TeleOp extends PurpleOpMode
 	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
 	private boolean autoAlignActive = false;
 	private long lastTagSeenTime = 0;
+	private int selectedVacuumFinger = 0;
 
 	// Core methods ALWAYS come first (excluding destroy)
 	@Override
@@ -222,20 +223,43 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateVaccum ()
 	{
-
-		if (driver2.justPressed("dpad_left"))
+		if (Constants.DEBUG_MODE)
 		{
-			vaccum.flickFinger(0);
-		}
+			if (driver2.justPressed("dpad_left"))
+			{
+				selectedVacuumFinger = (selectedVacuumFinger + 2) % 3;
+			}
 
-		if (driver2.justPressed("dpad_up"))
-		{
-			vaccum.flickFinger(1);
-		}
+			if (driver2.justPressed("dpad_right"))
+			{
+				selectedVacuumFinger = (selectedVacuumFinger + 1) % 3;
+			}
 
-		if (driver2.justPressed("dpad_right"))
+			if (driver2.justPressed("dpad_up"))
+			{
+				vaccum.adjustFingerPosition(selectedVacuumFinger, Constants.FINGER_DEBUG_INCREMENT);
+			}
+
+			if (driver2.justPressed("dpad_down"))
+			{
+				vaccum.adjustFingerPosition(selectedVacuumFinger, -Constants.FINGER_DEBUG_INCREMENT);
+			}
+		} else
 		{
-			vaccum.flickFinger(2);
+			if (driver2.justPressed("dpad_left"))
+			{
+				vaccum.flickFinger(0);
+			}
+
+			if (driver2.justPressed("dpad_up"))
+			{
+				vaccum.flickFinger(1);
+			}
+
+			if (driver2.justPressed("dpad_right"))
+			{
+				vaccum.flickFinger(2);
+			}
 		}
 
 		if (driver2.isPressed("y"))
@@ -280,6 +304,15 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("Finger State: " + fingerState);
 		DebugUtil.logAdd("Finger Position: '" + String.format("%.3f", explosher.getFingerPosition()));
+		DebugUtil.logAdd(String.format("Vacuum Finger 1 Pos: %.3f%s",
+				vaccum.getFingerPosition(0),
+				Constants.DEBUG_MODE && selectedVacuumFinger == 0 ? " [SELECTED]" : ""));
+		DebugUtil.logAdd(String.format("Vacuum Finger 2 Pos: %.3f%s",
+				vaccum.getFingerPosition(1),
+				Constants.DEBUG_MODE && selectedVacuumFinger == 1 ? " [SELECTED]" : ""));
+		DebugUtil.logAdd(String.format("Vacuum Finger 3 Pos: %.3f%s",
+				vaccum.getFingerPosition(2),
+				Constants.DEBUG_MODE && selectedVacuumFinger == 2 ? " [SELECTED]" : ""));
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.logAdd("======= [COLOR]");
