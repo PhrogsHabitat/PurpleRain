@@ -36,7 +36,6 @@ public class TeleOp extends PurpleOpMode
 	private Explosher explosher;
 	private Vaccum vaccum;
 	private ColorSensor colorSensor2;
-	private PurpleMemory memory;
 	private boolean wasAligned = false;
 	private boolean wasTagDetected = false;
 	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
@@ -56,7 +55,7 @@ public class TeleOp extends PurpleOpMode
 		follower.update();
 		follower.startTeleopDrive(true);
 
-		memory = new PurpleMemory(hardwareMap);
+		PurpleMemory.initialize(hardwareMap);
 
 		// Initialize motors (IF MANUAL TELEOP ONLY)
 		fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.76, 312)
@@ -91,8 +90,8 @@ public class TeleOp extends PurpleOpMode
 		// We always gotta update the controls first!
 		driver1.update();
 		driver2.update();
-		memory.update();
 		follower.update();
+		PurpleMemory.Instance.update();
 
 		LimeUtil.update();
 		explosher.update();
@@ -119,19 +118,23 @@ public class TeleOp extends PurpleOpMode
 				if (LimeUtil.getTx() < 0)
 				{
 					updateDrive("L");
-				} else if (LimeUtil.getTx() > 0)
+				}
+				else if (LimeUtil.getTx() > 0)
 				{
 					updateDrive("R");
-				} else
+				}
+				else
 				{
 					updateDrive("def");
 				}
-			} else
+			}
+			else
 			{
 				driver1.vibrate(150);
 				updateDrive("def");
 			}
-		} else
+		}
+		else
 		{
 			updateDrive("def");
 		}
@@ -175,15 +178,18 @@ public class TeleOp extends PurpleOpMode
 				{
 					explosher.setRPM(-explosher.smoothedTargetRPM);
 				}
-			} else if (!manual)
+			}
+			else if (!manual)
 			{
 				explosher.shouldRegress = false;
 				explosher.stop();
 			}
-		} else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
+		}
+		else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
 		{
 			explosher.setRPM(4000);
-		} else
+		}
+		else
 		{
 			explosher.stop();
 		}
@@ -223,6 +229,7 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateVaccum ()
 	{
+
 		if (Constants.DEBUG_MODE)
 		{
 			if (driver2.justPressed("dpad_left"))
@@ -232,7 +239,7 @@ public class TeleOp extends PurpleOpMode
 
 			if (driver2.justPressed("dpad_right"))
 			{
-				selectedVacuumFinger = (selectedVacuumFinger + 1) % 3;
+				vaccum.shoot();
 			}
 
 			if (driver2.justPressed("dpad_up"))
@@ -244,7 +251,8 @@ public class TeleOp extends PurpleOpMode
 			{
 				vaccum.adjustFingerPosition(selectedVacuumFinger, -Constants.FINGER_DEBUG_INCREMENT);
 			}
-		} else
+		}
+		else
 		{
 			if (driver2.justPressed("dpad_left"))
 			{
@@ -258,17 +266,19 @@ public class TeleOp extends PurpleOpMode
 
 			if (driver2.justPressed("dpad_right"))
 			{
-				vaccum.flickFinger(2);
+				vaccum.shoot();
 			}
 		}
 
 		if (driver2.isPressed("y"))
 		{
 			vaccum.setPower(Vaccum.DEFAULT_POW);
-		} else if (driver2.isPressed("x"))
+		}
+		else if (driver2.isPressed("x"))
 		{
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
-		} else
+		}
+		else
 		{
 			vaccum.stop();
 		}
@@ -283,13 +293,13 @@ public class TeleOp extends PurpleOpMode
 	@SuppressLint("DefaultLocale") private void teleInfo ()
 	{
 
-		DebugUtil.logAdd("======== [LIME]");
+		DebugUtil.logAdd("============== [LIME]");
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("Target X: " + LimeUtil.getTx());
 		DebugUtil.logAdd("Target D: " + LimeUtil.getTargetDistance());
 		DebugUtil.logAdd(" ");
 
-		DebugUtil.logAdd("======= [EXPLOSHER]");
+		DebugUtil.logAdd("============== [EXPLOSHER]");
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("Target RPM: " + explosher.getTargetRPM());
 		DebugUtil.logAdd("Current RPM: " + explosher.getCurrentRPM());
@@ -300,7 +310,7 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd(String.format("Exploring PID: out=%.3f err=%.2f", explosher.getAimPow(), explosher.getAimErr()));
 		DebugUtil.logAdd(" ");
 
-		DebugUtil.logAdd("======= [FINGER]");
+		DebugUtil.logAdd("============== [FINGER]");
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("Finger State: " + fingerState);
 		DebugUtil.logAdd("Finger Position: '" + String.format("%.3f", explosher.getFingerPosition()));
@@ -315,7 +325,7 @@ public class TeleOp extends PurpleOpMode
 				Constants.DEBUG_MODE && selectedVacuumFinger == 2 ? " [SELECTED]" : ""));
 		DebugUtil.logAdd(" ");
 
-		DebugUtil.logAdd("======= [COLOR]");
+		DebugUtil.logAdd("============== [COLOR]");
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd(String.format(
 				"Sensor2 RGB: R=%d G=%d B=%d",
@@ -325,18 +335,15 @@ public class TeleOp extends PurpleOpMode
 		));
 		DebugUtil.logAdd(" ");
 
-		DebugUtil.logAdd("======= [MEMORY]");
-		DebugUtil.logAdd("[MOTIF]: " + memory.curMotif());
-		DebugUtil.logAdd("[BALLS]: " + Arrays.toString(memory.curBalls()));
+		DebugUtil.logAdd("============== [MEMORY]");
+		DebugUtil.logAdd("[MOTIF]: " + PurpleMemory.Instance.curMotif());
+		DebugUtil.logAdd("[BALLS]: " + Arrays.toString(PurpleMemory.Instance.curBalls()));
 		DebugUtil.logAdd(" ");
 
-		DebugUtil.logAdd("[POSITION] HEADING: " + memory.curPos().getHeading());
-		DebugUtil.logAdd("[POSITION] X: " + memory.curPos().getX());
-		DebugUtil.logAdd("[POSITION] Y: " + memory.curPos().getY());
-		DebugUtil.logAdd(" ");
-
-		DebugUtil.logAdd("[FOLLOWER] X: " + follower.getPose().getX());
-		DebugUtil.logAdd("[FOLLOWER] Y: " + follower.getPose().getY());
+		Pose followerPose = follower.getPose();
+		DebugUtil.logAdd("[POSITION] HEADING: " + Math.toDegrees(followerPose.getHeading()));
+		DebugUtil.logAdd("[POSITION] X: " + followerPose.getX());
+		DebugUtil.logAdd("[POSITION] Y: " + followerPose.getY());
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.update();

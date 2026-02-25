@@ -32,8 +32,10 @@ public class Explosher
 	private static final double PID_FLIP_SLEW = 14.0;
 	private static final double MIN_DEG = -180.0;
 	private static final double MAX_DEG = 180.0;
-	private static final double AIM_X = 128.0;
-	private static final double AIM_Y = 130.0;
+	private static final double AIM_ZERO_FROM_FRONT_DEG = 180.0;
+	private static final double AIM_BEARING_SIGN = -1.0;
+	private static final double AIM_X = 60;
+	private static final double AIM_Y = 0;
 	private final MotorConfig motor;
 	private final MotorConfig motor2;
 	private final MotorConfig exploringMotor;
@@ -58,6 +60,7 @@ public class Explosher
 
 	public Explosher (HardwareMap hardwareMap)
 	{
+
 		this(
 				hardwareMap,
 				new ServoConfig.Builder(hardwareMap, Names.HOOD)
@@ -134,10 +137,11 @@ public class Explosher
 	/**
 	 * Runs the exploring auto-aim pipeline using robot pose only.
 	 *
-	 * @param pose      Current robot pose
+	 * @param pose Current robot pose
 	 */
 	public void updateAim (Pose pose)
 	{
+
 		if (pose == null)
 		{
 			resetAimState();
@@ -156,6 +160,7 @@ public class Explosher
 	 */
 	public void setExploringPow (double power)
 	{
+
 		aimPow = power;
 		exploringMotor.setPower(power);
 	}
@@ -169,6 +174,7 @@ public class Explosher
 	 */
 	public void setExploringPos (int position, double power)
 	{
+
 		exploringMotor.runToPosition(position, power);
 	}
 
@@ -181,18 +187,9 @@ public class Explosher
 	 */
 	public void setExploringDeg (double angleDegrees, double power)
 	{
+
 		int targetTicks = (int) Math.round(angleDegrees * EXPLORE_TICKS_PER_DEG);
 		setExploringPos(targetTicks, power);
-	}
-
-	/**
-	 * Sets exploring to a specific angle in degrees using default power.
-	 *
-	 * @param angleDegrees Target angle in degrees
-	 */
-	public void setExploringDeg (double angleDegrees)
-	{
-		setExploringDeg(angleDegrees, DEFAULT_EXPLORE_DEG_POW);
 	}
 
 	/**
@@ -214,7 +211,19 @@ public class Explosher
 	 */
 	public double getExploringDeg ()
 	{
+
 		return getExploringPos() / EXPLORE_TICKS_PER_DEG;
+	}
+
+	/**
+	 * Sets exploring to a specific angle in degrees using default power.
+	 *
+	 * @param angleDegrees Target angle in degrees
+	 */
+	public void setExploringDeg (double angleDegrees)
+	{
+
+		setExploringDeg(angleDegrees, DEFAULT_EXPLORE_DEG_POW);
 	}
 
 	/**
@@ -419,41 +428,49 @@ public class Explosher
 	// Backward-compatible aliases
 	public void setRingPower (double power)
 	{
+
 		setExploringPow(power);
 	}
 
 	public void setRingPosition (int position, double power)
 	{
+
 		setExploringPos(position, power);
 	}
 
 	public void setAngle (double angleDegrees, double power)
 	{
-		setExploringDeg(angleDegrees, power);
-	}
 
-	public void setAngle (double angleDegrees)
-	{
-		setExploringDeg(angleDegrees);
+		setExploringDeg(angleDegrees, power);
 	}
 
 	public int getRingPosition ()
 	{
+
 		return getExploringPos();
 	}
 
 	public double getAngle ()
 	{
+
 		return getExploringDeg();
+	}
+
+	public void setAngle (double angleDegrees)
+	{
+
+		setExploringDeg(angleDegrees);
 	}
 
 	public boolean isRingAtTarget ()
 	{
+
 		return isExploringAtPos();
 	}
 
 	public void resetRingPosition ()
 	{
+
 		resetExploringPos();
 	}
 
@@ -487,6 +504,7 @@ public class Explosher
 
 	private double getAimDeg (Pose pose)
 	{
+
 		double botX = pose.getX();
 		double botY = pose.getY();
 
@@ -495,17 +513,21 @@ public class Explosher
 
 		double botHeadDeg = Math.toDegrees(pose.getHeading());
 		double bearingDeg = Math.toDegrees(Math.atan2(dY, dX));
+		double relBearingDeg = normDeg(bearingDeg - botHeadDeg);
+		double targetDeg = normDeg(AIM_ZERO_FROM_FRONT_DEG + (AIM_BEARING_SIGN * relBearingDeg));
 
 		DebugUtil.logAdd("DX: " + dX);
 		DebugUtil.logAdd("DY: " + dY);
 		DebugUtil.logAdd("Angle: " + bearingDeg);
+		DebugUtil.logAdd("RelAngle: " + relBearingDeg);
+		DebugUtil.logAdd("TargetDeg: " + targetDeg);
 
-
-		return MathUtil.clamp(normDeg(bearingDeg + botHeadDeg), MIN_DEG, MAX_DEG);
+		return MathUtil.clamp(targetDeg, MIN_DEG, MAX_DEG);
 	}
 
 	private double getPidPow (double targetDeg)
 	{
+
 		double curDeg = getExploringDeg();
 		double goalDeg = MathUtil.clamp(targetDeg, MIN_DEG, MAX_DEG);
 		double err = goalDeg - curDeg;
@@ -556,17 +578,20 @@ public class Explosher
 
 	private double slewPow (double curPow, double targetPow, double dt)
 	{
+
 		return slewPow(curPow, targetPow, dt, PID_MAX_SLEW);
 	}
 
 	private double slewPow (double curPow, double targetPow, double dt, double maxSlew)
 	{
+
 		double maxStep = maxSlew * dt;
 		return MathUtil.clamp(targetPow, curPow - maxStep, curPow + maxStep);
 	}
 
 	private double normDeg (double deg)
 	{
+
 		while (deg > 180)
 		{
 			deg -= 360;
@@ -582,6 +607,7 @@ public class Explosher
 
 	private double hardStop (double curDeg, double reqPow)
 	{
+
 		if (curDeg >= MAX_DEG && reqPow > 0)
 		{
 			return 0;
@@ -597,6 +623,7 @@ public class Explosher
 
 	private void resetAimState ()
 	{
+
 		aimErr = 0;
 		pidInt = 0;
 		pidErr = 0;

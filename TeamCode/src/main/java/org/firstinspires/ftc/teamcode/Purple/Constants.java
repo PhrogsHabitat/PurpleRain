@@ -4,6 +4,15 @@ import com.qualcomm.robotcore.hardware.I2cAddr;
 
 public final class Constants
 {
+	// Slot 1 - LEFT
+	// FIN 1
+
+	// Slot 2 - FRONT
+	// FIN 2
+
+	// Slot 3 - BACK
+	// FIN 3
+
 	// Finger servo configuration values
 	public static final double HOOD_MIN = 0.0;
 	public static final double HOOD_MAX = 1.0;
@@ -23,9 +32,6 @@ public final class Constants
 	public static final double ALIGN_ANGLE_TOLERANCE = 1.0;
 	public static final double ALIGN_DISTANCE_TOLERANCE = 1.0;
 
-	// Ball color sensor settings (reference ColorSensor logic)
-	public static final double BALL_SENSOR_GAIN = 6.0;
-	public static final double BALL_ARTIFACT_MAX_DISTANCE_MM = 70.0;
 	// I2C address
 	public static final I2cAddr ODOMETRY_COMPUTER_I2C_ADDR = I2cAddr.create7bit(0x31);
 	// Vibration stuffies
