@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Purple.Memory;
 
+import com.pedropathing.follower.Follower;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Ball;
@@ -21,26 +22,47 @@ public class PurpleMemory
 	private final Position position;
 
 	/**
-	 * Recreates the shared memory instance for the current OpMode run.
+	 * Constructs PurpleMemory.
 	 */
-	public static PurpleMemory initialize (HardwareMap hardwareMap)
+	public PurpleMemory (HardwareMap hardwareMap)
 	{
-		Instance = new PurpleMemory(hardwareMap);
-		return Instance;
+
+		this(hardwareMap, null);
 	}
 
 	/**
 	 * Constructs PurpleMemory.
 	 */
-	public PurpleMemory (HardwareMap hardwareMap)
+	public PurpleMemory (HardwareMap hardwareMap, Follower follower)
 	{
+
 		balls = new Balls(hardwareMap);
 		motif = new Motif();
 		persist = new Persist(hardwareMap);
 		// Keep a lightweight position object only for API compatibility.
 		// Live drivetrain localization should come from Pedro follower pose.
-		position = new Position();
+		position = follower == null ? new Position() : new Position(follower);
 		Instance = this;
+	}
+
+	/**
+	 * Recreates the shared memory instance for the current OpMode run.
+	 */
+	public static PurpleMemory initialize (HardwareMap hardwareMap)
+	{
+
+		Instance = new PurpleMemory(hardwareMap, null);
+		return Instance;
+	}
+
+	/**
+	 * Recreates the shared memory instance for the current OpMode run.
+	 */
+	public static PurpleMemory initialize (HardwareMap hardwareMap, Follower follower)
+	{
+
+		Instance = new PurpleMemory(hardwareMap, follower);
+		return Instance;
 	}
 
 	/**
@@ -48,6 +70,8 @@ public class PurpleMemory
 	 */
 	public void update ()
 	{
+
+		position.update();
 		balls.update();
 		motif.update();
 	}
@@ -57,6 +81,7 @@ public class PurpleMemory
 	 */
 	public Ball[] curBalls ()
 	{
+
 		return balls.curBalls();
 	}
 
@@ -65,6 +90,7 @@ public class PurpleMemory
 	 */
 	public Motif.Type curMotif ()
 	{
+
 		return motif.curMotif();
 	}
 
@@ -73,6 +99,7 @@ public class PurpleMemory
 	 */
 	public Position curPos ()
 	{
+
 		return position;
 	}
 
@@ -81,6 +108,7 @@ public class PurpleMemory
 	 */
 	public Persist persist ()
 	{
+
 		return persist;
 	}
 }

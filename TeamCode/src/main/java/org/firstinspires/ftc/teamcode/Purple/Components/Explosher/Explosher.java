@@ -7,6 +7,7 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
+import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
@@ -235,6 +236,29 @@ public class Explosher
 
 		double targetDeg = getAimDeg(pose);
 		setExploringPow(getPidPow(targetDeg));
+	}
+
+	/**
+	 * Updates auto-aim output from PurpleMemory position and applies PID power.
+	 *
+	 * @param position Current robot position from PurpleMemory.
+	 */
+	public void updateAim (Position position)
+	{
+
+		if (position == null)
+		{
+			updateAim((Pose) null);
+			return;
+		}
+
+		Pose pose = new Pose(
+				position.getX(),
+				position.getY(),
+				Math.toRadians(position.getHeading())
+		);
+
+		updateAim(pose);
 	}
 
 	/**

@@ -52,7 +52,7 @@ public class TeleOp extends PurpleOpMode
 		follower.update();
 		follower.startTeleopDrive(true);
 
-		PurpleMemory.initialize(hardwareMap);
+		PurpleMemory.initialize(hardwareMap, follower);
 		LimeUtil.start(hardwareMap, 60);
 		LimeUtil.setPipeline(0);
 
@@ -71,9 +71,9 @@ public class TeleOp extends PurpleOpMode
 		driver1.update();
 		driver2.update();
 		follower.update();
+		LimeUtil.update();
 		PurpleMemory.Instance.update();
 
-		LimeUtil.update();
 		explosher.update();
 		vaccum.update();
 
@@ -118,6 +118,7 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateExplosher ()
 	{
+
 		if (!Constants.DEBUG_MODE)
 		{
 			double leftStickY = driver2.getLeftStickY();
@@ -147,7 +148,7 @@ public class TeleOp extends PurpleOpMode
 			explosher.stop();
 		}
 
-		explosher.updateAim(follower.getPose());
+		explosher.updateAim(PurpleMemory.Instance.curPos());
 		updateFingerState();
 		updateDebugHood();
 	}
@@ -252,8 +253,8 @@ public class TeleOp extends PurpleOpMode
 
 		Pose followerPose = follower.getPose();
 		DebugUtil.logAdd("[POSITION] HEADING: " + Math.toDegrees(followerPose.getHeading()));
-		DebugUtil.logAdd("[POSITION] X: " + followerPose.getX());
-		DebugUtil.logAdd("[POSITION] Y: " + followerPose.getY());
+		DebugUtil.logAdd("[POSITION] X: " + PurpleMemory.Instance.curPos().getX());
+		DebugUtil.logAdd("[POSITION] Y: " + PurpleMemory.Instance.curPos().getY());
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.update();
