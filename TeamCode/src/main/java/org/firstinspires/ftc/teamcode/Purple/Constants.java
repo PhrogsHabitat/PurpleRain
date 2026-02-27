@@ -34,8 +34,4 @@ public final class Constants
 	// Debug mode toggle
 	public static final boolean DEBUG_MODE = true;
 
-	private Constants ()
-	{
-
-	}
 }

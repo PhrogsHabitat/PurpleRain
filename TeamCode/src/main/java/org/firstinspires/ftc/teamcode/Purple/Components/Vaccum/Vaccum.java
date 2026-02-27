@@ -147,9 +147,58 @@ public class Vaccum
     }
 
     /**
-     * Builds and runs a motif-ordered shoot sequence.
+     * Shoots one ball based on current motif and memory ordering.
      */
     public void shoot()
+    {
+        shootQueueSize = 0;
+        shootQueueIndex = 0;
+        activeShootFinger = -1;
+
+        PurpleMemory memory = PurpleMemory.Instance;
+        if (memory == null)
+        {
+            enqueueFinger(0);
+            shootInProgress = shootQueueSize > 0;
+            updateShootSequence();
+            return;
+        }
+
+        Ball[] currentBalls = memory.curBalls();
+        Ball[] desiredOrder = getDesiredOrder(memory.curMotif());
+        boolean[] usedSlots = new boolean[FINGER_COUNT];
+
+        for (Ball desiredBall : desiredOrder)
+        {
+            int slotIndex = findUnassignedSlot(currentBalls, usedSlots, desiredBall);
+            if (slotIndex >= 0)
+            {
+                usedSlots[slotIndex] = true;
+                enqueueFinger(slotIndex);
+                break;
+            }
+        }
+
+        if (shootQueueSize == 0)
+        {
+            for (int slot = 0; slot < FINGER_COUNT; slot++)
+            {
+                if (currentBalls[slot] != Ball.NONE)
+                {
+                    enqueueFinger(slot);
+                    break;
+                }
+            }
+        }
+
+        shootInProgress = shootQueueSize > 0;
+        updateShootSequence();
+    }
+
+    /**
+     * Builds and runs a full motif-ordered shoot sequence.
+     */
+    public void shootFull()
     {
         shootQueueSize = 0;
         shootQueueIndex = 0;
@@ -178,7 +227,6 @@ public class Vaccum
             }
         }
 
-        // If a desired color is missing, queue only slots that still hold balls.
         for (int slot = 0; slot < FINGER_COUNT; slot++)
         {
             if (!usedSlots[slot] && currentBalls[slot] != Ball.NONE)
