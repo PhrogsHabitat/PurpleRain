@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.Purple.Memory.Components;
 
 import com.pedropathing.follower.Follower;
-import com.pedropathing.ftc.InvertedFTCCoordinates;
+import com.pedropathing.ftc.FTCCoordinates;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.limelightvision.LLResult;
@@ -330,8 +330,8 @@ public class Position
 			headingRadians = pose3D.getOrientation().getYaw(AngleUnit.RADIANS);
 		}
 
-		Pose ftcPose = new Pose(xInches, yInches, headingRadians, InvertedFTCCoordinates.INSTANCE);
-		return InvertedFTCCoordinates.INSTANCE.convertToPedro(ftcPose);
+		Pose ftcPose = new Pose(xInches, yInches, headingRadians, FTCCoordinates.INSTANCE);
+		return FTCCoordinates.INSTANCE.convertToPedro(ftcPose);
 	}
 
 	private static final class VisionPoseCandidate

@@ -31,12 +31,15 @@ public class Explosher
 	private static final double PID_FLIP_ERR = 80.0;
 	private static final double PID_FLIP_POW = 1.0;
 	private static final double PID_FLIP_SLEW = 14.0;
+	private static final double AIM_WARMUP_S = 0.20;
+	private static final double AIM_TARGET_ALPHA = 0.24;
+	private static final double AIM_TARGET_NOISE_DEG = 0.45;
 	private static final double MIN_DEG = -180.0;
 	private static final double MAX_DEG = 180.0;
 	private static final double AIM_ZERO_FROM_FRONT_DEG = 180.0;
 	private static final double AIM_BEARING_SIGN = -1.0;
-	private static final double AIM_X = 60.0;
-	private static final double AIM_Y = 0.0;
+	private static final double AIM_X = 144;
+	private static final double AIM_Y = 144;
 
 	private final MotorConfig motor;
 	private final MotorConfig motor2;
@@ -59,6 +62,9 @@ public class Explosher
 	private double pidDer = 0.0;
 	private double pidPow = 0.0;
 	private long pidNs = 0;
+	private long aimWarmupNs = 0;
+	private double filteredAimTargetDeg = 0.0;
+	private boolean hasFilteredAimTarget = false;
 
 	public Explosher (HardwareMap hardwareMap)
 	{
@@ -234,7 +240,26 @@ public class Explosher
 			return;
 		}
 
-		double targetDeg = getAimDeg(pose);
+		long nowNs = System.nanoTime();
+		if (aimWarmupNs == 0)
+		{
+			aimWarmupNs = nowNs;
+		}
+
+		double targetDeg = filterAimTargetDeg(getAimDeg(pose));
+		double warmupSec = (nowNs - aimWarmupNs) / 1_000_000_000.0;
+		if (warmupSec < AIM_WARMUP_S)
+		{
+			pidInt = 0.0;
+			pidDer = 0.0;
+			pidErr = targetDeg - getExploringDeg();
+			pidPow = 0.0;
+			pidNs = 0;
+			aimErr = pidErr;
+			setExploringPow(0.0);
+			return;
+		}
+
 		setExploringPow(getPidPow(targetDeg));
 	}
 
@@ -605,6 +630,27 @@ public class Explosher
 		return pidPow;
 	}
 
+	private double filterAimTargetDeg (double rawTargetDeg)
+	{
+
+		double clampedRawDeg = MathUtil.clamp(rawTargetDeg, MIN_DEG, MAX_DEG);
+		if (!hasFilteredAimTarget)
+		{
+			filteredAimTargetDeg = clampedRawDeg;
+			hasFilteredAimTarget = true;
+			return filteredAimTargetDeg;
+		}
+
+		double delta = normDeg(clampedRawDeg - filteredAimTargetDeg);
+		if (Math.abs(delta) <= AIM_TARGET_NOISE_DEG)
+		{
+			return filteredAimTargetDeg;
+		}
+
+		filteredAimTargetDeg = normDeg(filteredAimTargetDeg + (AIM_TARGET_ALPHA * delta));
+		return filteredAimTargetDeg;
+	}
+
 	private double slewPow (double currentPow, double targetPow, double dt, double maxSlew)
 	{
 
@@ -653,6 +699,9 @@ public class Explosher
 		pidDer = 0.0;
 		pidPow = 0.0;
 		pidNs = 0;
+		aimWarmupNs = 0;
+		filteredAimTargetDeg = 0.0;
+		hasFilteredAimTarget = false;
 	}
 
 	public enum FingerState
