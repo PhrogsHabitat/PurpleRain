@@ -3,10 +3,10 @@ package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
-import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
+import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
@@ -48,6 +48,7 @@ public class Explosher
 
 	private FingerState fingerState = FingerState.STOP;
 	private boolean regressionEnabled = false;
+	private boolean hasRegressionTarget = false;
 	private double regressionSlope;
 	private double regressionIntercept;
 	private double smoothedTargetRPM = 0.0;
@@ -118,10 +119,18 @@ public class Explosher
 
 		if (regressionEnabled)
 		{
-			double targetDistance = LimeUtil.getTargetDistance();
-			double rawTargetRPM = (regressionSlope * targetDistance) + regressionIntercept;
-			smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
-			smoothedTargetRPM = MathUtil.clamp(smoothedTargetRPM, 0.0, motor.getMaxRPM());
+			Double targetDistance = getRegressionDistance();
+			hasRegressionTarget = targetDistance != null;
+			if (hasRegressionTarget)
+			{
+				double rawTargetRPM = (regressionSlope * targetDistance) + regressionIntercept;
+				smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
+				smoothedTargetRPM = MathUtil.clamp(smoothedTargetRPM, 0.0, motor.getMaxRPM());
+			}
+		}
+		else
+		{
+			hasRegressionTarget = false;
 		}
 
 		DebugUtil.logAdd("Explosher RPM: " +
@@ -160,7 +169,7 @@ public class Explosher
 	/**
 	 * Enables or disables RPM regression updates.
 	 *
-	 * @param enabled True to update smoothed target RPM from limelight distance.
+	 * @param enabled True to update smoothed target RPM from odometry distance.
 	 */
 	public void setRegressionEnabled (boolean enabled)
 	{
@@ -177,6 +186,17 @@ public class Explosher
 	{
 
 		return smoothedTargetRPM;
+	}
+
+	/**
+	 * Gets whether odometry produced a valid regression distance this cycle.
+	 *
+	 * @return True if the regression target is valid.
+	 */
+	public boolean hasRegressionTarget ()
+	{
+
+		return hasRegressionTarget;
 	}
 
 	/**
@@ -557,6 +577,25 @@ public class Explosher
 
 		regressionSlope = (pointCount * sumXY - sumX * sumY) / (pointCount * sumX2 - sumX * sumX);
 		regressionIntercept = (sumY - regressionSlope * sumX) / pointCount;
+	}
+
+	private Double getRegressionDistance ()
+	{
+
+		if (PurpleMemory.Instance == null)
+		{
+			return null;
+		}
+
+		Pose pose = PurpleMemory.Instance.curPose();
+		if (pose == null)
+		{
+			return null;
+		}
+
+		double deltaX = aimX - pose.getX();
+		double deltaY = aimY - pose.getY();
+		return Math.hypot(deltaX, deltaY);
 	}
 
 	private double getAimDeg (Pose pose)

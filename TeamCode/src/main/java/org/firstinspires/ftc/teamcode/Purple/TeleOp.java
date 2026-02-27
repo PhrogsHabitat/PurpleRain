@@ -127,7 +127,7 @@ public class TeleOp extends PurpleOpMode
 
 			if (useRegressionTarget)
 			{
-				if (LimeUtil.getTargetDistance() != 0)
+				if (explosher.hasRegressionTarget())
 				{
 					rememberedRegressedRPM = explosher.getSmoothedTargetRPM();
 				}

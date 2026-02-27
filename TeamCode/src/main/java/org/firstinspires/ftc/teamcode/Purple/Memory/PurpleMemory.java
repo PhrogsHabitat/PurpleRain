@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.Purple.Memory;
 
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Ball;
@@ -101,6 +102,19 @@ public class PurpleMemory
 	{
 
 		return position;
+	}
+
+	/**
+	 * Gets the current odometry pose in Pedro coordinates.
+	 */
+	public Pose curPose ()
+	{
+
+		return new Pose(
+				position.getX(),
+				position.getY(),
+				Math.toRadians(position.getHeading())
+		);
 	}
 
 	/**
