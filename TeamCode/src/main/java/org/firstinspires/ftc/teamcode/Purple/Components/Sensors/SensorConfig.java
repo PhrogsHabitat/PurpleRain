@@ -4,140 +4,144 @@ import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 /**
- * Configuration for a color sensor
+ * Configuration wrapper for a color sensor.
  */
 public final class SensorConfig
 {
-	private final String name;
-	private final ColorSensor sensor;
+    private static final double DEFAULT_PURPLE_THRESHOLD = 0.6;
+    private static final double DEFAULT_GREEN_THRESHOLD = 0.6;
 
-	// Thresholds for color detection (will be auto-tuned later)
-	private double purpleThreshold = 0.6;
-	private double greenThreshold = 0.6;
+    private final String name;
+    private final ColorSensor sensor;
 
-	/**
-	 * Constructs a SensorConfig for a color sensor
-	 * @param hardwareMap The hardware map
-	 * @param name The name of the sensor in the hardware map
-	 */
-	public SensorConfig (HardwareMap hardwareMap, String name)
-	{
+    private double purpleThreshold = DEFAULT_PURPLE_THRESHOLD;
+    private double greenThreshold = DEFAULT_GREEN_THRESHOLD;
 
-		this.name = name;
-		this.sensor = hardwareMap.get(ColorSensor.class, name);
+    /**
+     * Constructs a color-sensor configuration wrapper.
+     *
+     * @param hardwareMap FTC hardware map.
+     * @param name        Sensor name from robot config.
+     */
+    public SensorConfig(HardwareMap hardwareMap, String name)
+    {
+        this.name = name;
+        sensor = hardwareMap.get(ColorSensor.class, name);
+        enableLED(true);
+    }
 
-		// Enable LED for better detection
-		enableLED(true);
-	}
+    /**
+     * Gets the configured sensor name.
+     *
+     * @return Sensor name.
+     */
+    public String getName()
+    {
+        return name;
+    }
 
-	/**
-	 * Gets the name of the sensor
-	 * @return The name of the sensor
-	 */
-	public String getName ()
-	{
+    /**
+     * Gets raw red value.
+     *
+     * @return Red channel value.
+     */
+    public int getRed()
+    {
+        return sensor.red();
+    }
 
-		return name;
-	}
+    /**
+     * Gets raw green value.
+     *
+     * @return Green channel value.
+     */
+    public int getGreen()
+    {
+        return sensor.green();
+    }
 
-	/**
-	 * Gets the raw red value (0-255)
-	 * @return The raw red value
-	 */
-	public int getRed ()
-	{
+    /**
+     * Gets raw blue value.
+     *
+     * @return Blue channel value.
+     */
+    public int getBlue()
+    {
+        return sensor.blue();
+    }
 
-		return sensor.red();
-	}
+    /**
+     * Enables or disables the sensor LED.
+     *
+     * @param enable True to enable LED.
+     */
+    public void enableLED(boolean enable)
+    {
+        sensor.enableLed(enable);
+    }
 
-	/**
-	 * Gets the raw green value (0-255)
-	 * @return The raw green value
-	 */
-	public int getGreen ()
-	{
+    /**
+     * Gets normalized RGB values in the range [0, 1].
+     *
+     * @return Normalized RGB array.
+     */
+    public double[] getNormalizedRGB()
+    {
+        int red = getRed();
+        int green = getGreen();
+        int blue = getBlue();
+        int total = red + green + blue;
+        if (total == 0)
+        {
+            return new double[]{0.0, 0.0, 0.0};
+        }
 
-		return sensor.green();
-	}
+        return new double[]{
+                red / (double) total,
+                green / (double) total,
+                blue / (double) total
+        };
+    }
 
-	/**
-	 * Gets the raw blue value (0-255)
-	 * @return The raw blue value
-	 */
-	public int getBlue ()
-	{
+    /**
+     * Gets purple detection threshold.
+     *
+     * @return Purple threshold.
+     */
+    public double getPurpleThreshold()
+    {
+        return purpleThreshold;
+    }
 
-		return sensor.blue();
-	}
+    /**
+     * Sets purple detection threshold.
+     *
+     * @param threshold Purple threshold.
+     */
+    public void setPurpleThreshold(double threshold)
+    {
+        purpleThreshold = threshold;
+    }
 
-	/**
-	 * Enables or disables the sensor's LED
-	 * @param enable True to enable, false to disable
-	 */
-	public void enableLED (boolean enable)
-	{
+    /**
+     * Gets green detection threshold.
+     *
+     * @return Green threshold.
+     */
+    public double getGreenThreshold()
+    {
+        return greenThreshold;
+    }
 
-		sensor.enableLed(enable);
-	}
-
-	/**
-	 * Gets the normalized color values (0-1)
-	 * @return A double array containing the normalized RGB values
-	 */
-	public double[] getNormalizedRGB ()
-	{
-
-		int red = getRed();
-		int green = getGreen();
-		int blue = getBlue();
-		int total = red + green + blue;
-
-		if (total == 0) return new double[]{0, 0, 0};
-
-		return new double[]{
-				red / (double) total,
-				green / (double) total,
-				blue / (double) total
-		};
-	}
-
-	/**
-	 * Gets the purple threshold
-	 * @return The purple threshold
-	 */
-	public double getPurpleThreshold ()
-	{
-
-		return purpleThreshold;
-	}
-
-	/**
-	 * Sets the purple detection threshold
-	 * @param threshold The new purple threshold
-	 */
-	public void setPurpleThreshold (double threshold)
-	{
-
-		this.purpleThreshold = threshold;
-	}
-
-	/**
-	 * Gets the green threshold
-	 * @return The green threshold
-	 */
-	public double getGreenThreshold ()
-	{
-
-		return greenThreshold;
-	}
-
-	/**
-	 * Sets the green detection threshold
-	 * @param threshold The new green threshold
-	 */
-	public void setGreenThreshold (double threshold)
-	{
-
-		this.greenThreshold = threshold;
-	}
+    /**
+     * Sets green detection threshold.
+     *
+     * @param threshold Green threshold.
+     */
+    public void setGreenThreshold(double threshold)
+    {
+        greenThreshold = threshold;
+    }
 }
+
+

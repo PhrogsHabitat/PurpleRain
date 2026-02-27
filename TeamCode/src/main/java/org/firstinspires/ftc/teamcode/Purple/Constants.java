@@ -4,14 +4,6 @@ import com.qualcomm.robotcore.hardware.I2cAddr;
 
 public final class Constants
 {
-	// Slot 1 - LEFT
-	// FIN 1
-
-	// Slot 2 - FRONT
-	// FIN 2
-
-	// Slot 3 - BACK
-	// FIN 3
 
 	// Finger servo configuration values
 	public static final double HOOD_MIN = 0.0;

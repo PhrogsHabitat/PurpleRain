@@ -13,77 +13,55 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 @TeleOp(name = "Limelight Distance Test", group = "PurpleTests")
 public class SourOp extends OpMode
 {
+    private static final double METERS_TO_INCHES = 39.3701;
 
-	// Declare the Limelight3A object
-	private Limelight3A limelight;
+    private Limelight3A limelight;
+    private IMU imu;
 
-	// Declare the IMU for robot orientation
-	private IMU imu;
+    @Override
+    public void init()
+    {
+        limelight = hardwareMap.get(Limelight3A.class, "SwagLime");
+        limelight.pipelineSwitch(0);
+        imu = hardwareMap.get(IMU.class, "imu");
 
-	@Override
-	public void init ()
-	{
+        RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
+        RevHubOrientationOnRobot.UsbFacingDirection usbDirection = RevHubOrientationOnRobot.UsbFacingDirection.UP;
+        RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
+        imu.initialize(new IMU.Parameters(orientationOnRobot));
 
-		// Lime
-		limelight = hardwareMap.get(Limelight3A.class, "SwagLime");
-		limelight.pipelineSwitch(0);
+        telemetry.addData("Status", "Initialized");
+        telemetry.update();
+    }
 
-		// IMU
-		imu = hardwareMap.get(IMU.class, "imu");
+    @Override
+    public void start()
+    {
+        limelight.start();
+    }
 
-		// Paramters apparently exist
-		RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
-		RevHubOrientationOnRobot.UsbFacingDirection usbDirection = RevHubOrientationOnRobot.UsbFacingDirection.UP;
+    @Override
+    public void loop()
+    {
+        YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
+        double yaw = orientation.getYaw(AngleUnit.DEGREES);
+        limelight.updateRobotOrientation(yaw);
 
-		RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
+        LLResult result = limelight.getLatestResult();
+        if (result != null && result.isValid())
+        {
+            double distance = result.getBotposeAvgDist() * METERS_TO_INCHES;
+            telemetry.addData("Target Dist", distance);
+        }
 
-		imu.initialize(new IMU.Parameters(orientationOnRobot));
+        telemetry.update();
+    }
 
-		telemetry.addData("Status", "Initialized");
-		telemetry.update();
-	}
-
-	@Override
-	public void start ()
-	{
-
-		limelight.start();
-	}
-
-	@Override
-	public void loop ()
-	{
-
-		// Get orientation from control hub
-		YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
-		double yaw = orientation.getYaw(AngleUnit.DEGREES);
-
-		// Tell Lime our orientation
-		limelight.updateRobotOrientation(yaw);
-
-		// Get the latest result from the Limelight
-		LLResult llResult = limelight.getLatestResult();
-
-		// Check if the result is valid and a target is detected
-		if (llResult != null && llResult.isValid())
-		{
-
-			// Bruh we had this method the whole time?
-			double dist = llResult.getBotposeAvgDist() * 39.3701;
-
-			telemetry.addData("Target Dist", dist);
-
-		} else
-		{
-
-		}
-
-		telemetry.update();
-	}
-
-	@Override
-	public void stop ()
-	{
-
-	}
+    @Override
+    public void stop()
+    {
+        limelight.stop();
+    }
 }
+
+

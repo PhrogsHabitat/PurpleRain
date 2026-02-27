@@ -3,11 +3,13 @@ package org.firstinspires.ftc.teamcode.Purple.Components.Drive;
 @Deprecated
 public interface DriveTrain
 {
-	void drive (double forward, double strafe, double turn);
+    void drive(double forward, double strafe, double turn);
 
-	void stop ();
+    void stop();
 
-	double getPowerScale ();
+    double getPowerScale();
 
-	void setPowerScale (double scale);
+    void setPowerScale(double scale);
 }
+
+

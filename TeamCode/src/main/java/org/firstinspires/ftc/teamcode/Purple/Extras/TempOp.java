@@ -203,15 +203,15 @@ public class TempOp extends PurpleOpMode
 		{
 			if (LimeUtil.getTargetDistance() != 0)
 			{
-				explosher.shouldRegress = true;
+				explosher.setRegressionEnabled(true);
 
 				if (!manual)
 				{
-					explosher.setRPM(explosher.smoothedTargetRPM);
+					explosher.setRPM(explosher.getSmoothedTargetRPM());
 				}
 			} else if (!manual)
 			{
-				explosher.shouldRegress = false;
+				explosher.setRegressionEnabled(false);
 				explosher.stop();
 			}
 		} else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
