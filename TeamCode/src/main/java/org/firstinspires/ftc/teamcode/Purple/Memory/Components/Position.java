@@ -153,7 +153,7 @@ public class Position
 		if (follower != null)
 		{
 			updateFromFollower();
-			maybeApplyVisionCorrection(LimeUtil.getResult());
+//			maybeApplyVisionCorrection(LimeUtil.getResult());
 			return;
 		}
 

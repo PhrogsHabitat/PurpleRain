@@ -1,12 +1,21 @@
 package org.firstinspires.ftc.teamcode.Purple.Auto;
 
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.BezierCurve;
+import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
+import com.pedropathing.paths.PathChain;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
+import org.firstinspires.ftc.teamcode.Purple.Pathing.PurpleChain;
+import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePath;
+import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
 import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
@@ -19,8 +28,6 @@ public class AutoBase extends PurpleOpMode
 	private static final double EXPLOSHER_DEFAULT_RPM = 2800.0;
 	private static final double EXPLOSHER_COAST_ALPHA = 0.08;
 	private static final Pose DEFAULT_AUTO_START_POSE = new Pose(72, 72, Math.toRadians(0.0));
-
-	public static Pose startingPose;
 	private Follower follower;
 	private Explosher explosher;
 	private Vaccum vaccum;
@@ -30,23 +37,111 @@ public class AutoBase extends PurpleOpMode
 	private double rememberedRegressedHood = Constants.FINGER_STOP_POSITION;
 	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
 
+	private final Pose startPose = new Pose(123, 125, Math.toRadians(305));
+	private final Pose shootPose = new Pose(81.11801242236025, 80.19875776397515, Math.toRadians(0));
+	private final Pose Pickup1 = new Pose(120, 88.45419847328245, Math.toRadians(270));
+	private final Pose Open1 = new Pose(25, 85, Math.toRadians(270));
+	private final Pose Pickup2 = new Pose(48.014815154531284, 63.5, Math.toRadians(0));
+
+	private final Pose GrabCurve = new Pose(85.93478260869566, 58.888198757763966);
+	private final Pose Open2 = new Pose(24.5, 63, Math.toRadians(0));
+
+	private final Pose OpenGrab = new Pose(24.5, 63, Math.toRadians(30));
+
+	private final Pose OpenGrabCurve = new Pose(116.32919254658385, 51.05900621118012);
+	private final Pose rankPose = new Pose(131.2, 60, Math.toRadians(30));
+
+	// make the lists
+	public ElapsedTime shootTimer;
+
+	public double dist;
+	private PurplePathing pathManager;
+
 	@Override
 	public void create ()
 	{
-
 		follower = org.firstinspires.ftc.teamcode.pedroPathing.Constants.createFollower(hardwareMap);
-		follower.setStartingPose(startingPose == null ? DEFAULT_AUTO_START_POSE : startingPose);
-		follower.update();
-		follower.startTeleopDrive(true);
+		follower.setPose(startPose);
+		pathManager = new PurplePathing(follower);
 
 		PurpleMemory.initialize(hardwareMap, follower);
 		LimeUtil.start(hardwareMap, 60);
 		LimeUtil.setPipeline(0);
 
+		shootTimer = new ElapsedTime();
+
 		explosher = new Explosher(hardwareMap);
 		explosher.setRegressionEnabled(true);
 		
 		vaccum = new Vaccum(hardwareMap);
+
+		// Path Chain Presets
+		PathChain DriveStartPickup = follower.pathBuilder()
+				.addPath(new BezierLine(startPose, Pickup1))
+				.setLinearHeadingInterpolation(startPose.getHeading(), Pickup1.getHeading())
+				.build();
+		PathChain DriveOpen1 = follower.pathBuilder()
+				.addPath(new BezierLine(Pickup1, Open1))
+				.setLinearHeadingInterpolation(Pickup1.getHeading(), Open1.getHeading())
+				.build();
+		PathChain DriveOpenShoot1 = follower.pathBuilder()
+				.addPath(new BezierLine(Open1, shootPose))
+				.setLinearHeadingInterpolation(Open1.getHeading(), shootPose.getHeading())
+				.build();
+		PathChain DriveShootPickup = follower.pathBuilder()
+				.addPath(new BezierCurve(shootPose, Pickup2, GrabCurve))
+				.setLinearHeadingInterpolation(shootPose.getHeading(), Pickup2.getHeading())
+				.build();
+		PathChain DriveOpen2 = follower.pathBuilder()
+				.addPath(new BezierLine(Pickup2, Open2))
+				.setLinearHeadingInterpolation(Pickup2.getHeading(), Open2.getHeading())
+				.build();
+		PathChain DriveOpenShoot2 = follower.pathBuilder()
+				.addPath(new BezierLine(Open2, shootPose))
+				.setLinearHeadingInterpolation(Open2.getHeading(), shootPose.getHeading())
+				.build();
+		PathChain DriveOpenPickup = follower.pathBuilder()
+				.addPath(new BezierCurve(shootPose, OpenGrab, OpenGrabCurve))
+				.setLinearHeadingInterpolation(shootPose.getHeading(), OpenGrab.getHeading())
+				.build();
+		PathChain RankMove = follower.pathBuilder()
+				.addPath(new BezierLine(shootPose, rankPose))
+				.setLinearHeadingInterpolation(shootPose.getHeading(), rankPose.getHeading())
+				.build();
+
+		// Create the PurplePath objects
+		PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 1.0, 0.0);
+
+
+		PurplePath path2 = new PurplePath("OPEN THE GATE", DriveOpen1, 1, 0.0);
+
+
+		PurplePath path3 = new PurplePath("shoot", DriveOpenShoot1, 2.0, 0);
+
+
+		PurplePath path4 = new PurplePath("pick the up", DriveShootPickup, 1, 0.0);
+
+
+		PurplePath path5 = new PurplePath("op the en", DriveOpen2, 2.0, 0.0);
+
+
+		PurplePath path6 = new PurplePath("shoot 2: electric boogaloo", DriveOpenShoot2, 1, 0.0);
+
+
+		PurplePath path7 = new PurplePath("Drive Back to shoot again", DriveOpenPickup, 2.0, 6.5);
+
+
+		PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 1, 0.0)
+				.onComplete(() -> DebugUtil.logAdd("path2 completed"));
+
+		// Create the PurpleChain object
+		PurpleChain chain = new PurpleChain(path1, path2, path3, path4, path5, path6, path7, path8)
+				.onComplete(() -> DebugUtil.logAdd("Chain fully finished"));
+
+		// Start the chain. holdEnd = true (follower will hold at end of each path)
+		pathManager.startChain(chain, true, () -> DebugUtil.logAdd("startChain() provided onComplete"));
+
+		shootTimer.reset();
 
 		DebugUtil.setTelemetry(telemetry);
 	}
@@ -59,6 +154,7 @@ public class AutoBase extends PurpleOpMode
 		LimeUtil.setTurretYawDegrees(explosher.getExploringDeg());
 		LimeUtil.update();
 		PurpleMemory.Instance.update();
+		pathManager.update();
 
 		explosher.update();
 		vaccum.update();
@@ -67,12 +163,14 @@ public class AutoBase extends PurpleOpMode
 		updateExplosher();
 		updateVaccum();
 		teleInfo();
+
+		DebugUtil.logAdd("Current Path: " + pathManager.curPath());
+		DebugUtil.update();
 	}
 
 	@Override
 	public void destroy ()
 	{
-
 		explosher.stop();
 		vaccum.stop();
 	}
