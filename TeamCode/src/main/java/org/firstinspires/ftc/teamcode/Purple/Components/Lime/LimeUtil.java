@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.teamcode.Purple.Constants;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 
 public final class LimeUtil
@@ -19,6 +20,7 @@ public final class LimeUtil
     private static Limelight3A limelight = null;
     private static IMU imu = null;
     private static boolean initialized = false;
+    private static double turretYawDegrees = 0.0;
 
     private LimeUtil()
     {
@@ -39,6 +41,7 @@ public final class LimeUtil
             imu = hardwareMap.get(IMU.class, "imu");
             limelight.setPollRateHz(pollHz);
             limelight.start();
+            turretYawDegrees = 0.0;
             initialized = true;
             return true;
         }
@@ -46,6 +49,7 @@ public final class LimeUtil
         {
             limelight = null;
             imu = null;
+            turretYawDegrees = 0.0;
             initialized = false;
             return false;
         }
@@ -63,7 +67,43 @@ public final class LimeUtil
 
         YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
         double yaw = orientation.getYaw(AngleUnit.DEGREES);
+        if (Constants.LIMELIGHT_DYNAMIC_MOUNT_COMPENSATION)
+        {
+            yaw += getTurretYawDeltaDegrees();
+        }
+
         limelight.updateRobotOrientation(yaw);
+    }
+
+    /**
+     * Updates the turret yaw used for dynamic camera-mount compensation.
+     *
+     * @param yawDegrees Turret yaw in degrees.
+     */
+    public static void setTurretYawDegrees(double yawDegrees)
+    {
+        turretYawDegrees = yawDegrees;
+    }
+
+    /**
+     * Gets the latest turret yaw supplied by the OpMode.
+     *
+     * @return Turret yaw in degrees.
+     */
+    public static double getTurretYawDegrees()
+    {
+        return turretYawDegrees;
+    }
+
+    /**
+     * Gets the delta yaw (from configured camera-zero orientation) used for compensation.
+     *
+     * @return Effective camera yaw delta in degrees.
+     */
+    public static double getTurretYawDeltaDegrees()
+    {
+        return Constants.LIMELIGHT_TURRET_YAW_SIGN *
+                (turretYawDegrees - Constants.LIMELIGHT_TURRET_YAW_ZERO_OFFSET_DEG);
     }
 
     /**
@@ -84,6 +124,7 @@ public final class LimeUtil
 
         limelight = null;
         imu = null;
+        turretYawDegrees = 0.0;
         initialized = false;
     }
 

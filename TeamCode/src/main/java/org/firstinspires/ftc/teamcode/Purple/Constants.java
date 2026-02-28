@@ -6,7 +6,7 @@ public final class Constants
 {
 
 	// Finger servo configuration values
-	public static final double HOOD_MIN = 0.0;
+	public static final double HOOD_MIN = 0.15;
 	public static final double HOOD_MAX = 1.0;
 
 	public static final double FINGER_MIN = 0.0;
@@ -14,7 +14,7 @@ public final class Constants
 
 	public static final double FINGER_STOP_POSITION = 0.48;
 	public static final double FINGER_PASS_POSITION = 0.69;
-	public static final double FINGER_DEBUG_INCREMENT = 0.01;
+	public static final double FINGER_DEBUG_INCREMENT = 0.05;
 
 	// Drive settings
 	public static final double DRIVE_POWER_SCALE = 1.0;
@@ -30,8 +30,18 @@ public final class Constants
 	public static final int VIBRATION_TAG_DETECTED = 40;
 	public static final int VIBRATION_ALIGNED = 100;
 
-	// Note: MotorConfig instances will be created in the opmodes with HardwareMap
 	// Debug mode toggle
-	public static final boolean DEBUG_MODE = false;
+	public static final boolean DEBUG_MODE = true;
+
+	// Limelight dynamic-mount compensation (camera on rotating turret)
+	public static final boolean LIMELIGHT_DYNAMIC_MOUNT_COMPENSATION = true;
+	public static final double LIMELIGHT_FORWARD_METERS = 0.18;
+	public static final double LIMELIGHT_RIGHT_METERS = 0.0;
+	public static final double LIMELIGHT_UP_METERS = 0.29;
+	public static final double LIMELIGHT_ROLL_DEG = 0.0;
+	public static final double LIMELIGHT_PITCH_DEG = 15.0;
+	public static final double LIMELIGHT_YAW_DEG = 2.0;
+	public static final double LIMELIGHT_TURRET_YAW_SIGN = 1.0;
+	public static final double LIMELIGHT_TURRET_YAW_ZERO_OFFSET_DEG = 0.0;
 
 }

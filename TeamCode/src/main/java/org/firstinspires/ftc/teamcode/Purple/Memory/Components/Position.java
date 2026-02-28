@@ -13,6 +13,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
+import org.firstinspires.ftc.teamcode.Purple.Constants;
 
 import java.util.List;
 
@@ -24,12 +25,16 @@ public class Position
 {
 	private static final long VISION_CORRECTION_MIN_INTERVAL_MS = 120;
 	private static final long VISION_MAX_RESULT_STALENESS_MS = 100;
+	private static final double VISION_CORRECTION_BLEND_ALPHA = 0.35;
+	private static final double VISION_MAX_REFERENCE_DELTA_INCHES = 30.0;
 	private static final int VISION_MIN_TAG_COUNT = 2;
 	private static final double VISION_MIN_AVG_AREA = 0.15;
 	private static final double VISION_MIN_SINGLE_TAG_AVG_AREA = 0.50;
 	private static final double VISION_MAX_AVG_DIST_METERS = 4.0;
 	private static final double VISION_MAX_STDDEV_X_METERS = 0.20;
 	private static final double VISION_MAX_STDDEV_Y_METERS = 0.20;
+	private static final double VISION_FIELD_MIN_INCHES = -8.0;
+	private static final double VISION_FIELD_MAX_INCHES = 152.0;
 
 	private static final String DEFAULT_HARDWARE_NAME = "odo";
 	private static final double DEFAULT_X_OFFSET_MM = 0.0;
@@ -203,8 +208,18 @@ public class Position
 			return;
 		}
 
-		x = pedroPose.getX();
-		y = pedroPose.getY();
+		Pose referencePose = getVisionReferencePose();
+		if (referencePose != null)
+		{
+			double correctionDeltaInches = distanceXY(referencePose, pedroPose);
+			if (correctionDeltaInches > VISION_MAX_REFERENCE_DELTA_INCHES)
+			{
+				return;
+			}
+		}
+
+		x += VISION_CORRECTION_BLEND_ALPHA * (pedroPose.getX() - x);
+		y += VISION_CORRECTION_BLEND_ALPHA * (pedroPose.getY() - y);
 		lastVisionCorrectionMs = System.currentTimeMillis();
 	}
 
@@ -330,8 +345,112 @@ public class Position
 			headingRadians = pose3D.getOrientation().getYaw(AngleUnit.RADIANS);
 		}
 
+		Pose nativePedroPose = new Pose(xInches, yInches, headingRadians);
 		Pose ftcPose = new Pose(xInches, yInches, headingRadians, FTCCoordinates.INSTANCE);
-		return FTCCoordinates.INSTANCE.convertToPedro(ftcPose);
+		Pose convertedFtcPose = FTCCoordinates.INSTANCE.convertToPedro(ftcPose);
+		Pose selectedPose = choosePedroPose(nativePedroPose, convertedFtcPose);
+		return applyTurretMountTranslationCorrection(selectedPose);
+	}
+
+	private Pose choosePedroPose (Pose nativePedroPose, Pose convertedFtcPose)
+	{
+
+		boolean nativeInBounds = isLikelyFieldPose(nativePedroPose);
+		boolean convertedInBounds = isLikelyFieldPose(convertedFtcPose);
+
+		if (nativeInBounds && !convertedInBounds)
+		{
+			return nativePedroPose;
+		}
+
+		if (convertedInBounds && !nativeInBounds)
+		{
+			return convertedFtcPose;
+		}
+
+		Pose referencePose = getVisionReferencePose();
+		if (referencePose == null)
+		{
+			// Preserve prior behavior when there is no localization context.
+			return convertedFtcPose;
+		}
+
+		double nativeDistance = distanceXY(referencePose, nativePedroPose);
+		double convertedDistance = distanceXY(referencePose, convertedFtcPose);
+		return nativeDistance <= convertedDistance ? nativePedroPose : convertedFtcPose;
+	}
+
+	private Pose getVisionReferencePose ()
+	{
+
+		if (lastFollowerPose != null)
+		{
+			return lastFollowerPose;
+		}
+
+		return new Pose(x, y, Math.toRadians(heading));
+	}
+
+	private boolean isLikelyFieldPose (Pose pose)
+	{
+
+		if (pose == null)
+		{
+			return false;
+		}
+
+		return pose.getX() >= VISION_FIELD_MIN_INCHES &&
+				pose.getX() <= VISION_FIELD_MAX_INCHES &&
+				pose.getY() >= VISION_FIELD_MIN_INCHES &&
+				pose.getY() <= VISION_FIELD_MAX_INCHES;
+	}
+
+	private double distanceXY (Pose a, Pose b)
+	{
+
+		double deltaX = a.getX() - b.getX();
+		double deltaY = a.getY() - b.getY();
+		return Math.hypot(deltaX, deltaY);
+	}
+
+	private Pose applyTurretMountTranslationCorrection (Pose pose)
+	{
+
+		if (pose == null || !Constants.LIMELIGHT_DYNAMIC_MOUNT_COMPENSATION)
+		{
+			return pose;
+		}
+
+		double turretDeltaDeg = LimeUtil.getTurretYawDeltaDegrees();
+		if (Math.abs(turretDeltaDeg) < 1e-6)
+		{
+			return pose;
+		}
+
+		double configuredForwardInches = DistanceUnit.INCH.fromUnit(DistanceUnit.METER, Constants.LIMELIGHT_FORWARD_METERS);
+		double configuredRightInches = DistanceUnit.INCH.fromUnit(DistanceUnit.METER, Constants.LIMELIGHT_RIGHT_METERS);
+		double turretDeltaRad = Math.toRadians(turretDeltaDeg);
+
+		// Rotate the configured camera offset by the turret angle to estimate actual offset.
+		double dynamicForwardInches = (configuredForwardInches * Math.cos(turretDeltaRad)) +
+				(configuredRightInches * Math.sin(turretDeltaRad));
+		double dynamicRightInches = (-configuredForwardInches * Math.sin(turretDeltaRad)) +
+				(configuredRightInches * Math.cos(turretDeltaRad));
+
+		double correctionForwardInches = configuredForwardInches - dynamicForwardInches;
+		double correctionRightInches = configuredRightInches - dynamicRightInches;
+
+		double headingRad = Math.toRadians(heading);
+		double correctionX = (correctionForwardInches * Math.cos(headingRad)) +
+				(correctionRightInches * Math.sin(headingRad));
+		double correctionY = (correctionForwardInches * Math.sin(headingRad)) -
+				(correctionRightInches * Math.cos(headingRad));
+
+		return new Pose(
+				pose.getX() + correctionX,
+				pose.getY() + correctionY,
+				pose.getHeading()
+		);
 	}
 
 	private static final class VisionPoseCandidate

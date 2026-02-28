@@ -30,6 +30,8 @@ public class Controls
 		updateButton("right_bumper", gamepad.right_bumper);
 		updateButton("left_stick_button", gamepad.left_stick_button);
 		updateButton("right_stick_button", gamepad.right_stick_button);
+		updateButton("start", gamepad.start);
+		updateButton("select", gamepad.back);
 
 		// Triggers as buttons
 		updateButton("left_trigger", gamepad.left_trigger > 0.5);

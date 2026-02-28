@@ -14,7 +14,7 @@ public class Balls
 	private static final RGB SAMPLE_GREEN = new RGB(110, 420, 355);
 	private static final RGB SAMPLE_NONE = new RGB(22, 22, 22);
 
-	private final RevColorSensorV3[] sensors = new RevColorSensorV3[3];
+	private final RevColorSensorV3[] sensors = new RevColorSensorV3[6];
 	private final Ball[] curBalls = new Ball[]{
 			Ball.NONE,
 			Ball.NONE,
@@ -22,7 +22,7 @@ public class Balls
 	};
 
 	/**
-	 * Initializes all 3 REV Color Sensor V3 devices.
+	 * Initializes all 6 REV Color Sensor V3 devices.
 	 */
 	public Balls (HardwareMap hardwareMap)
 	{
@@ -30,9 +30,12 @@ public class Balls
 		sensors[0] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR1);
 		sensors[1] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR2);
 		sensors[2] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR3);
+		sensors[3] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR4);
+		sensors[4] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR5);
+		sensors[5] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR6);
 
 		// Enable LEDs for all sensors
-		for (int i = 0; i < 3; i++)
+		for (int i = 0; i < 6; i++)
 		{
 			sensors[i].enableLed(true);
 		}
@@ -44,10 +47,28 @@ public class Balls
 	public void update ()
 	{
 
-		for (int i = 0; i < 3; i++)
+		curBalls[0] = detectPair(0, 5); // cs1 + cs6
+		curBalls[1] = detectPair(1, 4); // cs2 + cs5 [CHECK]
+		curBalls[2] = detectPair(2, 3); // cs3 + cs4
+	}
+
+	private Ball detectPair (int firstIndex, int secondIndex)
+	{
+
+		Ball first = detectBall(sensors[firstIndex]);
+		Ball second = detectBall(sensors[secondIndex]);
+
+		if (first == Ball.GREEN || second == Ball.GREEN)
 		{
-			curBalls[i] = detectBall(sensors[i]);
+			return Ball.GREEN;
 		}
+
+		if (first == Ball.PURPLE || second == Ball.PURPLE)
+		{
+			return Ball.PURPLE;
+		}
+
+		return Ball.NONE;
 	}
 
 	/**
