@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Purple;
+package org.firstinspires.ftc.teamcode.Purple.Extras;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
@@ -8,6 +8,9 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
+import org.firstinspires.ftc.teamcode.Purple.Constants;
+import org.firstinspires.ftc.teamcode.Purple.Controls;
+import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleAuto", group = "Purple")
@@ -85,12 +88,14 @@ public class TeleAuto extends PurpleOpMode
 			double turn = 10;
 
 			follower.turnDegrees(turn, true);
-		} else if (dir == "R")
+		}
+		else if (dir == "R")
 		{
 			double turn = 10;
 
 			follower.turnDegrees(turn, false);
-		} else
+		}
+		else
 		{
 			follower.setTeleOpDrive(
 					-gamepad1.left_stick_y,
@@ -150,20 +155,24 @@ public class TeleAuto extends PurpleOpMode
 				if (LimeUtil.getTx() < 0)
 				{
 					updateDrive("L");
-				} else if (LimeUtil.getTx() > 0)
+				}
+				else if (LimeUtil.getTx() > 0)
 				{
 					updateDrive("R");
-				} else
+				}
+				else
 				{
 					updateDrive("def");
 				}
-			} else
+			}
+			else
 			{
 				driver1.vibrate(150);
 				updateDrive("def");
 
 			}
-		} else
+		}
+		else
 		{
 			updateDrive("def");
 		}
@@ -190,18 +199,22 @@ public class TeleAuto extends PurpleOpMode
 				{
 					explosher.setRPM(smoothedTargetRPM);
 				}
-			} else if (!manual)
+			}
+			else if (!manual)
 			{
 				explosher.stop();
 			}
-		} else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
+		}
+		else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
 		{
 			explosher.setRPM(-4000);
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
-		} else if (driver2.isPressed("b"))
+		}
+		else if (driver2.isPressed("b"))
 		{
 			explosher.setRPM(-4000);
-		} else
+		}
+		else
 		{
 			explosher.stop();
 		}
@@ -293,7 +306,8 @@ public class TeleAuto extends PurpleOpMode
 		if (driver2.isPressed("y"))
 		{
 			vaccum.setPower(Vaccum.DEFAULT_POW);
-		} else
+		}
+		else
 		{
 			vaccum.stop();
 		}
@@ -358,7 +372,8 @@ public class TeleAuto extends PurpleOpMode
 			DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTargetDistance()) +
 					"in, Angle: " + String.format("%.1f", LimeUtil.getTx()) + "°");
 			DebugUtil.logAdd("Aligned: " + (isFullyAligned() ? "YES" : "NO"));
-		} else
+		}
+		else
 		{
 			DebugUtil.logAdd("AprilTag: No target");
 		}
