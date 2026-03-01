@@ -33,15 +33,4 @@ public final class Constants
 	// Debug mode toggle
 	public static final boolean DEBUG_MODE = true;
 
-	// Limelight dynamic-mount compensation (camera on rotating turret)
-	public static final boolean LIMELIGHT_DYNAMIC_MOUNT_COMPENSATION = true;
-	public static final double LIMELIGHT_FORWARD_METERS = 0.18;
-	public static final double LIMELIGHT_RIGHT_METERS = 0.0;
-	public static final double LIMELIGHT_UP_METERS = 0.29;
-	public static final double LIMELIGHT_ROLL_DEG = 0.0;
-	public static final double LIMELIGHT_PITCH_DEG = 15.0;
-	public static final double LIMELIGHT_YAW_DEG = 2.0;
-	public static final double LIMELIGHT_TURRET_YAW_SIGN = 1.0;
-	public static final double LIMELIGHT_TURRET_YAW_ZERO_OFFSET_DEG = 0.0;
-
 }

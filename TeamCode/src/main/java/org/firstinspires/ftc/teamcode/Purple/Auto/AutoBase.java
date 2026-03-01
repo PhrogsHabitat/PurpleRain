@@ -151,7 +151,6 @@ public class AutoBase extends PurpleOpMode
 	{
 
 		follower.update();
-		LimeUtil.setTurretYawDegrees(explosher.getExploringDeg());
 		LimeUtil.update();
 		PurpleMemory.Instance.update();
 		pathManager.update();
@@ -220,14 +219,9 @@ public class AutoBase extends PurpleOpMode
 
 		DebugUtil.logAdd("============== [LIME]");
 		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("POSE: " + LimeUtil.getResult().getBotpose_MT2());
+		DebugUtil.logAdd("POSE: " + LimeUtil.getResult().getBotpose());
 		DebugUtil.logAdd("Target X: " + LimeUtil.getTx());
 		DebugUtil.logAdd("Target D: " + LimeUtil.getTargetDistance());
-		DebugUtil.logAdd(String.format(
-				"TurretYaw: %.2f | LLYawDelta: %.2f",
-				LimeUtil.getTurretYawDegrees(),
-				LimeUtil.getTurretYawDeltaDegrees()
-		));
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.logAdd("============== [EXPLOSHER]");

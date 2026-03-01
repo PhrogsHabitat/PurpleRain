@@ -82,6 +82,7 @@ public class TeleOp extends PurpleOpMode
 
 		explosher = new Explosher(hardwareMap);
 		explosher.setRegressionEnabled(false);
+
 		if (Constants.DEBUG_MODE)
 		{
 			desiredExplosherRPM = 0.0;
@@ -101,7 +102,6 @@ public class TeleOp extends PurpleOpMode
 		driver1.update();
 		driver2.update();
 		follower.update();
-		LimeUtil.setTurretYawDegrees(explosher.getExploringDeg());
 		LimeUtil.update();
 		PurpleMemory.Instance.update();
 
@@ -370,14 +370,9 @@ public class TeleOp extends PurpleOpMode
 
 		DebugUtil.logAdd("============== [LIME]");
 		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("POSE: " + LimeUtil.getResult().getBotpose_MT2());
+		DebugUtil.logAdd("POSE: " + LimeUtil.getResult().getBotpose());
 		DebugUtil.logAdd("Target X: " + LimeUtil.getTx());
 		DebugUtil.logAdd("Target D: " + LimeUtil.getTargetDistance());
-		DebugUtil.logAdd(String.format(
-				"TurretYaw: %.2f | LLYawDelta: %.2f",
-				LimeUtil.getTurretYawDegrees(),
-				LimeUtil.getTurretYawDeltaDegrees()
-		));
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.logAdd("============== [EXPLOSHER]");

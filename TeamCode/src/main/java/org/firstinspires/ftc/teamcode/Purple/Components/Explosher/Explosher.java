@@ -375,6 +375,18 @@ public class Explosher
 	}
 
 	/**
+	 * Sets the world-space point used by the auto-aim solver.
+	 *
+	 * @param x Target X.
+	 * @param y Target Y.
+	 */
+	public void setTarget (double x, double y)
+	{
+
+		setAimPoint(x, y);
+	}
+
+	/**
 	 * Gets the current auto-aim power command.
 	 *
 	 * @return Current PID output power.

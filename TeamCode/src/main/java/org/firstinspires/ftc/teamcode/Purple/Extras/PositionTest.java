@@ -5,6 +5,7 @@ import com.pedropathing.ftc.FTCCoordinates;
 import com.pedropathing.geometry.PedroCoordinates;
 import com.pedropathing.geometry.Pose;
 
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
@@ -86,16 +87,6 @@ public class PositionTest extends PurpleOpMode
 		);
 	}
 
-	/**
-	 * Replace this with your turret yaw source.
-	 * If turret is at 0 degrees relative to robot forward, return 0.
-	 */
-	private double getTurretYawDegrees ()
-	{
-		// TODO: Replace with real turret angle
-		return 0.0;
-	}
-
 	private void teleInfo ()
 	{
 
@@ -105,20 +96,32 @@ public class PositionTest extends PurpleOpMode
 		DebugUtil.logAdd(" ");
 
 		Pose3D botPose = LimeUtil.getResult().getBotpose();
+		
+		double botXInches = DistanceUnit.INCH.fromUnit(botPose.getPosition().unit, botPose.getPosition().x);
+		double botYInches = DistanceUnit.INCH.fromUnit(botPose.getPosition().unit, botPose.getPosition().y);
 
-		Pose visionPose = new Pose(botPose.getPosition().x, botPose.getPosition().y, 0,
+		Pose visionPose = new Pose(botXInches, botYInches, 0 - follower.getPose().getHeading(),
 				FTCCoordinates.INSTANCE)
 				.getAsCoordinateSystem(PedroCoordinates.INSTANCE);
 
-		DebugUtil.logAdd("ODOMETRY X: " + pose.getX());
-		DebugUtil.logAdd("ODOMETRY Y: " + pose.getY());
-		DebugUtil.logAdd("ODOMETRY HEADING: " + Math.toDegrees(pose.getHeading()));
-
+		DebugUtil.logAdd("[BOT POSE]");
+		DebugUtil.logAdd("X (in): " + botXInches);
+		DebugUtil.logAdd("Y (in): " + botYInches);
+		DebugUtil.logAdd("HEADING: " + botPose.getOrientation());
 		DebugUtil.logAdd(" ");
 
+		DebugUtil.logAdd("[VISION POSE]");
+		DebugUtil.logAdd("X (in): " + visionPose.getX());
+		DebugUtil.logAdd("Y (in): " + visionPose.getY());
+		DebugUtil.logAdd("HEADING: " + Math.toDegrees(visionPose.getHeading()));
 		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("TurretYaw: " +
-				LimeUtil.getTurretYawDegrees());
+
+		DebugUtil.logAdd("[ODOMETRY]");
+		DebugUtil.logAdd("X (in): " + pose.getX());
+		DebugUtil.logAdd("Y (in): " + pose.getY());
+		DebugUtil.logAdd("HEADING: " + Math.toDegrees(pose.getHeading()));
+
+		DebugUtil.logAdd(" ");
 
 		DebugUtil.update();
 	}

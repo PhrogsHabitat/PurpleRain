@@ -12,8 +12,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
-import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
-import org.firstinspires.ftc.teamcode.Purple.Constants;
 
 import java.util.List;
 
@@ -294,12 +292,6 @@ public class Position
 			return null;
 		}
 
-		double[] mt2Stddev = result.getStddevMt2();
-		if (hasUsableStddev(mt2Stddev))
-		{
-			return new VisionPoseCandidate(result.getBotpose_MT2(), mt2Stddev);
-		}
-
 		double[] mt1Stddev = result.getStddevMt1();
 		if (hasUsableStddev(mt1Stddev))
 		{
@@ -348,8 +340,7 @@ public class Position
 		Pose nativePedroPose = new Pose(xInches, yInches, headingRadians);
 		Pose ftcPose = new Pose(xInches, yInches, headingRadians, FTCCoordinates.INSTANCE);
 		Pose convertedFtcPose = FTCCoordinates.INSTANCE.convertToPedro(ftcPose);
-		Pose selectedPose = choosePedroPose(nativePedroPose, convertedFtcPose);
-		return applyTurretMountTranslationCorrection(selectedPose);
+		return choosePedroPose(nativePedroPose, convertedFtcPose);
 	}
 
 	private Pose choosePedroPose (Pose nativePedroPose, Pose convertedFtcPose)
@@ -411,46 +402,6 @@ public class Position
 		double deltaX = a.getX() - b.getX();
 		double deltaY = a.getY() - b.getY();
 		return Math.hypot(deltaX, deltaY);
-	}
-
-	private Pose applyTurretMountTranslationCorrection (Pose pose)
-	{
-
-		if (pose == null || !Constants.LIMELIGHT_DYNAMIC_MOUNT_COMPENSATION)
-		{
-			return pose;
-		}
-
-		double turretDeltaDeg = LimeUtil.getTurretYawDeltaDegrees();
-		if (Math.abs(turretDeltaDeg) < 1e-6)
-		{
-			return pose;
-		}
-
-		double configuredForwardInches = DistanceUnit.INCH.fromUnit(DistanceUnit.METER, Constants.LIMELIGHT_FORWARD_METERS);
-		double configuredRightInches = DistanceUnit.INCH.fromUnit(DistanceUnit.METER, Constants.LIMELIGHT_RIGHT_METERS);
-		double turretDeltaRad = Math.toRadians(turretDeltaDeg);
-
-		// Rotate the configured camera offset by the turret angle to estimate actual offset.
-		double dynamicForwardInches = (configuredForwardInches * Math.cos(turretDeltaRad)) +
-				(configuredRightInches * Math.sin(turretDeltaRad));
-		double dynamicRightInches = (-configuredForwardInches * Math.sin(turretDeltaRad)) +
-				(configuredRightInches * Math.cos(turretDeltaRad));
-
-		double correctionForwardInches = configuredForwardInches - dynamicForwardInches;
-		double correctionRightInches = configuredRightInches - dynamicRightInches;
-
-		double headingRad = Math.toRadians(heading);
-		double correctionX = (correctionForwardInches * Math.cos(headingRad)) +
-				(correctionRightInches * Math.sin(headingRad));
-		double correctionY = (correctionForwardInches * Math.sin(headingRad)) -
-				(correctionRightInches * Math.cos(headingRad));
-
-		return new Pose(
-				pose.getX() + correctionX,
-				pose.getY() + correctionY,
-				pose.getHeading()
-		);
 	}
 
 	private static final class VisionPoseCandidate
