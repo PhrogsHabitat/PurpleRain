@@ -37,23 +37,10 @@ public class Explosher
 
 	private static final double EXPLORE_TICKS_PER_DEG = 1200.0 / 180.0;
 	private static final double DEFAULT_EXPLORE_DEG_POW = 1.0;
-	private static final double PID_KP = 0.025;
-	private static final double PID_KI = 0.0020;
-	private static final double PID_KD = 0.0010;
-	private static final double PID_DEAD = 0.08;
-	private static final double PID_MIN_POW = 0.055;
-	private static final double PID_MIN_POW_NEAR_TARGET = 0.020;
-	private static final double PID_MIN_POW_FULL_ERR_DEG = 2.0;
-	private static final double PID_INT_DECAY_IN_DEADBAND = 0.90;
-	private static final double PID_CROSS_EPS = 0.01;
-	private static final double PID_REVERSE_SLEW = 12.0;
-	private static final double PID_OVERSHOOT_BOOST_ERR = 0.18;
-	private static final double PID_OVERSHOOT_BOOST_POW = 0.090;
-	private static final double PID_EASE_WINDOW_DEG = 8.0;
-	private static final double PID_EASE_CAP_MIN_POW = 0.020;
-	private static final double PID_EASE_CAP_MAX_POW = 0.35;
-	private static final double PID_STOP_ERR_DEG = 1.2;
-	private static final double PID_STOP_SLEW = 2.4;
+	private static final double PID_KP = 0.036;
+	private static final double PID_KI = 0.0012;
+	private static final double PID_KD = 0.0020;
+	private static final double PID_DEAD = 0.3;
 	private static final double PID_MAX_POW = 1.0;
 	private static final double PID_MAX_SLEW = 6.0;
 	private static final double PID_INT_LIM = 35.0;
@@ -61,16 +48,10 @@ public class Explosher
 	private static final double PID_FLIP_ERR = 80.0;
 	private static final double PID_FLIP_POW = 1.0;
 	private static final double PID_FLIP_SLEW = 14.0;
-	private static final double AIM_WARMUP_S = 0.20;
-	private static final double AIM_TARGET_ALPHA = 0.24;
-	private static final double AIM_TARGET_MICRO_ALPHA = 0.08;
-	private static final double AIM_TARGET_NOISE_DEG = 0.45;
 	private static final double MIN_DEG = -180.0;
 	private static final double MAX_DEG = 180.0;
-	private static final double AIM_ZERO_FROM_FRONT_DEG = 180.0;
-	private static final double AIM_BEARING_SIGN = -1.0;
-	private static final double AIM_X = 144;
-	private static final double AIM_Y = 144;
+	private static final double AIM_X = 128.0;
+	private static final double AIM_Y = 130.0;
 
 	private final MotorConfig motor;
 	private final MotorConfig motor2;
@@ -97,9 +78,6 @@ public class Explosher
 	private double pidDer = 0.0;
 	private double pidPow = 0.0;
 	private long pidNs = 0;
-	private long aimWarmupNs = 0;
-	private double filteredAimTargetDeg = 0.0;
-	private boolean hasFilteredAimTarget = false;
 
 	public Explosher (HardwareMap hardwareMap)
 	{
@@ -329,26 +307,7 @@ public class Explosher
 			return;
 		}
 
-		long nowNs = System.nanoTime();
-		if (aimWarmupNs == 0)
-		{
-			aimWarmupNs = nowNs;
-		}
-
-		double targetDeg = filterAimTargetDeg(getAimDeg(pose));
-		double warmupSec = (nowNs - aimWarmupNs) / 1_000_000_000.0;
-		if (warmupSec < AIM_WARMUP_S)
-		{
-			pidInt = 0.0;
-			pidDer = 0.0;
-			pidErr = targetDeg - getExploringDeg();
-			pidPow = 0.0;
-			pidNs = 0;
-			aimErr = pidErr;
-			setExploringPow(0.0);
-			return;
-		}
-
+		double targetDeg = getAimDeg(pose);
 		setExploringPow(getPidPow(targetDeg));
 	}
 
@@ -698,210 +657,74 @@ public class Explosher
 	private double getAimDeg (Pose pose)
 	{
 
-		double robotX = pose.getX();
-		double robotY = pose.getY();
-		double deltaY = aimY - robotY;
-		double deltaX = aimX - robotX;
-		double robotHeadingDeg = Math.toDegrees(pose.getHeading());
-		double bearingDeg = Math.toDegrees(Math.atan2(deltaY, deltaX));
-		double relativeBearingDeg = normDeg(bearingDeg - robotHeadingDeg);
-		double targetDeg = normDeg(AIM_ZERO_FROM_FRONT_DEG + (AIM_BEARING_SIGN * relativeBearingDeg));
+		double botX = pose.getX();
+		double botY = pose.getY();
+		double dY = aimY - botY;
+		double dX = aimX - botX;
+		double botHeadDeg = Math.toDegrees(pose.getHeading());
+		double bearingDeg = Math.toDegrees(Math.atan2(dY, dX));
 
-		DebugUtil.logAdd("DX: " + deltaX);
-		DebugUtil.logAdd("DY: " + deltaY);
+		DebugUtil.logAdd("DX: " + dX);
+		DebugUtil.logAdd("DY: " + dY);
 		DebugUtil.logAdd("Angle: " + bearingDeg);
-		DebugUtil.logAdd("RelAngle: " + relativeBearingDeg);
-		DebugUtil.logAdd("TargetDeg: " + targetDeg);
 
-		return MathUtil.clamp(targetDeg, MIN_DEG, MAX_DEG);
+		return MathUtil.clamp(normDeg(bearingDeg + botHeadDeg), MIN_DEG, MAX_DEG);
 	}
 
 	private double getPidPow (double targetDeg)
 	{
 
 		double currentDeg = getExploringDeg();
-		double clampedTargetDeg = MathUtil.clamp(targetDeg, MIN_DEG, MAX_DEG);
-		double error = clampedTargetDeg - currentDeg;
+		double goalDeg = MathUtil.clamp(targetDeg, MIN_DEG, MAX_DEG);
+		double error = goalDeg - currentDeg;
+
 		long nowNs = System.nanoTime();
 		double dt = pidNs == 0 ? 0.02 : (nowNs - pidNs) / 1_000_000_000.0;
 
 		pidNs = nowNs;
 		dt = MathUtil.clamp(dt, 0.001, 0.1);
 
-		double pidError = applyDeadband(error, PID_DEAD);
-		boolean crossedTarget = crossedZero(pidErr, pidError, PID_CROSS_EPS);
-
-		if (Math.abs(error) >= PID_FLIP_ERR)
+		if (Math.abs(error) < PID_DEAD)
 		{
 			pidInt = 0.0;
-
-			double boostPow = Math.copySign(PID_FLIP_POW, error);
-			boostPow = hardStop(currentDeg, boostPow);
-			pidPow = slewPow(pidPow, boostPow, dt, PID_FLIP_SLEW);
-			pidErr = pidError;
+			pidDer = 0.0;
+			pidErr = error;
+			pidPow = slewPow(pidPow, 0.0, dt);
 			aimErr = error;
 			return pidPow;
 		}
 
-		if (crossedTarget)
+		if (Math.abs(error) >= PID_FLIP_ERR)
 		{
 			pidInt = 0.0;
+			double boostPow = Math.copySign(PID_FLIP_POW, error);
+			boostPow = hardStop(currentDeg, boostPow);
+			pidPow = slewPow(pidPow, boostPow, dt, PID_FLIP_SLEW);
+			pidErr = error;
+			aimErr = error;
+			return pidPow;
 		}
 
-		if (Math.abs(error) < PID_DEAD)
-		{
-			pidInt *= PID_INT_DECAY_IN_DEADBAND;
-			pidDer *= PID_INT_DECAY_IN_DEADBAND;
-		}
-
-		pidInt += pidError * dt;
+		pidInt += error * dt;
 		pidInt = MathUtil.clamp(pidInt, -PID_INT_LIM, PID_INT_LIM);
 
-		double rawDer = (pidError - pidErr) / dt;
+		double rawDer = (error - pidErr) / dt;
 		pidDer += PID_DER_A * (rawDer - pidDer);
 
-		double targetPow = (PID_KP * pidError) + (PID_KI * pidInt) + (PID_KD * pidDer);
-		targetPow = applyStaticFrictionComp(targetPow, pidError);
-		targetPow = applyOvershootBoost(targetPow, pidError, crossedTarget);
-		targetPow = applyApproachEasing(targetPow, error, crossedTarget);
+		double targetPow = (PID_KP * error) + (PID_KI * pidInt) + (PID_KD * pidDer);
 		targetPow = MathUtil.clamp(targetPow, -PID_MAX_POW, PID_MAX_POW);
 		targetPow = hardStop(currentDeg, targetPow);
 
-		double slew;
-		if (requiresDirectionFlip(pidPow, targetPow))
-		{
-			slew = PID_REVERSE_SLEW;
-		}
-		else if (isSoftStopZone(pidPow, targetPow, error))
-		{
-			slew = PID_STOP_SLEW;
-		}
-		else
-		{
-			slew = PID_MAX_SLEW;
-		}
-
-		pidPow = slewPow(pidPow, targetPow, dt, slew);
-		pidErr = pidError;
+		pidPow = slewPow(pidPow, targetPow, dt);
+		pidErr = error;
 		aimErr = error;
 		return pidPow;
 	}
 
-	private double filterAimTargetDeg (double rawTargetDeg)
+	private double slewPow (double currentPow, double targetPow, double dt)
 	{
 
-		double clampedRawDeg = MathUtil.clamp(rawTargetDeg, MIN_DEG, MAX_DEG);
-		if (!hasFilteredAimTarget)
-		{
-			filteredAimTargetDeg = clampedRawDeg;
-			hasFilteredAimTarget = true;
-			return filteredAimTargetDeg;
-		}
-
-		double delta = normDeg(clampedRawDeg - filteredAimTargetDeg);
-		double alpha = Math.abs(delta) <= AIM_TARGET_NOISE_DEG ? AIM_TARGET_MICRO_ALPHA : AIM_TARGET_ALPHA;
-		filteredAimTargetDeg = normDeg(filteredAimTargetDeg + (alpha * delta));
-		return filteredAimTargetDeg;
-	}
-
-	private double applyDeadband (double value, double deadband)
-	{
-
-		double magnitude = Math.abs(value);
-		if (magnitude <= deadband)
-		{
-			return 0.0;
-		}
-
-		return Math.copySign(magnitude - deadband, value);
-	}
-
-	private double applyStaticFrictionComp (double requestedPow, double errorForSign)
-	{
-
-		double errorScale = MathUtil.clamp(Math.abs(errorForSign) / PID_MIN_POW_FULL_ERR_DEG, 0.0, 1.0);
-		double effectiveMinPow = PID_MIN_POW_NEAR_TARGET +
-				((PID_MIN_POW - PID_MIN_POW_NEAR_TARGET) * errorScale);
-		if (Math.abs(errorForSign) < 1e-6 || Math.abs(requestedPow) >= effectiveMinPow)
-		{
-			return requestedPow;
-		}
-
-		double signSource = requestedPow == 0.0 ? errorForSign : requestedPow;
-		return Math.copySign(effectiveMinPow, signSource);
-	}
-
-	private boolean crossedZero (double previousValue, double currentValue, double epsilon)
-	{
-
-		if (Math.abs(previousValue) <= epsilon || Math.abs(currentValue) <= epsilon)
-		{
-			return false;
-		}
-
-		return Math.signum(previousValue) != Math.signum(currentValue);
-	}
-
-	private boolean requiresDirectionFlip (double currentPow, double targetPow)
-	{
-
-		if (Math.abs(currentPow) < 1e-6 || Math.abs(targetPow) < 1e-6)
-		{
-			return false;
-		}
-
-		return Math.signum(currentPow) != Math.signum(targetPow);
-	}
-
-	private boolean isSoftStopZone (double currentPow, double targetPow, double rawError)
-	{
-
-		if (Math.abs(currentPow) < 1e-6)
-		{
-			return false;
-		}
-
-		if (Math.abs(rawError) > PID_STOP_ERR_DEG)
-		{
-			return false;
-		}
-
-		// Only soften when decelerating toward stop in same direction.
-		return Math.signum(currentPow) == Math.signum(targetPow) &&
-				Math.abs(targetPow) < Math.abs(currentPow);
-	}
-
-	private double applyOvershootBoost (double requestedPow, double errorForSign, boolean crossedTarget)
-	{
-
-		if (!crossedTarget || Math.abs(errorForSign) < PID_OVERSHOOT_BOOST_ERR)
-		{
-			return requestedPow;
-		}
-
-		double boostedMagnitude = Math.max(Math.abs(requestedPow), PID_OVERSHOOT_BOOST_POW);
-		return Math.copySign(boostedMagnitude, errorForSign);
-	}
-
-	private double applyApproachEasing (double requestedPow, double rawError, boolean crossedTarget)
-	{
-
-		double absError = Math.abs(rawError);
-		if (absError >= PID_EASE_WINDOW_DEG)
-		{
-			return requestedPow;
-		}
-
-		if (crossedTarget && absError >= PID_OVERSHOOT_BOOST_ERR)
-		{
-			return requestedPow;
-		}
-
-		double t = MathUtil.clamp(absError / PID_EASE_WINDOW_DEG, 0.0, 1.0);
-		double smooth = t * t * (3.0 - (2.0 * t));
-		double maxPowInWindow = PID_EASE_CAP_MIN_POW +
-				((PID_EASE_CAP_MAX_POW - PID_EASE_CAP_MIN_POW) * smooth);
-		return MathUtil.clamp(requestedPow, -maxPowInWindow, maxPowInWindow);
+		return slewPow(currentPow, targetPow, dt, PID_MAX_SLEW);
 	}
 
 	private double slewPow (double currentPow, double targetPow, double dt, double maxSlew)
@@ -952,9 +775,6 @@ public class Explosher
 		pidDer = 0.0;
 		pidPow = 0.0;
 		pidNs = 0;
-		aimWarmupNs = 0;
-		filteredAimTargetDeg = 0.0;
-		hasFilteredAimTarget = false;
 	}
 
 	public enum FingerState
