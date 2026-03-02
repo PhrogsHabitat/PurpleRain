@@ -5,7 +5,6 @@ import com.pedropathing.ftc.FTCCoordinates;
 import com.pedropathing.geometry.PedroCoordinates;
 import com.pedropathing.geometry.Pose;
 
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
@@ -96,17 +95,17 @@ public class PositionTest extends PurpleOpMode
 		DebugUtil.logAdd(" ");
 
 		Pose3D botPose = LimeUtil.getResult().getBotpose();
-		
-		double botXInches = DistanceUnit.INCH.fromUnit(botPose.getPosition().unit, botPose.getPosition().x);
-		double botYInches = DistanceUnit.INCH.fromUnit(botPose.getPosition().unit, botPose.getPosition().y);
 
-		Pose visionPose = new Pose(botXInches, botYInches, 0 - follower.getPose().getHeading(),
+		double boxX = botPose.getPosition().x;
+		double botY = botPose.getPosition().y;
+
+		Pose visionPose = new Pose(boxX, botY, 0 - follower.getPose().getHeading(),
 				FTCCoordinates.INSTANCE)
 				.getAsCoordinateSystem(PedroCoordinates.INSTANCE);
 
 		DebugUtil.logAdd("[BOT POSE]");
-		DebugUtil.logAdd("X (in): " + botXInches);
-		DebugUtil.logAdd("Y (in): " + botYInches);
+		DebugUtil.logAdd("X (in): " + boxX);
+		DebugUtil.logAdd("Y (in): " + botY);
 		DebugUtil.logAdd("HEADING: " + botPose.getOrientation());
 		DebugUtil.logAdd(" ");
 

@@ -40,7 +40,9 @@ public class Explosher
 	private static final double PID_KP = 0.036;
 	private static final double PID_KI = 0.0012;
 	private static final double PID_KD = 0.0020;
-	private static final double PID_DEAD = 0.3;
+	private static final double PID_DEAD = 0.08;
+	private static final double PID_MIN_POW = 0.055;
+	private static final double PID_INT_DECAY_IN_DEADBAND = 0.90;
 	private static final double PID_MAX_POW = 1.0;
 	private static final double PID_MAX_SLEW = 6.0;
 	private static final double PID_INT_LIM = 35.0;
@@ -50,6 +52,7 @@ public class Explosher
 	private static final double PID_FLIP_SLEW = 14.0;
 	private static final double AIM_WARMUP_S = 0.20;
 	private static final double AIM_TARGET_ALPHA = 0.24;
+	private static final double AIM_TARGET_MICRO_ALPHA = 0.08;
 	private static final double AIM_TARGET_NOISE_DEG = 0.45;
 	private static final double MIN_DEG = -180.0;
 	private static final double MAX_DEG = 180.0;
@@ -714,15 +717,7 @@ public class Explosher
 		pidNs = nowNs;
 		dt = MathUtil.clamp(dt, 0.001, 0.1);
 
-		if (Math.abs(error) < PID_DEAD)
-		{
-			pidInt = 0.0;
-			pidDer = 0.0;
-			pidErr = error;
-			pidPow = slewPow(pidPow, 0.0, dt, PID_MAX_SLEW);
-			aimErr = error;
-			return pidPow;
-		}
+		double pidError = applyDeadband(error, PID_DEAD);
 
 		if (Math.abs(error) >= PID_FLIP_ERR)
 		{
@@ -731,23 +726,30 @@ public class Explosher
 			double boostPow = Math.copySign(PID_FLIP_POW, error);
 			boostPow = hardStop(currentDeg, boostPow);
 			pidPow = slewPow(pidPow, boostPow, dt, PID_FLIP_SLEW);
-			pidErr = error;
+			pidErr = pidError;
 			aimErr = error;
 			return pidPow;
 		}
 
-		pidInt += error * dt;
+		if (Math.abs(error) < PID_DEAD)
+		{
+			pidInt *= PID_INT_DECAY_IN_DEADBAND;
+			pidDer *= PID_INT_DECAY_IN_DEADBAND;
+		}
+
+		pidInt += pidError * dt;
 		pidInt = MathUtil.clamp(pidInt, -PID_INT_LIM, PID_INT_LIM);
 
-		double rawDer = (error - pidErr) / dt;
+		double rawDer = (pidError - pidErr) / dt;
 		pidDer += PID_DER_A * (rawDer - pidDer);
 
-		double targetPow = (PID_KP * error) + (PID_KI * pidInt) + (PID_KD * pidDer);
+		double targetPow = (PID_KP * pidError) + (PID_KI * pidInt) + (PID_KD * pidDer);
+		targetPow = applyStaticFrictionComp(targetPow, pidError);
 		targetPow = MathUtil.clamp(targetPow, -PID_MAX_POW, PID_MAX_POW);
 		targetPow = hardStop(currentDeg, targetPow);
 
 		pidPow = slewPow(pidPow, targetPow, dt, PID_MAX_SLEW);
-		pidErr = error;
+		pidErr = pidError;
 		aimErr = error;
 		return pidPow;
 	}
@@ -764,13 +766,33 @@ public class Explosher
 		}
 
 		double delta = normDeg(clampedRawDeg - filteredAimTargetDeg);
-		if (Math.abs(delta) <= AIM_TARGET_NOISE_DEG)
+		double alpha = Math.abs(delta) <= AIM_TARGET_NOISE_DEG ? AIM_TARGET_MICRO_ALPHA : AIM_TARGET_ALPHA;
+		filteredAimTargetDeg = normDeg(filteredAimTargetDeg + (alpha * delta));
+		return filteredAimTargetDeg;
+	}
+
+	private double applyDeadband (double value, double deadband)
+	{
+
+		double magnitude = Math.abs(value);
+		if (magnitude <= deadband)
 		{
-			return filteredAimTargetDeg;
+			return 0.0;
 		}
 
-		filteredAimTargetDeg = normDeg(filteredAimTargetDeg + (AIM_TARGET_ALPHA * delta));
-		return filteredAimTargetDeg;
+		return Math.copySign(magnitude - deadband, value);
+	}
+
+	private double applyStaticFrictionComp (double requestedPow, double errorForSign)
+	{
+
+		if (Math.abs(errorForSign) < 1e-6 || Math.abs(requestedPow) >= PID_MIN_POW)
+		{
+			return requestedPow;
+		}
+
+		double signSource = requestedPow == 0.0 ? errorForSign : requestedPow;
+		return Math.copySign(PID_MIN_POW, signSource);
 	}
 
 	private double slewPow (double currentPow, double targetPow, double dt, double maxSlew)
