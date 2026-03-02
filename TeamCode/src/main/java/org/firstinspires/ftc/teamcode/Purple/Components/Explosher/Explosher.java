@@ -43,6 +43,10 @@ public class Explosher
 	private static final double PID_DEAD = 0.08;
 	private static final double PID_MIN_POW = 0.055;
 	private static final double PID_INT_DECAY_IN_DEADBAND = 0.90;
+	private static final double PID_CROSS_EPS = 0.01;
+	private static final double PID_REVERSE_SLEW = 12.0;
+	private static final double PID_OVERSHOOT_BOOST_ERR = 0.18;
+	private static final double PID_OVERSHOOT_BOOST_POW = 0.090;
 	private static final double PID_MAX_POW = 1.0;
 	private static final double PID_MAX_SLEW = 6.0;
 	private static final double PID_INT_LIM = 35.0;
@@ -718,6 +722,7 @@ public class Explosher
 		dt = MathUtil.clamp(dt, 0.001, 0.1);
 
 		double pidError = applyDeadband(error, PID_DEAD);
+		boolean crossedTarget = crossedZero(pidErr, pidError, PID_CROSS_EPS);
 
 		if (Math.abs(error) >= PID_FLIP_ERR)
 		{
@@ -729,6 +734,11 @@ public class Explosher
 			pidErr = pidError;
 			aimErr = error;
 			return pidPow;
+		}
+
+		if (crossedTarget)
+		{
+			pidInt = 0.0;
 		}
 
 		if (Math.abs(error) < PID_DEAD)
@@ -745,10 +755,12 @@ public class Explosher
 
 		double targetPow = (PID_KP * pidError) + (PID_KI * pidInt) + (PID_KD * pidDer);
 		targetPow = applyStaticFrictionComp(targetPow, pidError);
+		targetPow = applyOvershootBoost(targetPow, pidError, crossedTarget);
 		targetPow = MathUtil.clamp(targetPow, -PID_MAX_POW, PID_MAX_POW);
 		targetPow = hardStop(currentDeg, targetPow);
 
-		pidPow = slewPow(pidPow, targetPow, dt, PID_MAX_SLEW);
+		double slew = requiresDirectionFlip(pidPow, targetPow) ? PID_REVERSE_SLEW : PID_MAX_SLEW;
+		pidPow = slewPow(pidPow, targetPow, dt, slew);
 		pidErr = pidError;
 		aimErr = error;
 		return pidPow;
@@ -793,6 +805,40 @@ public class Explosher
 
 		double signSource = requestedPow == 0.0 ? errorForSign : requestedPow;
 		return Math.copySign(PID_MIN_POW, signSource);
+	}
+
+	private boolean crossedZero (double previousValue, double currentValue, double epsilon)
+	{
+
+		if (Math.abs(previousValue) <= epsilon || Math.abs(currentValue) <= epsilon)
+		{
+			return false;
+		}
+
+		return Math.signum(previousValue) != Math.signum(currentValue);
+	}
+
+	private boolean requiresDirectionFlip (double currentPow, double targetPow)
+	{
+
+		if (Math.abs(currentPow) < 1e-6 || Math.abs(targetPow) < 1e-6)
+		{
+			return false;
+		}
+
+		return Math.signum(currentPow) != Math.signum(targetPow);
+	}
+
+	private double applyOvershootBoost (double requestedPow, double errorForSign, boolean crossedTarget)
+	{
+
+		if (!crossedTarget || Math.abs(errorForSign) < PID_OVERSHOOT_BOOST_ERR)
+		{
+			return requestedPow;
+		}
+
+		double boostedMagnitude = Math.max(Math.abs(requestedPow), PID_OVERSHOOT_BOOST_POW);
+		return Math.copySign(boostedMagnitude, errorForSign);
 	}
 
 	private double slewPow (double currentPow, double targetPow, double dt, double maxSlew)
