@@ -6,8 +6,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
-import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
+import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
@@ -37,16 +37,21 @@ public class Explosher
 
 	private static final double EXPLORE_TICKS_PER_DEG = 1200.0 / 180.0;
 	private static final double DEFAULT_EXPLORE_DEG_POW = 1.0;
-	private static final double PID_KP = 0.036;
-	private static final double PID_KI = 0.0012;
-	private static final double PID_KD = 0.0020;
+	private static final double PID_KP = 0.025;
+	private static final double PID_KI = 0.0020;
+	private static final double PID_KD = 0.0010;
 	private static final double PID_DEAD = 0.08;
 	private static final double PID_MIN_POW = 0.055;
+	private static final double PID_MIN_POW_NEAR_TARGET = 0.020;
+	private static final double PID_MIN_POW_FULL_ERR_DEG = 2.0;
 	private static final double PID_INT_DECAY_IN_DEADBAND = 0.90;
 	private static final double PID_CROSS_EPS = 0.01;
 	private static final double PID_REVERSE_SLEW = 12.0;
 	private static final double PID_OVERSHOOT_BOOST_ERR = 0.18;
 	private static final double PID_OVERSHOOT_BOOST_POW = 0.090;
+	private static final double PID_EASE_WINDOW_DEG = 8.0;
+	private static final double PID_EASE_CAP_MIN_POW = 0.020;
+	private static final double PID_EASE_CAP_MAX_POW = 0.35;
 	private static final double PID_STOP_ERR_DEG = 1.2;
 	private static final double PID_STOP_SLEW = 2.4;
 	private static final double PID_MAX_POW = 1.0;
@@ -758,6 +763,7 @@ public class Explosher
 		double targetPow = (PID_KP * pidError) + (PID_KI * pidInt) + (PID_KD * pidDer);
 		targetPow = applyStaticFrictionComp(targetPow, pidError);
 		targetPow = applyOvershootBoost(targetPow, pidError, crossedTarget);
+		targetPow = applyApproachEasing(targetPow, error, crossedTarget);
 		targetPow = MathUtil.clamp(targetPow, -PID_MAX_POW, PID_MAX_POW);
 		targetPow = hardStop(currentDeg, targetPow);
 
@@ -813,13 +819,16 @@ public class Explosher
 	private double applyStaticFrictionComp (double requestedPow, double errorForSign)
 	{
 
-		if (Math.abs(errorForSign) < 1e-6 || Math.abs(requestedPow) >= PID_MIN_POW)
+		double errorScale = MathUtil.clamp(Math.abs(errorForSign) / PID_MIN_POW_FULL_ERR_DEG, 0.0, 1.0);
+		double effectiveMinPow = PID_MIN_POW_NEAR_TARGET +
+				((PID_MIN_POW - PID_MIN_POW_NEAR_TARGET) * errorScale);
+		if (Math.abs(errorForSign) < 1e-6 || Math.abs(requestedPow) >= effectiveMinPow)
 		{
 			return requestedPow;
 		}
 
 		double signSource = requestedPow == 0.0 ? errorForSign : requestedPow;
-		return Math.copySign(PID_MIN_POW, signSource);
+		return Math.copySign(effectiveMinPow, signSource);
 	}
 
 	private boolean crossedZero (double previousValue, double currentValue, double epsilon)
@@ -872,6 +881,27 @@ public class Explosher
 
 		double boostedMagnitude = Math.max(Math.abs(requestedPow), PID_OVERSHOOT_BOOST_POW);
 		return Math.copySign(boostedMagnitude, errorForSign);
+	}
+
+	private double applyApproachEasing (double requestedPow, double rawError, boolean crossedTarget)
+	{
+
+		double absError = Math.abs(rawError);
+		if (absError >= PID_EASE_WINDOW_DEG)
+		{
+			return requestedPow;
+		}
+
+		if (crossedTarget && absError >= PID_OVERSHOOT_BOOST_ERR)
+		{
+			return requestedPow;
+		}
+
+		double t = MathUtil.clamp(absError / PID_EASE_WINDOW_DEG, 0.0, 1.0);
+		double smooth = t * t * (3.0 - (2.0 * t));
+		double maxPowInWindow = PID_EASE_CAP_MIN_POW +
+				((PID_EASE_CAP_MAX_POW - PID_EASE_CAP_MIN_POW) * smooth);
+		return MathUtil.clamp(requestedPow, -maxPowInWindow, maxPowInWindow);
 	}
 
 	private double slewPow (double currentPow, double targetPow, double dt, double maxSlew)
