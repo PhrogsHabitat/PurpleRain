@@ -47,6 +47,8 @@ public class Explosher
 	private static final double PID_REVERSE_SLEW = 12.0;
 	private static final double PID_OVERSHOOT_BOOST_ERR = 0.18;
 	private static final double PID_OVERSHOOT_BOOST_POW = 0.090;
+	private static final double PID_STOP_ERR_DEG = 1.2;
+	private static final double PID_STOP_SLEW = 2.4;
 	private static final double PID_MAX_POW = 1.0;
 	private static final double PID_MAX_SLEW = 6.0;
 	private static final double PID_INT_LIM = 35.0;
@@ -759,7 +761,20 @@ public class Explosher
 		targetPow = MathUtil.clamp(targetPow, -PID_MAX_POW, PID_MAX_POW);
 		targetPow = hardStop(currentDeg, targetPow);
 
-		double slew = requiresDirectionFlip(pidPow, targetPow) ? PID_REVERSE_SLEW : PID_MAX_SLEW;
+		double slew;
+		if (requiresDirectionFlip(pidPow, targetPow))
+		{
+			slew = PID_REVERSE_SLEW;
+		}
+		else if (isSoftStopZone(pidPow, targetPow, error))
+		{
+			slew = PID_STOP_SLEW;
+		}
+		else
+		{
+			slew = PID_MAX_SLEW;
+		}
+
 		pidPow = slewPow(pidPow, targetPow, dt, slew);
 		pidErr = pidError;
 		aimErr = error;
@@ -827,6 +842,24 @@ public class Explosher
 		}
 
 		return Math.signum(currentPow) != Math.signum(targetPow);
+	}
+
+	private boolean isSoftStopZone (double currentPow, double targetPow, double rawError)
+	{
+
+		if (Math.abs(currentPow) < 1e-6)
+		{
+			return false;
+		}
+
+		if (Math.abs(rawError) > PID_STOP_ERR_DEG)
+		{
+			return false;
+		}
+
+		// Only soften when decelerating toward stop in same direction.
+		return Math.signum(currentPow) == Math.signum(targetPow) &&
+				Math.abs(targetPow) < Math.abs(currentPow);
 	}
 
 	private double applyOvershootBoost (double requestedPow, double errorForSign, boolean crossedTarget)
