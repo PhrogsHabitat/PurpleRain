@@ -264,19 +264,21 @@ public class PedroBackRedAuto extends OpMode
 		{
 			if (Explostate == "Forward")
 			{
-				if (LimeUtil.getTargetDistance() != 0)
+				if (LimeUtil.getTd() != 0)
 				{
-					dist = LimeUtil.getTargetDistance();
+					dist = LimeUtil.getTd();
 					double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
 					smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
 					smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
 					explosher.setRPM(smoothedTargetRPM);
 				}
-			} else if (Explostate == "Back")
+			}
+			else if (Explostate == "Back")
 			{
 				explosher.setRPM(-4000);
 			}
-		} else
+		}
+		else
 		{
 			explosher.stop();
 		}
@@ -379,7 +381,8 @@ public class PedroBackRedAuto extends OpMode
 			bl.setPower(powers[1] * powerScale);
 			fr.setPower(powers[2] * powerScale);
 			br.setPower(powers[3] * powerScale);
-		} else if (dir == "R")
+		}
+		else if (dir == "R")
 		{
 			double forward = 0;
 			double strafe = 0;
@@ -396,7 +399,8 @@ public class PedroBackRedAuto extends OpMode
 			bl.setPower(powers[1] * powerScale);
 			fr.setPower(powers[2] * powerScale);
 			br.setPower(powers[3] * powerScale);
-		} else
+		}
+		else
 		{
 			double forward = driver1.getLeftStickY();
 			double strafe = driver1.getLeftStickX();
@@ -420,7 +424,7 @@ public class PedroBackRedAuto extends OpMode
 	{
 
 		DebugUtil.logAdd("TX: " + LimeUtil.getTx());
-		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
+		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTd());
 		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
@@ -429,10 +433,11 @@ public class PedroBackRedAuto extends OpMode
 
 		if (LimeUtil.hasValidTarget())
 		{
-			DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTargetDistance()) +
+			DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTd()) +
 					"in, Angle: " + String.format("%.1f", LimeUtil.getTx()) + "°");
 			DebugUtil.logAdd("Aligned: " + (isFullyAligned() ? "YES" : "NO"));
-		} else
+		}
+		else
 		{
 			DebugUtil.logAdd("AprilTag: No target");
 		}
@@ -446,7 +451,7 @@ public class PedroBackRedAuto extends OpMode
 		if (!hasRecentTarget()) return false;
 
 		double tx = LimeUtil.getTx();
-		double distance = LimeUtil.getTargetDistance();
+		double distance = LimeUtil.getTd();
 		double distanceError = Math.abs(distance - org.firstinspires.ftc.teamcode.Purple.Constants.DESIRED_TAG_DISTANCE);
 
 		return Math.abs(tx) < org.firstinspires.ftc.teamcode.Purple.Constants.ALIGN_ANGLE_TOLERANCE &&
@@ -551,19 +556,23 @@ public class PedroBackRedAuto extends OpMode
 				if (LimeUtil.getTx() < 0)
 				{
 					updateDrive("L");
-				} else if (LimeUtil.getTx() > 0)
+				}
+				else if (LimeUtil.getTx() > 0)
 				{
 					updateDrive("R");
-				} else
+				}
+				else
 				{
 					updateDrive("def");
 				}
-			} else
+			}
+			else
 			{
 				driver1.vibrate(150);
 				updateDrive("def");
 			}
-		} else
+		}
+		else
 		{
 			updateDrive("def");
 		}

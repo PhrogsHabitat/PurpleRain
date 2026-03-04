@@ -239,19 +239,21 @@ public class BackBluePedroAuto extends OpMode
 		{
 			if (Explostate == "Forward")
 			{
-				if (LimeUtil.getTargetDistance() != 0)
+				if (LimeUtil.getTd() != 0)
 				{
-					dist = LimeUtil.getTargetDistance();
+					dist = LimeUtil.getTd();
 					double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
 					smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
 					smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
 					explosher.setRPM(smoothedTargetRPM);
 				}
-			} else if (Explostate == "Back")
+			}
+			else if (Explostate == "Back")
 			{
 				explosher.setRPM(-4000);
 			}
-		} else
+		}
+		else
 		{
 			explosher.stop();
 		}

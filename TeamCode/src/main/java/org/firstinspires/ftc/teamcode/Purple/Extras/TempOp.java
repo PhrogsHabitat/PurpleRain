@@ -148,7 +148,8 @@ public class TempOp extends PurpleOpMode
 			bl.setPower(powers[1] * powerScale);
 			fr.setPower(powers[2] * powerScale);
 			br.setPower(powers[3] * powerScale);
-		} else if (dir == "R")
+		}
+		else if (dir == "R")
 		{
 			double forward = 0;
 			double strafe = 0;
@@ -165,7 +166,8 @@ public class TempOp extends PurpleOpMode
 			bl.setPower(powers[1] * powerScale);
 			fr.setPower(powers[2] * powerScale);
 			br.setPower(powers[3] * powerScale);
-		} else
+		}
+		else
 		{
 			double forward = driver1.getLeftStickY();
 			double strafe = driver1.getLeftStickX();
@@ -201,7 +203,7 @@ public class TempOp extends PurpleOpMode
 
 		if (leftStickY > Constants.JOYSTICK_DEADZONE)
 		{
-			if (LimeUtil.getTargetDistance() != 0)
+			if (LimeUtil.getTd() != 0)
 			{
 				explosher.setRegressionEnabled(true);
 
@@ -209,18 +211,22 @@ public class TempOp extends PurpleOpMode
 				{
 					explosher.setRPM(explosher.getSmoothedTargetRPM());
 				}
-			} else if (!manual)
+			}
+			else if (!manual)
 			{
 				explosher.setRegressionEnabled(false);
 				explosher.stop();
 			}
-		} else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
+		}
+		else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
 		{
 			explosher.setRPM(-4000);
-		} else if (driver2.isPressed("b"))
+		}
+		else if (driver2.isPressed("b"))
 		{
 			explosher.setRPM(-4000);
-		} else
+		}
+		else
 		{
 			explosher.stop();
 		}
@@ -250,11 +256,13 @@ public class TempOp extends PurpleOpMode
 		if (driver2.isPressed("y"))
 		{
 			vaccum.setPower(Vaccum.DEFAULT_POW + 5.0);
-		} else if (driver2.isPressed("x"))
+		}
+		else if (driver2.isPressed("x"))
 		{
 			// This one needs to be slower cuz its too fast
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
-		} else
+		}
+		else
 		{
 			vaccum.stop();
 		}
@@ -311,7 +319,7 @@ public class TempOp extends PurpleOpMode
 	{
 
 		DebugUtil.logAdd("TX: " + LimeUtil.getTx());
-		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
+		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTd());
 		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
 		DebugUtil.logAdd("Vaccum Current Power: " + vaccum.getPower());
@@ -322,10 +330,11 @@ public class TempOp extends PurpleOpMode
 
 		if (LimeUtil.hasValidTarget())
 		{
-			DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTargetDistance()) +
+			DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTd()) +
 					"in, Angle: " + String.format("%.1f", LimeUtil.getTx()) + "°");
 			DebugUtil.logAdd("Aligned: " + (isFullyAligned() ? "YES" : "NO"));
-		} else
+		}
+		else
 		{
 			DebugUtil.logAdd("AprilTag: No target");
 		}
@@ -350,7 +359,7 @@ public class TempOp extends PurpleOpMode
 		if (!hasRecentTarget()) return false;
 
 		double tx = LimeUtil.getTx();
-		double distance = LimeUtil.getTargetDistance();
+		double distance = LimeUtil.getTd();
 		double distanceError = Math.abs(distance - Constants.DESIRED_TAG_DISTANCE);
 
 		return Math.abs(tx) < Constants.ALIGN_ANGLE_TOLERANCE &&

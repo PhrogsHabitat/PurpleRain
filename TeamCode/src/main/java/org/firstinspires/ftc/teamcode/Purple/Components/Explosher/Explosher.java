@@ -3,12 +3,11 @@ package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
-import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
-import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
+import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
@@ -38,13 +37,13 @@ public class Explosher
 
 	private static final double EXPLORE_TICKS_PER_DEG = 1200.0 / 180.0;
 	private static final double DEFAULT_EXPLORE_DEG_POW = 1.0;
-	private static final double PID_KP = 0.036;
+	private static final double PID_KP = 0.036; // 36
 	private static final double PID_KI = 0.0015;
 	private static final double PID_KD = 0.0020;
 	private static final double PID_DEAD = 0.1;
 	private static final double PID_MAX_POW = 1.0;
 	private static final double PID_MAX_SLEW = 6.0;
-	private static final double PID_INT_LIM = 35.0;
+	private static final double PID_INT_LIM = 90.0;
 	private static final double PID_DER_A = 0.2;
 	private static final double PID_FLIP_ERR = 80.0;
 	private static final double PID_FLIP_POW = 1.0;
@@ -87,6 +86,7 @@ public class Explosher
 	private long aimWarmupNs = 0;
 	private double filteredAimTargetDeg = 0.0;
 	private boolean hasFilteredAimTarget = false;
+	private int exploringTargetPos = 0;
 
 	public Explosher (HardwareMap hardwareMap)
 	{
@@ -330,6 +330,7 @@ public class Explosher
 		}
 
 		double targetDeg = filterAimTargetDeg(getAimDeg(pose));
+		exploringTargetPos = (int) Math.round(targetDeg * EXPLORE_TICKS_PER_DEG);
 		double warmupSec = (nowNs - aimWarmupNs) / 1_000_000_000.0;
 		if (warmupSec < AIM_WARMUP_S)
 		{
@@ -425,6 +426,7 @@ public class Explosher
 	public void setExploringPos (int position, double power)
 	{
 
+		exploringTargetPos = position;
 		exploringMotor.runToPosition(position, power);
 	}
 
@@ -453,6 +455,17 @@ public class Explosher
 	}
 
 	/**
+	 * Gets exploring target position in encoder ticks.
+	 *
+	 * @return Target position in ticks.
+	 */
+	public int getExploringTargetPos ()
+	{
+
+		return exploringTargetPos;
+	}
+
+	/**
 	 * Gets exploring angle in degrees.
 	 *
 	 * @return Current angle.
@@ -475,6 +488,17 @@ public class Explosher
 	}
 
 	/**
+	 * Gets exploring target angle in degrees.
+	 *
+	 * @return Target angle in degrees.
+	 */
+	public double getExploringTargetDeg ()
+	{
+
+		return exploringTargetPos / EXPLORE_TICKS_PER_DEG;
+	}
+
+	/**
 	 * Gets whether exploring motor is at its target position.
 	 *
 	 * @return True if at target.
@@ -492,6 +516,7 @@ public class Explosher
 	{
 
 		exploringMotor.resetEncoder();
+		exploringTargetPos = 0;
 		resetAimState();
 	}
 
@@ -658,29 +683,24 @@ public class Explosher
 		return new double[]{slope, intercept};
 	}
 
+	/**
+	 * Gets the distance from the robot's current odometry pose to the aim point.
+	 * This method now uses ONLY odometry (PurpleMemory) – no LimeLight fallback.
+	 *
+	 * @return Distance in inches, or null if pose unavailable.
+	 */
 	private Double getRegressionDistance ()
 	{
-
-		if (LimeUtil.hasValidTarget())
-		{
-			double tagDistanceInches = LimeUtil.getTargetDistance();
-			if (tagDistanceInches > 0.0)
-			{
-				return tagDistanceInches;
-			}
-		}
 
 		if (PurpleMemory.Instance == null)
 		{
 			return null;
 		}
-
 		Pose pose = PurpleMemory.Instance.curPose();
 		if (pose == null)
 		{
 			return null;
 		}
-
 		double deltaX = aimX - pose.getX();
 		double deltaY = aimY - pose.getY();
 		return Math.hypot(deltaX, deltaY);
@@ -719,7 +739,7 @@ public class Explosher
 		pidNs = nowNs;
 		dt = MathUtil.clamp(dt, 0.001, 0.1);
 
-		if (Math.abs(error) < PID_DEAD)
+		if (Math.abs(error) < 0.01)
 		{
 			pidInt = 0.0;
 			pidDer = 0.0;

@@ -12,11 +12,11 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
+import org.firstinspires.ftc.teamcode.Purple.Constants;
+import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurpleChain;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePath;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
-import org.firstinspires.ftc.teamcode.Purple.Constants;
-import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 import java.util.ArrayList;
@@ -28,48 +28,37 @@ public class UpdatedRedAuto extends PurpleOpMode
 	private static final double EXPLOSHER_DEFAULT_RPM = 2800.0;
 	private static final double EXPLOSHER_COAST_ALPHA = 0.08;
 	private static final Pose DEFAULT_AUTO_START_POSE = new Pose(72, 72, Math.toRadians(0.0));
-	private Follower follower;
-	private Explosher explosher;
-	private Vaccum vaccum;
-
-	private double desiredExplosherRPM = EXPLOSHER_DEFAULT_RPM;
-	private double rememberedRegressedRPM = EXPLOSHER_DEFAULT_RPM;
-	private double rememberedRegressedHood = Constants.FINGER_STOP_POSITION;
-	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
-
+	public static PathConstraints defaultConstraints = new PathConstraints(0.995, 0.1, 0.1, 0.007, 100, 1, 10, 1);
 	private final Pose startPose = new Pose(123, 125, Math.toRadians(305));
 	private final Pose shootPose = new Pose(90, 80, Math.toRadians(0));
 	private final Pose Pickup1 = new Pose(120, 83.7, Math.toRadians(0));
 	private final Pose Open1 = new Pose(127, 75.5, Math.toRadians(0));
 	private final Pose Pickup2 = new Pose(120, 59.2, Math.toRadians(0));
-
 	private final Pose GrabCurve = new Pose(103.6, 55.5);
 	private final Pose Open2 = new Pose(127, 66, Math.toRadians(0));
-
 	private final Pose OpenGrab = new Pose(131, 60, Math.toRadians(30));
-
 	private final Pose FirstCurve = new Pose(74, 88);
 	private final Pose OpenGrabCurve = new Pose(116.3, 51);
 	private final Pose rankPose = new Pose(90.4, 60, Math.toRadians(30));
-
 	private final ArrayList<Pose> Pick2 = new ArrayList<>(Arrays.asList(shootPose, GrabCurve, Pickup2));
-
 	private final ArrayList<Pose> loop = new ArrayList<>(Arrays.asList(shootPose, OpenGrabCurve, OpenGrab));
-
 	private final ArrayList<Pose> Pick1 = new ArrayList<>(Arrays.asList(startPose, FirstCurve, Pickup1));
-
 	// make the lists
 	public ElapsedTime shootTimer;
-
 	public double dist;
+	private Follower follower;
+	private Explosher explosher;
+	private Vaccum vaccum;
+	private double desiredExplosherRPM = EXPLOSHER_DEFAULT_RPM;
+	private double rememberedRegressedRPM = EXPLOSHER_DEFAULT_RPM;
+	private double rememberedRegressedHood = Constants.FINGER_STOP_POSITION;
+	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
 	private PurplePathing pathManager;
-
-	public static PathConstraints defaultConstraints = new PathConstraints(0.995, 0.1, 0.1, 0.007, 100, 1, 10, 1);
-
 
 	@Override
 	public void create ()
 	{
+
 		follower = org.firstinspires.ftc.teamcode.pedroPathing.Constants.createFollower(hardwareMap);
 		follower.setPose(startPose);
 		pathManager = new PurplePathing(follower);
@@ -85,7 +74,7 @@ public class UpdatedRedAuto extends PurpleOpMode
 //		explosher.setTarget(132, 135);
 
 		explosher.setRegressionEnabled(true);
-		
+
 		vaccum = new Vaccum(hardwareMap);
 
 		// Path Chain Presets
@@ -127,21 +116,15 @@ public class UpdatedRedAuto extends PurpleOpMode
 
 		PurplePath path2 = new PurplePath("OPEN THE GATE", DriveOpen1, 1, 2);
 
-
 		PurplePath path3 = new PurplePath("shoot", DriveOpenShoot1, 2.0, 2);
-
 
 		PurplePath path4 = new PurplePath("pick the up", DriveShootPickup, 1, 2);
 
-
 		PurplePath path5 = new PurplePath("op the en", DriveOpen2, 2.0, 2);
-
 
 		PurplePath path6 = new PurplePath("shoot 2: electric boogaloo", DriveOpenShoot2, 1, 2);
 
-
 		PurplePath path7 = new PurplePath("Drive Back to shoot again", DriveOpenPickup, 2.0, 2);
-
 
 		PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 1, 2)
 				.onComplete(() -> DebugUtil.logAdd("path2 completed"));
@@ -182,6 +165,7 @@ public class UpdatedRedAuto extends PurpleOpMode
 	@Override
 	public void destroy ()
 	{
+
 		explosher.stop();
 		vaccum.stop();
 	}
@@ -233,7 +217,7 @@ public class UpdatedRedAuto extends PurpleOpMode
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("POSE: " + LimeUtil.getResult().getBotpose());
 		DebugUtil.logAdd("Target X: " + LimeUtil.getTx());
-		DebugUtil.logAdd("Target D: " + LimeUtil.getTargetDistance());
+		DebugUtil.logAdd("Target D: " + LimeUtil.getTd());
 		DebugUtil.logAdd(" ");
 
 		DebugUtil.logAdd("============== [EXPLOSHER]");

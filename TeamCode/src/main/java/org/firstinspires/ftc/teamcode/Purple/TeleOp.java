@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.Purple;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
+
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
@@ -34,21 +35,22 @@ public class TeleOp extends PurpleOpMode
 	private static final String DRIVER_2_VACUUM_IN = "a";
 	private static final String DRIVER_2_VACUUM_OUT = "b";
 	private static final String DRIVER_2_VACUUM_SHOOT = "right_trigger";
-
+	private static final long POSE_CORRECTION_INTERVAL_MS = 1000; // once per second
 	public static Pose startingPose;
+	private final List<double[]> debugRpmDataset = new ArrayList<>();
+	private final List<double[]> debugHoodDataset = new ArrayList<>();
 	private Controls driver1;
 	private Controls driver2;
 	private Follower follower;
 	private Explosher explosher;
 	private Vaccum vaccum;
-
 	private double desiredExplosherRPM = EXPLOSHER_DEFAULT_RPM;
 	private double rememberedRegressedRPM = EXPLOSHER_DEFAULT_RPM;
 	private double rememberedRegressedHood = Constants.FINGER_STOP_POSITION;
-	private final List<double[]> debugRpmDataset = new ArrayList<>();
-	private final List<double[]> debugHoodDataset = new ArrayList<>();
 	private boolean wasTagDetected = false;
 	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
+	// For periodic pose correction
+	private long lastCorrectionTime = 0;
 
 	@Override
 	public void create ()
@@ -74,6 +76,9 @@ public class TeleOp extends PurpleOpMode
 			rememberedRegressedRPM = 0.0;
 		}
 
+		// Set the aim point to the desired basket (change based on alliance)
+		explosher.setAimPoint(128, 130);
+
 		vaccum = new Vaccum(hardwareMap);
 		DebugUtil.setTelemetry(telemetry);
 	}
@@ -96,7 +101,28 @@ public class TeleOp extends PurpleOpMode
 		updateExplosher();
 		updateVaccum();
 
+		// Periodic pose correction using LimeLight AprilTag detection
+		long now = System.currentTimeMillis();
+//		if (now - lastCorrectionTime > POSE_CORRECTION_INTERVAL_MS)
+//		{
+//			Pose limelightPose = LimeUtil.getRobotPose();
+//			if (limelightPose != null)
+//			{
+//				follower.setPose(limelightPose);
+//				lastCorrectionTime = now;
+//				DebugUtil.logAdd("Pose corrected using LimeLight");
+//			}
+//		}
+
 		DebugUtil.logAdd("Distance from tag: " + explosher.getDistanceToTarget());
+		DebugUtil.logAdd("EXPLO DEGREE: " + explosher.getExploringDeg());
+		DebugUtil.logAdd("TARGET DEGREE: " + explosher.getExploringTargetDeg());
+		DebugUtil.logAdd("EXPLO ERROR: " + explosher.getAimErr());
+		DebugUtil.logAdd(" ");
+
+		DebugUtil.logAdd("[LIME] POSE: " + LimeUtil.getRobotPose());
+		DebugUtil.logAdd("[FOLLOWER] POSE: " + follower.getPose());
+
 		DebugUtil.update();
 	}
 
@@ -135,8 +161,8 @@ public class TeleOp extends PurpleOpMode
 	private void updateExplosher ()
 	{
 
-		boolean manualRpmDebugAdjust = Constants.DEBUG_MODE &&
-				(driver2.isPressed(DRIVER_2_RPM_STEP_UP) || driver2.isPressed(DRIVER_2_RPM_STEP_DOWN));
+		boolean manualRpmDebugAdjust = Constants.DEBUG_MODE && (driver2.isPressed(DRIVER_2_RPM_STEP_UP) || driver2.isPressed(DRIVER_2_RPM_STEP_DOWN));
+
 		boolean useRegressionTarget = true;
 		if (manualRpmDebugAdjust)
 		{

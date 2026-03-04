@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 
@@ -19,11 +20,6 @@ public final class LimeUtil
 	private static Limelight3A limelight = null;
 	private static IMU imu = null;
 	private static boolean initialized = false;
-
-	private LimeUtil ()
-	{
-
-	}
 
 	/**
 	 * Initializes Limelight and IMU orientation source.
@@ -65,7 +61,7 @@ public final class LimeUtil
 
 		YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
 		double yaw = orientation.getYaw(AngleUnit.DEGREES);
-		// limelight.updateRobotOrientation(yaw);
+//		limelight.updateRobotOrientation(yaw);
 	}
 
 	/**
@@ -203,7 +199,7 @@ public final class LimeUtil
 	 *
 	 * @return Distance in inches or 0 when unavailable.
 	 */
-	public static double getTargetDistance ()
+	public static double getTd ()
 	{
 
 		LLResult result = getResult();
@@ -234,6 +230,31 @@ public final class LimeUtil
 	}
 
 	/**
+	 * Gets the robot's field‑relative pose from the latest Limelight result.
+	 * The pose is returned as a Pedro Pathing Pose (x, y in inches, heading in radians).
+	 *
+	 * @return Pose if a valid AprilTag is detected, otherwise null.
+	 */
+	public static com.pedropathing.geometry.Pose getRobotPose ()
+	{
+
+		LLResult result = getResult();
+		if (result == null || !result.isValid())
+		{
+			return null;
+		}
+		Pose3D botpose = result.getBotpose();
+		if (botpose == null)
+		{
+			return null;
+		}
+		double xInches = botpose.getPosition().x * METERS_TO_INCHES;
+		double yInches = botpose.getPosition().y * METERS_TO_INCHES;
+		double headingRad = botpose.getOrientation().getYaw(); // returns radians
+		return new com.pedropathing.geometry.Pose(xInches, yInches, headingRad);
+	}
+
+	/**
 	 * Gets underlying Limelight hardware object.
 	 *
 	 * @return Limelight instance or null.
@@ -244,5 +265,3 @@ public final class LimeUtil
 		return limelight;
 	}
 }
-
-

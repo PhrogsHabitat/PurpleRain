@@ -188,9 +188,9 @@ public class TeleAuto extends PurpleOpMode
 
 		if (leftStickY > Constants.JOYSTICK_DEADZONE)
 		{
-			if (LimeUtil.getTargetDistance() != 0)
+			if (LimeUtil.getTd() != 0)
 			{
-				dist = LimeUtil.getTargetDistance();
+				dist = LimeUtil.getTd();
 				double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
 				smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
 				smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
@@ -360,7 +360,7 @@ public class TeleAuto extends PurpleOpMode
 	{
 
 		DebugUtil.logAdd("TX: " + LimeUtil.getTx());
-		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
+		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTd());
 		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
@@ -369,7 +369,7 @@ public class TeleAuto extends PurpleOpMode
 
 		if (LimeUtil.hasValidTarget())
 		{
-			DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTargetDistance()) +
+			DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTd()) +
 					"in, Angle: " + String.format("%.1f", LimeUtil.getTx()) + "°");
 			DebugUtil.logAdd("Aligned: " + (isFullyAligned() ? "YES" : "NO"));
 		}
@@ -400,7 +400,7 @@ public class TeleAuto extends PurpleOpMode
 		if (!hasRecentTarget()) return false;
 
 		double tx = LimeUtil.getTx();
-		double distance = LimeUtil.getTargetDistance();
+		double distance = LimeUtil.getTd();
 		double distanceError = Math.abs(distance - Constants.DESIRED_TAG_DISTANCE);
 
 		return Math.abs(tx) < Constants.ALIGN_ANGLE_TOLERANCE &&
