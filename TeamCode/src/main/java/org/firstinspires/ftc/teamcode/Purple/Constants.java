@@ -31,6 +31,6 @@ public final class Constants
 	public static final int VIBRATION_ALIGNED = 100;
 
 	// Debug mode toggle
-	public static final boolean DEBUG_MODE = falsev;
+	public static final boolean DEBUG_MODE = false;
 
 }

@@ -135,35 +135,37 @@ public class TeleOp extends PurpleOpMode
 	private void updateExplosher ()
 	{
 
-		if (!Constants.DEBUG_MODE)
+		boolean manualRpmDebugAdjust = Constants.DEBUG_MODE &&
+				(driver2.isPressed(DRIVER_2_RPM_STEP_UP) || driver2.isPressed(DRIVER_2_RPM_STEP_DOWN));
+		boolean useRegressionTarget = true;
+		if (manualRpmDebugAdjust)
 		{
-			double leftStickY = driver2.getLeftStickY();
-			boolean useRegressionTarget = leftStickY > Constants.JOYSTICK_DEADZONE;
-			explosher.setRegressionEnabled(useRegressionTarget);
+			useRegressionTarget = false;
+		}
 
-			if (useRegressionTarget)
-			{
-				if (explosher.hasRegressionTarget())
-				{
-					rememberedRegressedRPM = explosher.getSmoothedTargetRPM();
-					rememberedRegressedHood = explosher.getSmoothedTargetHoodPosition();
-				}
+		explosher.setRegressionEnabled(useRegressionTarget);
 
-				desiredExplosherRPM = rememberedRegressedRPM;
-				if (explosher.getFingerStateEnum() != Explosher.FingerState.DEBUG)
-				{
-					explosher.setFingerPosition(rememberedRegressedHood);
-				}
-			}
-			else
+		if (useRegressionTarget)
+		{
+			if (explosher.hasRegressionTarget())
 			{
-				desiredExplosherRPM += EXPLOSHER_COAST_ALPHA * (EXPLOSHER_DEFAULT_RPM - desiredExplosherRPM);
+				rememberedRegressedRPM = explosher.getSmoothedTargetRPM();
+				rememberedRegressedHood = explosher.getSmoothedTargetHoodPosition();
 			}
+
+			desiredExplosherRPM = rememberedRegressedRPM;
+			if (explosher.getFingerStateEnum() != Explosher.FingerState.DEBUG)
+			{
+				explosher.setFingerPosition(rememberedRegressedHood);
+			}
+		}
+		else if (manualRpmDebugAdjust)
+		{
+			updateDebugRPM();
 		}
 		else
 		{
-			explosher.setRegressionEnabled(false);
-			updateDebugRPM();
+			desiredExplosherRPM += EXPLOSHER_COAST_ALPHA * (EXPLOSHER_DEFAULT_RPM - desiredExplosherRPM);
 		}
 
 		desiredExplosherRPM = Math.max(0.0, Math.min(desiredExplosherRPM, explosher.getMaxRPM()));

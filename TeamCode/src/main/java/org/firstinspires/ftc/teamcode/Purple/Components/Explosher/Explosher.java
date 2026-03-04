@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
@@ -204,9 +205,15 @@ public class Explosher
 	public void setRegressionEnabled (boolean enabled)
 	{
 
+		if (regressionEnabled == enabled)
+		{
+			return;
+		}
+
 		regressionEnabled = enabled;
 		if (enabled)
 		{
+			smoothedTargetRPM = getCurrentRPM();
 			smoothedTargetHoodPosition = getFingerPosition();
 		}
 	}
@@ -653,6 +660,15 @@ public class Explosher
 
 	private Double getRegressionDistance ()
 	{
+
+		if (LimeUtil.hasValidTarget())
+		{
+			double tagDistanceInches = LimeUtil.getTargetDistance();
+			if (tagDistanceInches > 0.0)
+			{
+				return tagDistanceInches;
+			}
+		}
 
 		if (PurpleMemory.Instance == null)
 		{
