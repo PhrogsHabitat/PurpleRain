@@ -39,7 +39,7 @@ public class UpdatedRedAuto extends PurpleOpMode
 
 	private final Pose startPose = new Pose(123, 125, Math.toRadians(305));
 	private final Pose shootPose = new Pose(90, 80, Math.toRadians(0));
-	private final Pose Pickup1 = new Pose(120, 88.6, Math.toRadians(0));
+	private final Pose Pickup1 = new Pose(120, 83.7, Math.toRadians(0));
 	private final Pose Open1 = new Pose(127, 75.5, Math.toRadians(0));
 	private final Pose Pickup2 = new Pose(120, 59.2, Math.toRadians(0));
 
@@ -82,7 +82,7 @@ public class UpdatedRedAuto extends PurpleOpMode
 
 		explosher = new Explosher(hardwareMap);
 
-		explosher.setTarget(132, 135);
+//		explosher.setTarget(132, 135);
 
 		explosher.setRegressionEnabled(true);
 		

@@ -39,9 +39,9 @@ public class Explosher
 	private static final double EXPLORE_TICKS_PER_DEG = 1200.0 / 180.0;
 	private static final double DEFAULT_EXPLORE_DEG_POW = 1.0;
 	private static final double PID_KP = 0.036;
-	private static final double PID_KI = 0.0012;
+	private static final double PID_KI = 0.0015;
 	private static final double PID_KD = 0.0020;
-	private static final double PID_DEAD = 0.3;
+	private static final double PID_DEAD = 0.1;
 	private static final double PID_MAX_POW = 1.0;
 	private static final double PID_MAX_SLEW = 6.0;
 	private static final double PID_INT_LIM = 35.0;
@@ -56,8 +56,8 @@ public class Explosher
 	private static final double MAX_DEG = 180.0;
 	private static final double AIM_ZERO_FROM_FRONT_DEG = 180.0;
 	private static final double AIM_BEARING_SIGN = -1.0;
-	private static final double AIM_X = 144;
-	private static final double AIM_Y = 144;
+	private static final double AIM_X = 128;
+	private static final double AIM_Y = 130;
 
 	private final MotorConfig motor;
 	private final MotorConfig motor2;

@@ -128,7 +128,7 @@ public class TeleOp extends PurpleOpMode
 				-gamepad1.left_stick_y * Constants.DRIVE_POWER_SCALE,
 				-gamepad1.left_stick_x * Constants.DRIVE_POWER_SCALE,
 				-gamepad1.right_stick_x * Constants.DRIVE_POWER_SCALE,
-				true
+				false
 		);
 	}
 

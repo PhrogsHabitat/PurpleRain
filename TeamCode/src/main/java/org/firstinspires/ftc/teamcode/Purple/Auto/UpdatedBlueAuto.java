@@ -22,8 +22,8 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "TestAuto", group = "Purple")
-public class TestAuto extends PurpleOpMode
+@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "UpdatedBlueAuto", group = "Purple")
+public class UpdatedBlueAuto extends PurpleOpMode
 {
     private static final double EXPLOSHER_DEFAULT_RPM = 2800.0;
     private static final double EXPLOSHER_COAST_ALPHA = 0.08;
@@ -37,11 +37,26 @@ public class TestAuto extends PurpleOpMode
     private double rememberedRegressedHood = Constants.FINGER_STOP_POSITION;
     private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
 
-    private final Pose startPose = new Pose(87, 8.5, Math.toRadians(90));
+    private final Pose startPose = new Pose(21, 125, Math.toRadians(235));
+    private final Pose shootPose = new Pose(47, 100, Math.toRadians(0));
+    private final Pose Pickup1 = new Pose(23.7, 73, Math.toRadians(180));
+    private final Pose Open1 = new Pose(17, 66, Math.toRadians(180));
+    private final Pose Pickup2 = new Pose(24, 59.2, Math.toRadians(180));
 
-    private final Pose rankPose = new Pose(87, 43, Math.toRadians(90));
+    private final Pose GrabCurve = new Pose(50, 52);
+    private final Pose Open2 = new Pose(14, 66, Math.toRadians(180));
 
-//    private final ArrayList<Pose> Pick2 = new ArrayList<>(Arrays.asList(shootPose, GrabCurve, Pickup2));
+    private final Pose OpenGrab = new Pose(13, 60, Math.toRadians(150));
+
+    private final Pose FirstCurve = new Pose(92, 70);
+    private final Pose OpenGrabCurve = new Pose(27.7, 51);
+    private final Pose rankPose = new Pose(53.6, 60, Math.toRadians(150));
+
+    private final ArrayList<Pose> Pick2 = new ArrayList<>(Arrays.asList(shootPose, GrabCurve, Pickup2));
+
+    private final ArrayList<Pose> loop = new ArrayList<>(Arrays.asList(shootPose, OpenGrabCurve, OpenGrab));
+
+    private final ArrayList<Pose> Pick1 = new ArrayList<>(Arrays.asList(startPose, FirstCurve, Pickup1));
 
     // make the lists
     public ElapsedTime shootTimer;
@@ -66,23 +81,73 @@ public class TestAuto extends PurpleOpMode
         shootTimer = new ElapsedTime();
 
         explosher = new Explosher(hardwareMap);
+
 //        explosher.setTarget(132, 135);
+
         explosher.setRegressionEnabled(true);
 
         vaccum = new Vaccum(hardwareMap);
 
         // Path Chain Presets
         PathChain DriveStartPickup = follower.pathBuilder()
-                .addPath(new BezierLine(startPose, rankPose))
-                .setLinearHeadingInterpolation(startPose.getHeading(), rankPose.getHeading())
+                .addPath(new BezierCurve(Pick1, defaultConstraints))
+                .setLinearHeadingInterpolation(startPose.getHeading(), Pickup1.getHeading())
+                .build();
+        PathChain DriveOpen1 = follower.pathBuilder()
+                .addPath(new BezierLine(Pickup1, Open1))
+                .setLinearHeadingInterpolation(Pickup1.getHeading(), Open1.getHeading())
+                .build();
+        PathChain DriveOpenShoot1 = follower.pathBuilder()
+                .addPath(new BezierLine(Open1, shootPose))
+                .setLinearHeadingInterpolation(Open1.getHeading(), shootPose.getHeading())
+                .build();
+        PathChain DriveShootPickup = follower.pathBuilder()
+                .addPath(new BezierCurve(Pick2, defaultConstraints))
+                .setLinearHeadingInterpolation(shootPose.getHeading(), Pickup2.getHeading())
+                .build();
+        PathChain DriveOpen2 = follower.pathBuilder()
+                .addPath(new BezierLine(Pickup2, Open2))
+                .setLinearHeadingInterpolation(Pickup2.getHeading(), Open2.getHeading())
+                .build();
+        PathChain DriveOpenShoot2 = follower.pathBuilder()
+                .addPath(new BezierLine(Open2, shootPose))
+                .setLinearHeadingInterpolation(Open2.getHeading(), shootPose.getHeading())
+                .build();
+        PathChain DriveOpenPickup = follower.pathBuilder()
+                .addPath(new BezierCurve(loop, defaultConstraints))
+                .setLinearHeadingInterpolation(shootPose.getHeading(), OpenGrab.getHeading())
+                .build();
+        PathChain RankMove = follower.pathBuilder()
+                .addPath(new BezierLine(shootPose, rankPose))
+                .setLinearHeadingInterpolation(shootPose.getHeading(), rankPose.getHeading())
                 .build();
 
         // Create the PurplePath objects
-        PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 5.0, 2)
+        PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 3.0, 2.0);
+
+        PurplePath path2 = new PurplePath("OPEN THE GATE", DriveOpen1, 3.0, 2.0);
+
+
+        PurplePath path3 = new PurplePath("shoot", DriveOpenShoot1, 3.0, 2.0);
+
+
+        PurplePath path4 = new PurplePath("pick the up", DriveShootPickup, 3.0, 2.0);
+
+
+        PurplePath path5 = new PurplePath("op the en", DriveOpen2, 3.0, 2.0);
+
+
+        PurplePath path6 = new PurplePath("shoot 2: electric boogaloo", DriveOpenShoot2, 3.0, 2.0);
+
+
+        PurplePath path7 = new PurplePath("Drive Back to shoot again", DriveOpenPickup, 3.0, 2.0);
+
+
+        PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 3.0, 2.0)
                 .onComplete(() -> DebugUtil.logAdd("path2 completed"));
 
         // Create the PurpleChain object
-        PurpleChain chain = new PurpleChain(path1)
+        PurpleChain chain = new PurpleChain(path1, path2, path3, path4, path5, path6, path7, path8)
                 .onComplete(() -> DebugUtil.logAdd("Chain fully finished"));
 
         // Start the chain. holdEnd = true (follower will hold at end of each path)

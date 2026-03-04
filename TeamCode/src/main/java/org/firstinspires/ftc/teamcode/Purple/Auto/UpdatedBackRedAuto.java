@@ -53,7 +53,7 @@ public class UpdatedBackRedAuto extends PurpleOpMode
 
     private final Pose GrabCurve1 = new Pose(95, 63.4);
 
-    private final Pose GrabCurve2 = new Pose(93, 40);
+    private final Pose GrabCurve2 = new Pose(93, 30);
     private final Pose rankPose = new Pose(82.3, 40, Math.toRadians(0));
 
     private final ArrayList<Pose> Pick1 = new ArrayList<>(Arrays.asList(shootPose, GrabCurve1, Pickup1));
@@ -87,7 +87,7 @@ public class UpdatedBackRedAuto extends PurpleOpMode
 
         explosher = new Explosher(hardwareMap);
 
-        explosher.setTarget(132, 135);
+//        explosher.setTarget(132, 135);
 
         explosher.setRegressionEnabled(true);
 
