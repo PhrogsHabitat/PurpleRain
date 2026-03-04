@@ -6,8 +6,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
 import org.firstinspires.ftc.teamcode.Purple.Components.Servos.ServoConfig;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
-import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
 import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
+import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
 import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
@@ -20,19 +20,19 @@ public class Explosher
 	public static final double HOOD_SMOOTHING_ALPHA = 0.2;
 
 	private static final double[][] RPM_CALIBRATION_POINTS = {
-			{101.75, 2100},
-			{65, 2850},
-			{77, 3000},
-			{80, 3200},
-			{94, 3100}
+			{101.8, 2400},
+			{112, 2500},
+			{78, 2400},
+			{147, 3100},
+			{57, 1700}
 	};
 
 	private static final double[][] HOOD_CALIBRATION_POINTS = {
-			{102, 0.9},
-			{65, 0.50},
-			{77, 0.62},
-			{80, 0.72},
-			{94, 1.00}
+			{101.8, 0.48},
+			{112, 0.53},
+			{78, 1.0},
+			{147, 1.0},
+			{57, 0.45}
 	};
 
 	private static final double EXPLORE_TICKS_PER_DEG = 1200.0 / 180.0;
@@ -48,10 +48,15 @@ public class Explosher
 	private static final double PID_FLIP_ERR = 80.0;
 	private static final double PID_FLIP_POW = 1.0;
 	private static final double PID_FLIP_SLEW = 14.0;
+	private static final double AIM_WARMUP_S = 0.20;
+	private static final double AIM_TARGET_ALPHA = 0.24;
+	private static final double AIM_TARGET_NOISE_DEG = 0.45;
 	private static final double MIN_DEG = -180.0;
 	private static final double MAX_DEG = 180.0;
-	private static final double AIM_X = 128.0;
-	private static final double AIM_Y = 130.0;
+	private static final double AIM_ZERO_FROM_FRONT_DEG = 180.0;
+	private static final double AIM_BEARING_SIGN = -1.0;
+	private static final double AIM_X = 144;
+	private static final double AIM_Y = 144;
 
 	private final MotorConfig motor;
 	private final MotorConfig motor2;
@@ -78,6 +83,9 @@ public class Explosher
 	private double pidDer = 0.0;
 	private double pidPow = 0.0;
 	private long pidNs = 0;
+	private long aimWarmupNs = 0;
+	private double filteredAimTargetDeg = 0.0;
+	private boolean hasFilteredAimTarget = false;
 
 	public Explosher (HardwareMap hardwareMap)
 	{
@@ -108,6 +116,7 @@ public class Explosher
 				.setPositionTolerance(10)
 				.disableVelocityControl()
 				.build();
+
 		fingerConfig = new ServoConfig.Builder(hardwareMap, Names.HOOD)
 				.setRange(Constants.HOOD_MIN, Constants.HOOD_MAX)
 				.build();
@@ -307,7 +316,26 @@ public class Explosher
 			return;
 		}
 
-		double targetDeg = getAimDeg(pose);
+		long nowNs = System.nanoTime();
+		if (aimWarmupNs == 0)
+		{
+			aimWarmupNs = nowNs;
+		}
+
+		double targetDeg = filterAimTargetDeg(getAimDeg(pose));
+		double warmupSec = (nowNs - aimWarmupNs) / 1_000_000_000.0;
+		if (warmupSec < AIM_WARMUP_S)
+		{
+			pidInt = 0.0;
+			pidDer = 0.0;
+			pidErr = targetDeg - getExploringDeg();
+			pidPow = 0.0;
+			pidNs = 0;
+			aimErr = pidErr;
+			setExploringPow(0.0);
+			return;
+		}
+
 		setExploringPow(getPidPow(targetDeg));
 	}
 
@@ -345,18 +373,6 @@ public class Explosher
 
 		aimX = x;
 		aimY = y;
-	}
-
-	/**
-	 * Sets the world-space point used by the auto-aim solver.
-	 *
-	 * @param x Target X.
-	 * @param y Target Y.
-	 */
-	public void setTarget (double x, double y)
-	{
-
-		setAimPoint(x, y);
 	}
 
 	/**
@@ -657,27 +673,30 @@ public class Explosher
 	private double getAimDeg (Pose pose)
 	{
 
-		double botX = pose.getX();
-		double botY = pose.getY();
-		double dY = aimY - botY;
-		double dX = aimX - botX;
-		double botHeadDeg = Math.toDegrees(pose.getHeading());
-		double bearingDeg = Math.toDegrees(Math.atan2(dY, dX));
+		double robotX = pose.getX();
+		double robotY = pose.getY();
+		double deltaY = aimY - robotY;
+		double deltaX = aimX - robotX;
+		double robotHeadingDeg = Math.toDegrees(pose.getHeading());
+		double bearingDeg = Math.toDegrees(Math.atan2(deltaY, deltaX));
+		double relativeBearingDeg = normDeg(bearingDeg - robotHeadingDeg);
+		double targetDeg = normDeg(AIM_ZERO_FROM_FRONT_DEG + (AIM_BEARING_SIGN * relativeBearingDeg));
 
-		DebugUtil.logAdd("DX: " + dX);
-		DebugUtil.logAdd("DY: " + dY);
+		DebugUtil.logAdd("DX: " + deltaX);
+		DebugUtil.logAdd("DY: " + deltaY);
 		DebugUtil.logAdd("Angle: " + bearingDeg);
+		DebugUtil.logAdd("RelAngle: " + relativeBearingDeg);
+		DebugUtil.logAdd("TargetDeg: " + targetDeg);
 
-		return MathUtil.clamp(normDeg(bearingDeg + botHeadDeg), MIN_DEG, MAX_DEG);
+		return MathUtil.clamp(targetDeg, MIN_DEG, MAX_DEG);
 	}
 
 	private double getPidPow (double targetDeg)
 	{
 
 		double currentDeg = getExploringDeg();
-		double goalDeg = MathUtil.clamp(targetDeg, MIN_DEG, MAX_DEG);
-		double error = goalDeg - currentDeg;
-
+		double clampedTargetDeg = MathUtil.clamp(targetDeg, MIN_DEG, MAX_DEG);
+		double error = clampedTargetDeg - currentDeg;
 		long nowNs = System.nanoTime();
 		double dt = pidNs == 0 ? 0.02 : (nowNs - pidNs) / 1_000_000_000.0;
 
@@ -689,7 +708,7 @@ public class Explosher
 			pidInt = 0.0;
 			pidDer = 0.0;
 			pidErr = error;
-			pidPow = slewPow(pidPow, 0.0, dt);
+			pidPow = slewPow(pidPow, 0.0, dt, PID_MAX_SLEW);
 			aimErr = error;
 			return pidPow;
 		}
@@ -697,6 +716,7 @@ public class Explosher
 		if (Math.abs(error) >= PID_FLIP_ERR)
 		{
 			pidInt = 0.0;
+
 			double boostPow = Math.copySign(PID_FLIP_POW, error);
 			boostPow = hardStop(currentDeg, boostPow);
 			pidPow = slewPow(pidPow, boostPow, dt, PID_FLIP_SLEW);
@@ -715,16 +735,31 @@ public class Explosher
 		targetPow = MathUtil.clamp(targetPow, -PID_MAX_POW, PID_MAX_POW);
 		targetPow = hardStop(currentDeg, targetPow);
 
-		pidPow = slewPow(pidPow, targetPow, dt);
+		pidPow = slewPow(pidPow, targetPow, dt, PID_MAX_SLEW);
 		pidErr = error;
 		aimErr = error;
 		return pidPow;
 	}
 
-	private double slewPow (double currentPow, double targetPow, double dt)
+	private double filterAimTargetDeg (double rawTargetDeg)
 	{
 
-		return slewPow(currentPow, targetPow, dt, PID_MAX_SLEW);
+		double clampedRawDeg = MathUtil.clamp(rawTargetDeg, MIN_DEG, MAX_DEG);
+		if (!hasFilteredAimTarget)
+		{
+			filteredAimTargetDeg = clampedRawDeg;
+			hasFilteredAimTarget = true;
+			return filteredAimTargetDeg;
+		}
+
+		double delta = normDeg(clampedRawDeg - filteredAimTargetDeg);
+		if (Math.abs(delta) <= AIM_TARGET_NOISE_DEG)
+		{
+			return filteredAimTargetDeg;
+		}
+
+		filteredAimTargetDeg = normDeg(filteredAimTargetDeg + (AIM_TARGET_ALPHA * delta));
+		return filteredAimTargetDeg;
 	}
 
 	private double slewPow (double currentPow, double targetPow, double dt, double maxSlew)
@@ -775,6 +810,9 @@ public class Explosher
 		pidDer = 0.0;
 		pidPow = 0.0;
 		pidNs = 0;
+		aimWarmupNs = 0;
+		filteredAimTargetDeg = 0.0;
+		hasFilteredAimTarget = false;
 	}
 
 	public enum FingerState

@@ -6,7 +6,7 @@ public final class Constants
 {
 
 	// Finger servo configuration values
-	public static final double HOOD_MIN = 0.15;
+	public static final double HOOD_MIN = 0.38;
 	public static final double HOOD_MAX = 1.0;
 
 	public static final double FINGER_MIN = 0.0;
@@ -31,6 +31,6 @@ public final class Constants
 	public static final int VIBRATION_ALIGNED = 100;
 
 	// Debug mode toggle
-	public static final boolean DEBUG_MODE = true;
+	public static final boolean DEBUG_MODE = falsev;
 
 }

@@ -189,7 +189,7 @@ public class AutoBase extends PurpleOpMode
 		if (explosher.hasRegressionTarget())
 		{
 			rememberedRegressedRPM = explosher.getSmoothedTargetRPM();
-			rememberedRegressedHood = explosher.getSmoothedTargetHoodPosition();
+//			rememberedRegressedHood = explosher.getSmoothedTargetHoodPosition();
 			desiredExplosherRPM = rememberedRegressedRPM;
 			if (explosher.getFingerStateEnum() != Explosher.FingerState.DEBUG)
 			{
@@ -229,9 +229,7 @@ public class AutoBase extends PurpleOpMode
 		DebugUtil.logAdd("Target RPM: " + explosher.getTargetRPM());
 		DebugUtil.logAdd("Current RPM: " + explosher.getCurrentRPM());
 		DebugUtil.logAdd("Smoothed Regress: " + explosher.getSmoothedTargetRPM());
-		DebugUtil.logAdd("Smoothed Hood Regress: " + explosher.getSmoothedTargetHoodPosition());
-		Double odoDistInches = explosher.getDistanceToTarget();
-		DebugUtil.logAdd("[ODOMETRY] Target Dist: " + (odoDistInches == null ? "N/A" : odoDistInches));
+//		DebugUtil.logAdd("Smoothed Hood Regress: " + explosher.getSmoothedTargetHoodPosition());
 		DebugUtil.logAdd("Auto Aim: ON");
 		DebugUtil.logAdd("Exploring Pos: " + explosher.getExploringPos());
 		DebugUtil.logAdd(String.format("Exploring PID: out=%.3f err=%.2f", explosher.getAimPow(), explosher.getAimErr()));

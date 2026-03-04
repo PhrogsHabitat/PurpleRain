@@ -2,9 +2,6 @@ package org.firstinspires.ftc.teamcode.Purple;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
-import com.qualcomm.hardware.rev.RevColorSensorV3;
-
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
@@ -13,7 +10,6 @@ import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
@@ -51,16 +47,6 @@ public class TeleOp extends PurpleOpMode
 	private double rememberedRegressedHood = Constants.FINGER_STOP_POSITION;
 	private final List<double[]> debugRpmDataset = new ArrayList<>();
 	private final List<double[]> debugHoodDataset = new ArrayList<>();
-	private final RevColorSensorV3[] colorSensors = new RevColorSensorV3[6];
-	private final String[] colorSensorLabels = new String[]{
-			Names.COLOR1,
-			Names.COLOR2,
-			Names.COLOR3,
-			Names.COLOR4,
-			Names.COLOR5,
-			Names.COLOR6
-	};
-	private boolean persistTuneDumpSection = false;
 	private boolean wasTagDetected = false;
 	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
 
@@ -82,7 +68,6 @@ public class TeleOp extends PurpleOpMode
 
 		explosher = new Explosher(hardwareMap);
 		explosher.setRegressionEnabled(false);
-
 		if (Constants.DEBUG_MODE)
 		{
 			desiredExplosherRPM = 0.0;
@@ -90,8 +75,6 @@ public class TeleOp extends PurpleOpMode
 		}
 
 		vaccum = new Vaccum(hardwareMap);
-		initTempColorSensorLogging();
-
 		DebugUtil.setTelemetry(telemetry);
 	}
 
@@ -112,7 +95,9 @@ public class TeleOp extends PurpleOpMode
 		updateDrive();
 		updateExplosher();
 		updateVaccum();
-		teleInfo();
+
+		DebugUtil.logAdd("Distance from tag: " + explosher.getDistanceToTarget());
+		DebugUtil.update();
 	}
 
 	@Override
@@ -174,19 +159,16 @@ public class TeleOp extends PurpleOpMode
 			{
 				desiredExplosherRPM += EXPLOSHER_COAST_ALPHA * (EXPLOSHER_DEFAULT_RPM - desiredExplosherRPM);
 			}
-
-			desiredExplosherRPM = Math.max(0.0, Math.min(desiredExplosherRPM, explosher.getMaxRPM()));
-			explosher.setRPM(desiredExplosherRPM);
 		}
 		else
 		{
 			explosher.setRegressionEnabled(false);
 			updateDebugRPM();
-			desiredExplosherRPM = Math.max(0.0, Math.min(desiredExplosherRPM, explosher.getMaxRPM()));
-			explosher.setRPM(desiredExplosherRPM);
 		}
 
-		explosher.updateAim(PurpleMemory.Instance.curPos());
+		desiredExplosherRPM = Math.max(0.0, Math.min(desiredExplosherRPM, explosher.getMaxRPM()));
+		explosher.setRPM(desiredExplosherRPM);
+		explosher.updateAim(follower.getPose());
 		updateDebugHood();
 		updateDebugInterpolationCapture();
 		updateFingerState();
@@ -209,8 +191,6 @@ public class TeleOp extends PurpleOpMode
 		{
 			desiredExplosherRPM -= EXPLOSHER_DEBUG_RPM_INCREMENT;
 		}
-
-		desiredExplosherRPM = Math.max(0.0, Math.min(desiredExplosherRPM, explosher.getMaxRPM()));
 	}
 
 	private void updateDebugHood ()
@@ -256,7 +236,6 @@ public class TeleOp extends PurpleOpMode
 				driver2.justPressed(DRIVER_2_CAPTURE_RPM_POINT);
 		if (printComboPressed)
 		{
-			persistTuneDumpSection = true;
 			logDebugInterpolationDatasets();
 			return;
 		}
@@ -315,7 +294,6 @@ public class TeleOp extends PurpleOpMode
 	private void logDebugInterpolationDatasets ()
 	{
 
-		DebugUtil.logAdd("============== [EXPLOSHER TUNE DUMP]");
 		logCalibrationDataset("RPM_CALIBRATION_POINTS", debugRpmDataset, true);
 		logCalibrationDataset("HOOD_CALIBRATION_POINTS", debugHoodDataset, false);
 	}
@@ -362,75 +340,6 @@ public class TeleOp extends PurpleOpMode
 		else
 		{
 			vaccum.stop();
-		}
-	}
-
-	private void teleInfo ()
-	{
-
-		DebugUtil.logAdd("============== [LIME]");
-		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("POSE: " + LimeUtil.getResult().getBotpose());
-		DebugUtil.logAdd("Target X: " + LimeUtil.getTx());
-		DebugUtil.logAdd("Target D: " + LimeUtil.getTargetDistance());
-		DebugUtil.logAdd(" ");
-
-		DebugUtil.logAdd("============== [EXPLOSHER]");
-		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("Target RPM: " + explosher.getTargetRPM());
-		DebugUtil.logAdd("Current RPM: " + explosher.getCurrentRPM());
-		DebugUtil.logAdd("Smoothed Regress: " + explosher.getSmoothedTargetRPM());
-		DebugUtil.logAdd("Smoothed Hood Regress: " + explosher.getSmoothedTargetHoodPosition());
-		Double odoDistInches = explosher.getDistanceToTarget();
-		DebugUtil.logAdd("[ODOMETRY] Target Dist: " + (odoDistInches == null ? "N/A" : odoDistInches));
-		if (Constants.DEBUG_MODE)
-		{
-			DebugUtil.logAdd(String.format(
-					"[TUNE] Points | RPM: %d | HOOD: %d",
-					debugRpmDataset.size(),
-					debugHoodDataset.size()
-			));
-		}
-		DebugUtil.logAdd("Auto Aim: ON");
-		DebugUtil.logAdd("Exploring Pos: " + explosher.getExploringPos());
-		DebugUtil.logAdd(String.format("Exploring PID: out=%.3f err=%.2f", explosher.getAimPow(), explosher.getAimErr()));
-		DebugUtil.logAdd(" ");
-
-		DebugUtil.logAdd("============== [FINGER]");
-		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("Finger State: " + fingerState);
-		DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
-		DebugUtil.logAdd(String.format("Vacuum Finger 1 Pos: %.3f", vaccum.getFingerPosition(0)));
-		DebugUtil.logAdd(String.format("Vacuum Finger 2 Pos: %.3f", vaccum.getFingerPosition(1)));
-		DebugUtil.logAdd(String.format("Vacuum Finger 3 Pos: %.3f", vaccum.getFingerPosition(2)));
-		DebugUtil.logAdd(" ");
-
-		DebugUtil.logAdd("============== [MEMORY]");
-		DebugUtil.logAdd("[MOTIF]: " + PurpleMemory.Instance.curMotif());
-		DebugUtil.logAdd("[BALLS]: " + Arrays.toString(PurpleMemory.Instance.curBalls()));
-		DebugUtil.logAdd(" ");
-
-		Pose followerPose = follower.getPose();
-		DebugUtil.logAdd("[POSITION] HEADING: " + Math.toDegrees(followerPose.getHeading()));
-		DebugUtil.logAdd("[POSITION] X: " + PurpleMemory.Instance.curPos().getX());
-		DebugUtil.logAdd("[POSITION] Y: " + PurpleMemory.Instance.curPos().getY());
-		DebugUtil.logAdd(" ");
-
-		if (Constants.DEBUG_MODE && persistTuneDumpSection)
-		{
-			logDebugInterpolationDatasets();
-			DebugUtil.logAdd(" ");
-		}
-
-		DebugUtil.update();
-	}
-
-	private void initTempColorSensorLogging ()
-	{
-
-		for (int i = 0; i < colorSensorLabels.length; i++)
-		{
-			colorSensors[i] = hardwareMap.get(RevColorSensorV3.class, colorSensorLabels[i]);
 		}
 	}
 
