@@ -1,214 +1,53 @@
 package org.firstinspires.ftc.teamcode.Purple.Memory.Components;
 
-import com.qualcomm.hardware.rev.RevColorSensorV3;
-import com.qualcomm.robotcore.hardware.HardwareMap;
-
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.teamcode.Purple.Names;
-import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
-
+/**
+ * Tracks the number of balls for memory or game logic.
+ */
 public class Balls
 {
-
-	private static final RGB SAMPLE_PURPLE = new RGB(195, 255, 510);
-	private static final RGB SAMPLE_GREEN = new RGB(110, 420, 355);
-	private static final RGB SAMPLE_NONE = new RGB(22, 22, 22);
-
-	private final RevColorSensorV3[] sensors = new RevColorSensorV3[6];
-	private final Ball[] curBalls = new Ball[]{
-			Ball.NONE,
-			Ball.NONE,
-			Ball.NONE
-	};
+	private int count;
 
 	/**
-	 * Initializes all 6 REV Color Sensor V3 devices.
+	 * Constructs a Balls tracker with zero balls.
 	 */
-	public Balls (HardwareMap hardwareMap)
+	public Balls ()
 	{
-
-		sensors[0] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR1);
-		sensors[1] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR2);
-		sensors[2] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR3);
-		sensors[3] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR4);
-		sensors[4] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR5);
-		sensors[5] = hardwareMap.get(RevColorSensorV3.class, Names.COLOR6);
-
-		// Enable LEDs for all sensors
-		for (int i = 0; i < 6; i++)
-		{
-			sensors[i].enableLed(true);
-		}
+		this.count = 0;
 	}
 
 	/**
-	 * Updates ball detection for all slots.
+	 * Gets the current ball count.
+	 *
+	 * @return The ball count.
 	 */
-	public void update ()
+	public int getCount ()
 	{
-
-		curBalls[0] = detectPair(0, 5); // cs1 + cs6
-		curBalls[1] = detectPair(1, 4); // cs2 + cs5 [CHECK]
-		curBalls[2] = detectPair(2, 3); // cs3 + cs4
-	}
-
-	private Ball detectPair (int firstIndex, int secondIndex)
-	{
-
-		Ball first = detectBall(sensors[firstIndex]);
-		Ball second = detectBall(sensors[secondIndex]);
-
-		if (first == Ball.GREEN || second == Ball.GREEN)
-		{
-			return Ball.GREEN;
-		}
-
-		if (first == Ball.PURPLE || second == Ball.PURPLE)
-		{
-			return Ball.PURPLE;
-		}
-
-		return Ball.NONE;
-	}
-
-	/**
-	 * Returns the current 3-slot ball state.
-	 */
-	public Ball[] curBalls ()
-	{
-
-		return curBalls.clone();
-	}
-
-	/**
-	 * Returns a single slot's ball state.
-	 */
-	public Ball getSlotStatus (int slot)
-	{
-
-		if (slot >= 0 && slot < 3)
-		{
-			return curBalls[slot];
-		}
-		return Ball.NONE;
-	}
-
-	/**
-	 * Checks if all slots are empty.
-	 */
-	public boolean isEmpty ()
-	{
-
-		return curBalls[0] == Ball.NONE && curBalls[1] == Ball.NONE && curBalls[2] == Ball.NONE;
-	}
-
-	/**
-	 * Checks if any slot contains a purple ball.
-	 */
-	public boolean hasPurple ()
-	{
-
-		for (Ball ball : curBalls)
-		{
-			if (ball == Ball.PURPLE) return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Checks if any slot contains a green ball.
-	 */
-	public boolean hasGreen ()
-	{
-
-		for (Ball ball : curBalls)
-		{
-			if (ball == Ball.GREEN) return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Counts how many balls are currently detected.
-	 */
-	public int countBalls ()
-	{
-
-		int count = 0;
-		for (Ball ball : curBalls)
-		{
-			if (ball != Ball.NONE) count++;
-		}
 		return count;
 	}
 
-	private Ball detectBall(RevColorSensorV3 sensor)
+	/**
+	 * Sets the ball count.
+	 *
+	 * @param count The new ball count.
+	 */
+	public void setCount (int count)
 	{
-		int r = sensor.red();
-		int g = sensor.green();
-		int b = sensor.blue();
-
-		// --- Brightness Threshold Fix ---
-		int brightness = r + g + b;
-		DebugUtil.logAdd("RGB: " + brightness);
-
-		// --- Distance Swag ---
-		double dist = sensor.getDistance(DistanceUnit.INCH);
-		DebugUtil.logAdd("DISTANCE: " + dist);
-
-		if (dist < 2.0) {
-
-			if (brightness < 120) {
-				return Ball.NONE;
-			}
-
-			// Continue with normal color comparison
-			RGB current = new RGB(r, g, b);
-
-			double noneDistance = rgbDistanceSquared(current, SAMPLE_NONE);
-			double purpleDistance = rgbDistanceSquared(current, SAMPLE_PURPLE);
-			double greenDistance = rgbDistanceSquared(current, SAMPLE_GREEN);
-
-			if (noneDistance <= purpleDistance && noneDistance <= greenDistance) {
-				return Ball.NONE;
-			}
-
-			if (purpleDistance <= greenDistance) {
-				return Ball.PURPLE;
-			}
-
-			return Ball.GREEN;
-		}
-
-		else
-		{
-			return Ball.NONE;
-		}
+		this.count = count;
 	}
 
-
-	private double rgbDistanceSquared (RGB a, RGB b)
+	/**
+	 * Increments the ball count by one.
+	 */
+	public void increment ()
 	{
-
-		int dr = a.red - b.red;
-		int dg = a.green - b.green;
-		int db = a.blue - b.blue;
-
-		return dr * dr + dg * dg + db * db;
+		count++;
 	}
 
-	private static class RGB
+	/**
+	 * Decrements the ball count by one, not going below zero.
+	 */
+	public void decrement ()
 	{
-		final int red;
-		final int green;
-		final int blue;
-
-		RGB (int red, int green, int blue)
-		{
-
-			this.red = red;
-			this.green = green;
-			this.blue = blue;
-		}
+		if (count > 0) count--;
 	}
 }

@@ -1,128 +1,53 @@
 package org.firstinspires.ftc.teamcode.Purple.Memory;
 
-import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.Pose;
-import com.qualcomm.robotcore.hardware.HardwareMap;
-
-import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Ball;
-import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Balls;
-import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Motif;
-import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Persist;
-import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * Shared robot state container for frequently read, changing values.
+ * A simple key-value memory store for runtime data.
  */
 public class PurpleMemory
 {
-	public static PurpleMemory Instance;
-
-	private final Balls balls;
-	private final Motif motif;
-	private final Persist persist;
-	private final Position position;
+	private final Map<String, Object> memory = new HashMap<>();
 
 	/**
-	 * Constructs PurpleMemory.
+	 * Stores a value in memory under the given key.
+	 *
+	 * @param key   The key to store the value under.
+	 * @param value The value to store.
 	 */
-	public PurpleMemory (HardwareMap hardwareMap)
+	public void put (String key, Object value)
 	{
-
-		this(hardwareMap, null);
+		memory.put(key, value);
 	}
 
 	/**
-	 * Constructs PurpleMemory.
+	 * Retrieves a value from memory by key.
+	 *
+	 * @param key The key to look up.
+	 * @return The value associated with the key, or null if not found.
 	 */
-	public PurpleMemory (HardwareMap hardwareMap, Follower follower)
+	public Object get (String key)
 	{
-
-		balls = new Balls(hardwareMap);
-		motif = new Motif();
-		persist = new Persist(hardwareMap);
-		// Keep a lightweight position object only for API compatibility.
-		// Live drivetrain localization should come from Pedro follower pose.
-		position = follower == null ? new Position() : new Position(follower);
-		Instance = this;
+		return memory.get(key);
 	}
 
 	/**
-	 * Recreates the shared memory instance for the current OpMode run.
+	 * Checks if the memory contains a value for the given key.
+	 *
+	 * @param key The key to check.
+	 * @return True if the key exists, false otherwise.
 	 */
-	public static PurpleMemory initialize (HardwareMap hardwareMap)
+	public boolean containsKey (String key)
 	{
-
-		Instance = new PurpleMemory(hardwareMap, null);
-		return Instance;
+		return memory.containsKey(key);
 	}
 
 	/**
-	 * Recreates the shared memory instance for the current OpMode run.
+	 * Clears all values from memory.
 	 */
-	public static PurpleMemory initialize (HardwareMap hardwareMap, Follower follower)
+	public void clear ()
 	{
-
-		Instance = new PurpleMemory(hardwareMap, follower);
-		return Instance;
-	}
-
-	/**
-	 * Updates all memory components.
-	 */
-	public void update ()
-	{
-
-		position.update();
-		balls.update();
-		motif.update();
-	}
-
-	/**
-	 * Gets current ball states for the 3 slots.
-	 */
-	public Ball[] curBalls ()
-	{
-
-		return balls.curBalls();
-	}
-
-	/**
-	 * Gets the currently detected motif.
-	 */
-	public Motif.Type curMotif ()
-	{
-
-		return motif.curMotif();
-	}
-
-	/**
-	 * Gets the current odometry position.
-	 */
-	public Position curPos ()
-	{
-
-		return position;
-	}
-
-	/**
-	 * Gets the current odometry pose in Pedro coordinates.
-	 */
-	public Pose curPose ()
-	{
-
-		return new Pose(
-				position.getX(),
-				position.getY(),
-				Math.toRadians(position.getHeading())
-		);
-	}
-
-	/**
-	 * Gets persistent key/value storage.
-	 */
-	public Persist persist ()
-	{
-
-		return persist;
+		memory.clear();
 	}
 }

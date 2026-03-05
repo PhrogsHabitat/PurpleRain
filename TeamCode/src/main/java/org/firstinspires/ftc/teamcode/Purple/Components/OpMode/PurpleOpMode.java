@@ -4,25 +4,25 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 public abstract class PurpleOpMode extends LinearOpMode
 {
-    @Override
-    public void runOpMode()
-    {
-        create();
-        waitForStart();
+	@Override
+	public void runOpMode ()
+	{
 
-        while (opModeIsActive())
-        {
-            update();
-        }
+		create();
 
-        destroy();
-    }
+		waitForStart();
 
-    public abstract void create();
+		while (opModeIsActive())
+		{
+			update();
+		}
 
-    public abstract void update();
+		destroy();
+	}
 
-    public abstract void destroy();
+	public abstract void create ();
+
+	public abstract void update ();
+
+	public abstract void destroy ();
 }
-
-

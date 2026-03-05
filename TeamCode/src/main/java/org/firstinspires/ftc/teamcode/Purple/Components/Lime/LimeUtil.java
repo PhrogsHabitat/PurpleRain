@@ -1,71 +1,59 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Lime;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-import org.firstinspires.ftc.teamcode.Purple.Names;
-
-import java.util.List;
 
 public final class LimeUtil
 {
-	private static final double METERS_TO_INCHES = 39.3701;
-
+	public static IMU imu;
+	// Limelight instance
 	private static Limelight3A limelight = null;
-	private static IMU imu = null;
 	private static boolean initialized = false;
 
 	/**
-	 * Initializes Limelight and IMU orientation source.
+	 * Initialize Limelight3A from hardwareMap
 	 *
-	 * @param hardwareMap FTC hardware map.
-	 * @param pollHz      Limelight poll rate.
-	 * @return True when initialization succeeds.
+	 * @param hardwareMap FTC hardwareMap
+	 * @param name        device name (e.g. "Limelight")
+	 * @param pollHz      polling rate
+	 * @return true if initialization successful
 	 */
-	public static boolean start (HardwareMap hardwareMap, int pollHz)
+	public static boolean start (HardwareMap hardwareMap, String name, int pollHz)
 	{
 
 		try
 		{
-			limelight = hardwareMap.get(Limelight3A.class, Names.LIME);
-			imu = hardwareMap.get(IMU.class, "imu");
+			limelight = hardwareMap.get(Limelight3A.class, name);
 			limelight.setPollRateHz(pollHz);
 			limelight.start();
+			imu = hardwareMap.get(IMU.class, "imu");
+
 			initialized = true;
 			return true;
-		} catch (Exception ignored)
+		} catch (Exception e)
 		{
 			limelight = null;
-			imu = null;
 			initialized = false;
 			return false;
 		}
 	}
 
-	/**
-	 * Updates robot orientation input for Limelight.
-	 */
 	public static void update ()
 	{
 
-		if (!isInitialized() || imu == null)
-		{
-			return;
-		}
-
 		YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
 		double yaw = orientation.getYaw(AngleUnit.DEGREES);
-//		limelight.updateRobotOrientation(yaw);
+
+		limelight.updateRobotOrientation(yaw);
 	}
 
 	/**
-	 * Stops Limelight and clears initialization state.
+	 * Stop the limelight
 	 */
 	public static void stop ()
 	{
@@ -75,20 +63,16 @@ public final class LimeUtil
 			try
 			{
 				limelight.stop();
-			} catch (Exception ignored)
+			} catch (Exception e)
 			{
+				// Ignore errors during shutdown
 			}
 		}
-
-		limelight = null;
-		imu = null;
 		initialized = false;
 	}
 
 	/**
-	 * Gets whether Limelight is initialized and available.
-	 *
-	 * @return True when initialized.
+	 * Check if limelight is initialized and ready
 	 */
 	public static boolean isInitialized ()
 	{
@@ -97,9 +81,7 @@ public final class LimeUtil
 	}
 
 	/**
-	 * Switches active Limelight pipeline.
-	 *
-	 * @param pipeline Pipeline index.
+	 * Switch Limelight pipeline
 	 */
 	public static void setPipeline (int pipeline)
 	{
@@ -111,45 +93,39 @@ public final class LimeUtil
 	}
 
 	/**
-	 * Sets Limelight LED mode.
-	 *
-	 * @param mode LED mode value.
+	 * Set Limelight LED mode
+	 * 0=pipeline, 1=off, 2=blink, 3=on
 	 */
 	public static void setLedMode (int mode)
 	{
 
 		if (isInitialized())
 		{
-			// Limelight3A SDK wrapper currently does not expose LED mode in this project.
+			// Implementation depends on Limelight3A API
+			// limelight.setLedMode(mode);
 		}
 	}
 
 	/**
-	 * Gets latest Limelight result.
-	 *
-	 * @return Latest result or null when unavailable.
+	 * Get latest LLResult (may be null)
 	 */
 	public static LLResult getResult ()
 	{
 
-		if (!isInitialized())
-		{
-			return null;
-		}
-
+		if (!isInitialized()) return null;
 		try
 		{
 			return limelight.getLatestResult();
-		} catch (Exception ignored)
+		} catch (Exception e)
 		{
 			return null;
 		}
 	}
 
 	/**
-	 * Gets whether Limelight has a valid target.
+	 * Check if Limelight has a valid target
 	 *
-	 * @return True when a valid target is present.
+	 * @return Limelight sees a valid target
 	 */
 	public static boolean hasValidTarget ()
 	{
@@ -159,105 +135,47 @@ public final class LimeUtil
 	}
 
 	/**
-	 * Gets horizontal target offset in degrees.
-	 *
-	 * @return Horizontal offset or 0 when unavailable.
+	 * Get horizontal offset (tx) in degrees, or 0 if unavailable
 	 */
 	public static double getTx ()
 	{
 
 		LLResult result = getResult();
-		return (result != null && result.isValid()) ? result.getTx() : 0.0;
+		return (result != null && result.isValid()) ? result.getTx() : 0;
 	}
 
 	/**
-	 * Gets vertical target offset in degrees.
-	 *
-	 * @return Vertical offset or 0 when unavailable.
+	 * Get vertical offset (ty) in degrees, or 0 if unavailable
 	 */
 	public static double getTy ()
 	{
 
 		LLResult result = getResult();
-		return (result != null && result.isValid()) ? result.getTy() : 0.0;
+		return (result != null && result.isValid()) ? result.getTy() : 0;
 	}
 
 	/**
-	 * Gets target area fraction.
-	 *
-	 * @return Target area or 0 when unavailable.
+	 * Get target area (ta) as a fraction (0-1), or 0 if unavailable
 	 */
 	public static double getTa ()
 	{
 
 		LLResult result = getResult();
-		return (result != null && result.isValid()) ? result.getTa() : 0.0;
+		return (result != null && result.isValid()) ? result.getTa() : 0;
 	}
 
 	/**
-	 * Gets estimated target distance in inches.
-	 *
-	 * @return Distance in inches or 0 when unavailable.
+	 * Get distance to target in inches, or 0 if unavailable
 	 */
-	public static double getTd ()
+	public static double getTargetDistance ()
 	{
 
 		LLResult result = getResult();
-		return (result != null && result.isValid()) ? result.getBotposeAvgDist() * METERS_TO_INCHES : 0.0;
+		return (result != null && result.isValid()) ? result.getBotposeAvgDist() * 39.3701 : 0;
 	}
 
 	/**
-	 * Gets first visible fiducial ID.
-	 *
-	 * @return Fiducial ID or -1 when unavailable.
-	 */
-	public static int getPrimaryFiducialId ()
-	{
-
-		LLResult result = getResult();
-		if (result == null || !result.isValid())
-		{
-			return -1;
-		}
-
-		List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
-		if (fiducials == null || fiducials.isEmpty())
-		{
-			return -1;
-		}
-
-		return fiducials.get(0).getFiducialId();
-	}
-
-	/**
-	 * Gets the robot's field‑relative pose from the latest Limelight result.
-	 * The pose is returned as a Pedro Pathing Pose (x, y in inches, heading in radians).
-	 *
-	 * @return Pose if a valid AprilTag is detected, otherwise null.
-	 */
-	public static com.pedropathing.geometry.Pose getRobotPose ()
-	{
-
-		LLResult result = getResult();
-		if (result == null || !result.isValid())
-		{
-			return null;
-		}
-		Pose3D botpose = result.getBotpose();
-		if (botpose == null)
-		{
-			return null;
-		}
-		double xInches = botpose.getPosition().x * METERS_TO_INCHES;
-		double yInches = botpose.getPosition().y * METERS_TO_INCHES;
-		double headingRad = botpose.getOrientation().getYaw(); // returns radians
-		return new com.pedropathing.geometry.Pose(xInches, yInches, headingRad);
-	}
-
-	/**
-	 * Gets underlying Limelight hardware object.
-	 *
-	 * @return Limelight instance or null.
+	 * Get the underlying Limelight3A instance for advanced operations
 	 */
 	public static Limelight3A getLimelight ()
 	{

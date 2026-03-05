@@ -5,174 +5,243 @@ import com.pedropathing.geometry.Pose;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
+import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
+import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
-import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
 public class TeleOp extends PurpleOpMode
 {
-	private static final double EXPLOSHER_DEFAULT_RPM = 2800.0;
-	private static final double EXPLOSHER_COAST_ALPHA = 0.08;
-	private static final double EXPLOSHER_DEBUG_RPM_INCREMENT = 100.0;
-	private static final Pose DEFAULT_TELEOP_START_POSE = new Pose(72, 72, Math.toRadians(0.0));
+	private static final long TAG_TIMEOUT_MS = 500;
+	private static final double RPM_SMOOTHING_ALPHA = 0.2;
+	private static final double THRESHOLD = 3;
 
-	// Driver 2 explosher controls
-	private static final String DRIVER_2_FINGER_TOGGLE = "left_trigger";
-	private static final String DRIVER_2_RPM_STEP_UP = "dpad_up";
-	private static final String DRIVER_2_RPM_STEP_DOWN = "dpad_down";
-	private static final String DRIVER_2_HOOD_STEP_UP = "dpad_right";
-	private static final String DRIVER_2_HOOD_STEP_DOWN = "dpad_left";
-	private static final String DRIVER_2_CAPTURE_HOOD_POINT = "select";
-	private static final String DRIVER_2_CAPTURE_RPM_POINT = "start";
-	private static final String DRIVER_2_CAPTURE_PRINT_MODIFIER = "left_trigger";
+	public double swagShitClose = Explosher.CLOSE_SWEET;
+	public double swagShitFar = Explosher.FAR_SWEET;
+	public double dist;
+	public boolean manual = false;
 
-	// Driver 2 vaccum controls
-	private static final String DRIVER_2_VACUUM_IN = "a";
-	private static final String DRIVER_2_VACUUM_OUT = "b";
-	private static final String DRIVER_2_VACUUM_SHOOT = "right_trigger";
-	private static final String DRIVER_2_VACUUM_EJECT = "right_bumper";
-
-	private static final long POSE_CORRECTION_INTERVAL_MS = 1000; // once per second
-	public static Pose startingPose;
-	private final List<double[]> debugRpmDataset = new ArrayList<>();
-	private final List<double[]> debugHoodDataset = new ArrayList<>();
 	private Controls driver1;
 	private Controls driver2;
-	private Follower follower;
+	private MotorConfig fl, fr, bl, br;
+	private double powerScale = Constants.DRIVE_POWER_SCALE;
+
 	private Explosher explosher;
 	private Vaccum vaccum;
-	private double desiredExplosherRPM = EXPLOSHER_DEFAULT_RPM;
-	private double rememberedRegressedRPM = EXPLOSHER_DEFAULT_RPM;
-	private double rememberedRegressedHood = Constants.FINGER_STOP_POSITION;
+
+	private boolean wasAligned = false;
 	private boolean wasTagDetected = false;
 	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
-	// For periodic pose correction
-	private long lastCorrectionTime = 0;
+
+	private boolean autoAlignActive = false;
+	private long lastTagSeenTime = 0;
+
+	private double regressionSlope;
+	private double regressionIntercept;
+	private double smoothedTargetRPM = 0;
 
 	@Override
-	public void create ()
+	public void create()
 	{
-
 		driver1 = new Controls(gamepad1);
 		driver2 = new Controls(gamepad2);
 
-		follower = org.firstinspires.ftc.teamcode.pedroPathing.Constants.createFollower(hardwareMap);
-		follower.setStartingPose(startingPose == null ? DEFAULT_TELEOP_START_POSE : startingPose);
-		follower.update();
-		follower.startTeleopDrive(true);
+		fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.76, 312)
+				.disableVelocityControl().build();
+		fr = new MotorConfig.Builder(hardwareMap, Names.FRONTRIGHT, MotorConfig.Position.FRONT_RIGHT, 2150.76, 312)
+				.disableVelocityControl().build();
+		bl = new MotorConfig.Builder(hardwareMap, Names.BACKLEFT, MotorConfig.Position.BACK_LEFT, 2150.76, 312)
+				.disableVelocityControl().build();
+		br = new MotorConfig.Builder(hardwareMap, Names.BACKRIGHT, MotorConfig.Position.BACK_RIGHT, 2150.76, 312)
+				.disableVelocityControl().build();
 
-		PurpleMemory.initialize(hardwareMap, follower);
-		LimeUtil.start(hardwareMap, 60);
+		LimeUtil.start(hardwareMap, "SwagLime", 60);
 		LimeUtil.setPipeline(0);
 
-		explosher = new Explosher(hardwareMap);
-		explosher.setRegressionEnabled(false);
-		if (Constants.DEBUG_MODE)
-		{
-			desiredExplosherRPM = 0.0;
-			rememberedRegressedRPM = 0.0;
-		}
-
-		// Set the aim point to the desired basket (change based on alliance)
-		explosher.setAimPoint(128, 130);
-
+		explosher = new Explosher(hardwareMap, Constants.FINGER_SERVO_CONFIG);
 		vaccum = new Vaccum(hardwareMap);
+
+		calculateRegression();   // 🔥 THIS FIXES YOUR SHOOTER
+
 		DebugUtil.setTelemetry(telemetry);
 	}
 
 	@Override
-	public void update ()
+	public void update()
 	{
-
 		driver1.update();
 		driver2.update();
-		follower.update();
-		LimeUtil.update();
-		PurpleMemory.Instance.update();
+		updateAllSystems();
+	}
 
+	private void updateAllSystems()
+	{
+		LimeUtil.update();
 		explosher.update();
 		vaccum.update();
 
 		updateAprilTagFeedback();
-		updateDrive();
 		updateExplosher();
 		updateVaccum();
+		teleInfo();
 
-		// Periodic pose correction using LimeLight AprilTag detection
-		long now = System.currentTimeMillis();
-//		if (now - lastCorrectionTime > POSE_CORRECTION_INTERVAL_MS)
-//		{
-//			Pose limelightPose = LimeUtil.getRobotPose();
-//			if (limelightPose != null)
-//			{
-//				follower.setPose(limelightPose);
-//				lastCorrectionTime = now;
-//				DebugUtil.logAdd("Pose corrected using LimeLight");
-//			}
-//		}
+		autoAlignActive = driver1.isPressed("right_bumper") && LimeUtil.hasValidTarget();
 
-		// estimate robot position from limelight distance reading
-		double dist = LimeUtil.getTd();
-
-		// only perform the calculation when we actually have a valid, sane distance
-		double botX = Double.NaN;
-		double botY = Double.NaN;
-		if (LimeUtil.hasValidTarget() && !Double.isNaN(dist) && dist > 0)
+		if (autoAlignActive && Math.abs(LimeUtil.getTx()) > THRESHOLD)
 		{
-			// inner term for the nested square root; must be non‑negative to avoid NaN
-			double inner = 1 - 4 * Math.pow(dist, 4) + 4 * Math.pow(dist, 2);
-			if (inner >= 0)
-			{
-				botY = 130 + Math.abs((Math.sqrt(2 * Math.pow(dist, 4) - 1 + Math.abs(Math.sqrt(inner)))) / 2);
-				double inner2 = Math.pow(dist, 2) - Math.pow((130 - botY), 2);
-				if (inner2 >= 0)
-				{
-					botX = 128 + Math.abs(Math.sqrt(inner2));
-				}
-			}
-		}
-
-		if (!Double.isNaN(botX) && !Double.isNaN(botY))
-		{
-			DebugUtil.logAdd("[ESTIMATE] BOT X: " + botX);
-			DebugUtil.logAdd("[ESTIMATE] BOT Y: " + botY);
+			updateDrive(LimeUtil.getTx() < 0 ? "L" : "R");
 		}
 		else
 		{
-			DebugUtil.logAdd("[ESTIMATE] BOT X/Y unavailable (dist=" + dist + ")");
+			if (autoAlignActive)
+				driver1.vibrate(150);
+
+			updateDrive("def");
+		}
+	}
+
+	private void updateDrive(String dir)
+	{
+		powerScale = driver1.isPressed("left_stick_button") ?
+				Constants.DRIVE_POWER_BOOST : Constants.DRIVE_POWER_SCALE;
+
+		if (dir.equals("L") || dir.equals("R"))
+		{
+			double turn = dir.equals("L") ? -0.15 : 0.15;
+
+			double[] powers = MotorUtil.normalizePowers(new double[]{
+					-turn, -turn, -turn, -turn
+			});
+
+			fl.setPower(powers[0] * powerScale);
+			bl.setPower(powers[1] * powerScale);
+			fr.setPower(powers[2] * powerScale);
+			br.setPower(powers[3] * powerScale);
+		}
+		else
+		{
+			double forward = driver1.getLeftStickY();
+			double strafe = driver1.getLeftStickX();
+			double turn = driver1.getRightStickX();
+
+			double[] powers = MotorUtil.normalizePowers(new double[]{
+					(-forward - strafe - turn),
+					(-forward + strafe - turn),
+					(forward - strafe - turn),
+					(forward + strafe - turn)
+			});
+
+			fl.setPower(powers[0] * powerScale);
+			bl.setPower(powers[1] * powerScale);
+			fr.setPower(powers[2] * powerScale);
+			br.setPower(powers[3] * powerScale);
+		}
+	}
+
+	private void updateExplosher()
+	{
+		double leftStickY = driver2.getLeftStickY();
+
+		if (leftStickY > Constants.JOYSTICK_DEADZONE)
+		{
+			if (LimeUtil.hasValidTarget())
+			{
+				dist = LimeUtil.getTargetDistance();
+
+				double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
+
+				smoothedTargetRPM += RPM_SMOOTHING_ALPHA *
+						(rawTargetRPM - smoothedTargetRPM);
+
+				smoothedTargetRPM = Math.max(0,
+						Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
+
+				if (!manual)
+					explosher.setRPM(smoothedTargetRPM);
+			}
+			else if (!manual)
+			{
+				explosher.setRPM(swagShitClose); // fallback if tag briefly drops
+			}
+		}
+		else if (leftStickY < -Constants.JOYSTICK_DEADZONE)
+		{
+			explosher.setRPM(-4000);
+		}
+		else
+		{
+			explosher.stop();
+		}
+		// Finger Control
+		if (driver2.justPressed(("right_bumper")))
+		{
+			explosher.cycleFingerState();
+		}
+	}
+
+	private void updateVaccum()
+	{
+		if (driver2.isPressed("x"))
+		{
+			vaccum.setPower(-Vaccum.DEFAULT_POW);
+		}
+		else if (driver2.isPressed("b"))
+		{
+			vaccum.swagReverse(-Vaccum.DEFAULT_POW);
+		}
+		else if (driver2.isPressed("y"))
+		{
+			vaccum.setPower(Vaccum.DEFAULT_POW);
+		}
+		else
+		{
+			vaccum.stop();
 		}
 
-		DebugUtil.logAdd("Distance from tag: " + explosher.getDistanceToTarget());
-		DebugUtil.logAdd("EXPLO DEGREE: " + explosher.getExploringDeg());
-		DebugUtil.logAdd("TARGET DEGREE: " + explosher.getExploringTargetDeg());
-		DebugUtil.logAdd("EXPLO ERROR: " + explosher.getAimErr());
-		DebugUtil.logAdd(" ");
+		if (isFullyAligned() && !wasAligned)
+			driver2.vibrate(Constants.VIBRATION_ALIGNED);
 
-		DebugUtil.logAdd("[LIME] POSE: " + LimeUtil.getRobotPose());
-		DebugUtil.logAdd("[FOLLOWER] POSE: " + follower.getPose());
-		DebugUtil.logAdd("[MEMORY] CURRENT BALLS: " + Arrays.toString(PurpleMemory.Instance.curBalls()));
-
-		DebugUtil.update();
+		wasAligned = isFullyAligned();
 	}
 
-	@Override
-	public void destroy ()
+	private void calculateRegression()
 	{
+		double[][] calibrationPoints = {
+				{59, 3100},
+				{65, 3050},
+				{77, 3200},
+				{80, 3400},
+				{94, 3300}
+		};
 
-		explosher.stop();
-		vaccum.stop();
+		int n = calibrationPoints.length;
+		double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+
+		for (double[] point : calibrationPoints)
+		{
+			double distance = point[0];
+			double rpm = point[1];
+			sumX += distance;
+			sumY += rpm;
+			sumXY += distance * rpm;
+			sumX2 += distance * distance;
+		}
+
+		regressionSlope = (n * sumXY - sumX * sumY) /
+				(n * sumX2 - sumX * sumX);
+
+		regressionIntercept = (sumY - regressionSlope * sumX) / n;
 	}
 
-	private void updateAprilTagFeedback ()
+	private void updateAprilTagFeedback()
 	{
-
 		boolean tagDetected = LimeUtil.hasValidTarget();
+
+		if (tagDetected)
+			lastTagSeenTime = System.currentTimeMillis();
+
 		if (tagDetected && !wasTagDetected)
 		{
 			driver1.vibrate(150);
@@ -182,250 +251,44 @@ public class TeleOp extends PurpleOpMode
 		wasTagDetected = tagDetected;
 	}
 
-	private void updateDrive ()
+	private boolean hasRecentTarget()
 	{
-
-		follower.setTeleOpDrive(
-				-gamepad1.left_stick_y * Constants.DRIVE_POWER_SCALE,
-				-gamepad1.left_stick_x * Constants.DRIVE_POWER_SCALE,
-				-gamepad1.right_stick_x * Constants.DRIVE_POWER_SCALE,
-				false
-		);
+		return LimeUtil.hasValidTarget() &&
+				(System.currentTimeMillis() - lastTagSeenTime) < TAG_TIMEOUT_MS;
 	}
 
-	private void updateExplosher ()
+	private boolean isFullyAligned()
 	{
+		if (!hasRecentTarget()) return false;
 
-		boolean manualRpmDebugAdjust = Constants.DEBUG_MODE && (driver2.isPressed(DRIVER_2_RPM_STEP_UP) || driver2.isPressed(DRIVER_2_RPM_STEP_DOWN));
+		double tx = LimeUtil.getTx();
+		double distance = LimeUtil.getTargetDistance();
+		double distanceError = Math.abs(distance - Constants.DESIRED_TAG_DISTANCE);
 
-		boolean useRegressionTarget = !Constants.DEBUG_MODE;
-		if (manualRpmDebugAdjust)
-		{
-			useRegressionTarget = false;
-		}
-
-		explosher.setRegressionEnabled(useRegressionTarget);
-
-		if (useRegressionTarget)
-		{
-			if (explosher.hasRegressionTarget())
-			{
-				rememberedRegressedRPM = explosher.getSmoothedTargetRPM();
-				rememberedRegressedHood = explosher.getSmoothedTargetHoodPosition();
-			}
-
-			desiredExplosherRPM = rememberedRegressedRPM;
-			if (explosher.getFingerStateEnum() != Explosher.FingerState.DEBUG)
-			{
-				explosher.setFingerPosition(rememberedRegressedHood);
-			}
-		}
-		else if (manualRpmDebugAdjust)
-		{
-			updateDebugRPM();
-		}
-		else
-		{
-			desiredExplosherRPM += EXPLOSHER_COAST_ALPHA * (EXPLOSHER_DEFAULT_RPM - desiredExplosherRPM);
-		}
-
-		desiredExplosherRPM = Math.max(0.0, Math.min(desiredExplosherRPM, explosher.getMaxRPM()));
-		explosher.setRPM(desiredExplosherRPM);
-		explosher.updateAim(follower.getPose());
-		updateDebugHood();
-		updateDebugInterpolationCapture();
-		updateFingerState();
+		return Math.abs(tx) < Constants.ALIGN_ANGLE_TOLERANCE &&
+				distanceError < Constants.ALIGN_DISTANCE_TOLERANCE;
 	}
 
-	private void updateDebugRPM ()
+	private void teleInfo()
 	{
+		DebugUtil.logAdd("TX: " + LimeUtil.getTx());
+		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
+		DebugUtil.logAdd("Explosher Target RPM: " + explosher.getTargetRPM());
+		DebugUtil.logAdd("Explosher Current RPM: " + explosher.getCurrentRPM());
+		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
 
-		if (!Constants.DEBUG_MODE)
-		{
-			return;
-		}
-
-		if (driver2.isPressed(DRIVER_2_RPM_STEP_UP))
-		{
-			desiredExplosherRPM += EXPLOSHER_DEBUG_RPM_INCREMENT;
-		}
-
-		if (driver2.isPressed(DRIVER_2_RPM_STEP_DOWN))
-		{
-			desiredExplosherRPM -= EXPLOSHER_DEBUG_RPM_INCREMENT;
-		}
+		DebugUtil.update();
 	}
 
-	private void updateDebugHood ()
+	@Override
+	public void destroy()
 	{
-
-		if (!Constants.DEBUG_MODE)
-		{
-			return;
-		}
-
-		if (driver2.isPressed(DRIVER_2_HOOD_STEP_UP))
-		{
-			if (explosher.getFingerStateEnum() != Explosher.FingerState.DEBUG)
-			{
-				explosher.setFingerState(Explosher.FingerState.DEBUG);
-			}
-
-			explosher.adjustDebugFingerPosition(Constants.FINGER_DEBUG_INCREMENT);
-			fingerState = explosher.getFingerStateEnum();
-		}
-
-		if (driver2.isPressed(DRIVER_2_HOOD_STEP_DOWN))
-		{
-			if (explosher.getFingerStateEnum() != Explosher.FingerState.DEBUG)
-			{
-				explosher.setFingerState(Explosher.FingerState.DEBUG);
-			}
-
-			explosher.adjustDebugFingerPosition(-Constants.FINGER_DEBUG_INCREMENT);
-			fingerState = explosher.getFingerStateEnum();
-		}
-	}
-
-	private void updateDebugInterpolationCapture ()
-	{
-
-		if (!Constants.DEBUG_MODE)
-		{
-			return;
-		}
-
-		boolean printComboPressed = driver2.isPressed(DRIVER_2_CAPTURE_PRINT_MODIFIER) &&
-				driver2.justPressed(DRIVER_2_CAPTURE_RPM_POINT);
-		if (printComboPressed)
-		{
-			logDebugInterpolationDatasets();
-			return;
-		}
-
-		if (driver2.justPressed(DRIVER_2_CAPTURE_HOOD_POINT))
-		{
-			captureDebugHoodPoint();
-		}
-
-		if (driver2.justPressed(DRIVER_2_CAPTURE_RPM_POINT))
-		{
-			captureDebugRpmPoint();
-		}
-	}
-
-	private void captureDebugHoodPoint ()
-	{
-
-		Double distanceInches = explosher.getDistanceToTarget();
-		if (distanceInches == null)
-		{
-			DebugUtil.logAdd("[TUNE] HOOD point skipped: odometry distance unavailable.");
-			return;
-		}
-
-		double hoodPosition = explosher.getFingerPosition();
-		debugHoodDataset.add(new double[]{distanceInches, hoodPosition});
-		DebugUtil.logAdd(String.format(
-				"[TUNE] Saved HOOD point: {%.2f, %.3f} (count=%d)",
-				distanceInches,
-				hoodPosition,
-				debugHoodDataset.size()
-		));
-	}
-
-	private void captureDebugRpmPoint ()
-	{
-
-		Double distanceInches = explosher.getDistanceToTarget();
-		if (distanceInches == null)
-		{
-			DebugUtil.logAdd("[TUNE] RPM point skipped: odometry distance unavailable.");
-			return;
-		}
-
-		double rpmValue = explosher.getTargetRPM();
-		debugRpmDataset.add(new double[]{distanceInches, rpmValue});
-		DebugUtil.logAdd(String.format(
-				"[TUNE] Saved RPM point: {%.2f, %.0f} (count=%d)",
-				distanceInches,
-				rpmValue,
-				debugRpmDataset.size()
-		));
-	}
-
-	private void logDebugInterpolationDatasets ()
-	{
-
-		logCalibrationDataset("RPM_CALIBRATION_POINTS", debugRpmDataset, true);
-		logCalibrationDataset("HOOD_CALIBRATION_POINTS", debugHoodDataset, false);
-	}
-
-	private void logCalibrationDataset (String datasetName, List<double[]> dataset, boolean rpmDataset)
-	{
-
-		if (dataset.isEmpty())
-		{
-			DebugUtil.logAdd(datasetName + " is empty.");
-			return;
-		}
-
-		List<double[]> sortedDataset = new ArrayList<>(dataset);
-		sortedDataset.sort((a, b) -> Double.compare(a[0], b[0]));
-
-		DebugUtil.logAdd("private static final double[][] " + datasetName + " = {");
-		for (double[] point : sortedDataset)
-		{
-			String valueString = rpmDataset ?
-					String.format("%.0f", point[1]) :
-					String.format("%.3f", point[1]);
-			DebugUtil.logAdd(String.format("\t\t{%.2f, %s},", point[0], valueString));
-		}
-		DebugUtil.logAdd("};");
-	}
-
-	private void updateVaccum ()
-	{
-
-		if (driver2.justPressed(DRIVER_2_VACUUM_SHOOT))
-		{
-			vaccum.shoot();
-		}
-
-		// eject is a manual override pattern for when the color sensors fail
-		if (driver2.justPressed(DRIVER_2_VACUUM_EJECT))
-		{
-			vaccum.eject();
-		}
-
-		if (driver2.isPressed(DRIVER_2_VACUUM_IN))
-		{
-			vaccum.setPower(Vaccum.DEFAULT_POW);
-		}
-		else if (driver2.isPressed(DRIVER_2_VACUUM_OUT))
-		{
-			vaccum.setPower(-Vaccum.DEFAULT_POW);
-		}
-		else
-		{
-			vaccum.stop();
-		}
-	}
-
-	private void updateFingerState ()
-	{
-
-		if (Constants.DEBUG_MODE && driver2.isPressed(DRIVER_2_CAPTURE_RPM_POINT))
-		{
-			return;
-		}
-
-		if (!driver2.justPressed(DRIVER_2_FINGER_TOGGLE))
-		{
-			return;
-		}
-
-		fingerState = fingerState == Explosher.FingerState.PASS ? Explosher.FingerState.STOP : Explosher.FingerState.PASS;
-		explosher.setFingerState(fingerState);
+		fl.stop();
+		fr.stop();
+		bl.stop();
+		br.stop();
+		explosher.stop();
+		vaccum.stop();
+		autoAlignActive = false;
 	}
 }

@@ -12,48 +12,49 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
-public class Constants
-{
+public class Constants {
 
-	public static FollowerConstants followerConstants = new FollowerConstants()
-			.mass(23.0)
-			.forwardZeroPowerAcceleration(-32.52225256705156)
-			.lateralZeroPowerAcceleration(-50.2725693616272);
+    public static FollowerConstants followerConstants = new FollowerConstants()
+            .mass(22.6)
+            .forwardZeroPowerAcceleration(-35.10801242936245)
+            .lateralZeroPowerAcceleration(-61.2950703215257);
 
-	public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, .1, 5);
+    public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
 
-	public static MecanumConstants driveConstants = new MecanumConstants()
-			.maxPower(1)
-			.xVelocity(68.47436859851749)
-			.yVelocity(54.857007124292565)
+    public static MecanumConstants driveConstants = new MecanumConstants()
+            .maxPower(1)
+            .xVelocity(67.89837694543553)
+            .yVelocity(57.20929291492372)
 
-			.rightFrontMotorName("FR")
-			.rightRearMotorName("BR")
-			.leftRearMotorName("BL")
-			.leftFrontMotorName("FL")
-			.leftFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
-			.leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
-			.rightFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
-			.rightRearMotorDirection(DcMotorSimple.Direction.FORWARD)
-			.useBrakeModeInTeleOp(true);
+            .rightFrontMotorName("FR")
+            .rightRearMotorName("BR")
+            .leftRearMotorName("BL")
+            .leftFrontMotorName("FL")
+            .leftFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .rightFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
+            .rightRearMotorDirection(DcMotorSimple.Direction.FORWARD)
+            .useBrakeModeInTeleOp(true);
 
-	public static PinpointConstants localizerConstants = new PinpointConstants()
-			.forwardPodY(7.5)
-			.strafePodX(-2.3)
-			.distanceUnit(DistanceUnit.INCH)
-			.hardwareMapName("odo")
-			.encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)
-			.forwardEncoderDirection(GoBildaPinpointDriver.EncoderDirection.REVERSED)
-			.strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.REVERSED);
 
-	public static Follower createFollower (HardwareMap hardwareMap)
-	{
 
-		return new FollowerBuilder(followerConstants, hardwareMap)
-				.pathConstraints(pathConstraints)
-				.mecanumDrivetrain(driveConstants)
-				.pinpointLocalizer(localizerConstants)
-				.build();
-	}
+    public static PinpointConstants localizerConstants = new PinpointConstants()
+            .forwardPodY(3) // Strafe
+            .strafePodX(5.5) // Forward
+            .distanceUnit(DistanceUnit.INCH)
+            .hardwareMapName("pinpoint")
+            .encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)
+            .forwardEncoderDirection(GoBildaPinpointDriver.EncoderDirection.REVERSED)
+            .strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.REVERSED);
+
+    public static Follower createFollower(HardwareMap hardwareMap) {
+        driveConstants.useBrakeModeInTeleOp = true;
+
+        return new FollowerBuilder(followerConstants, hardwareMap)
+                .pathConstraints(pathConstraints)
+                .mecanumDrivetrain(driveConstants)
+                .pinpointLocalizer(localizerConstants)
+                .build();
+    }
 
 }
