@@ -1,3 +1,4 @@
+
 package org.firstinspires.ftc.teamcode.Purple.Auto;
 
 import com.pedropathing.follower.Follower;
@@ -109,10 +110,15 @@ public class BasicAuto extends PurpleOpMode
                 .build();
 
         // Create the PurplePath objects
-        PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 3.0, 5.0)
-                .onComplete(() -> beginMatch());
+        PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 5.0, 5.0)
+                .onComplete(() -> {
+                    explosher.setAimPoint(15, 130);
+                    DebugUtil.logAdd("beginMatch: calling vaccum.shootFull()");
+                    vaccum.shootFull();
+                    vaccum.setPower(-Vaccum.DEFAULT_POW);
+                });
 
-        PurplePath path2 = new PurplePath("seconfd pickup", DriveBetween, 3.0, 5.0)
+        PurplePath path2 = new PurplePath("second pickup", DriveBetween, 3.0, 5.0)
                 .onComplete(() -> vaccum.stop());
 
         PurplePath path3 = new PurplePath("OPEN THE GATE", DriveOpen1, 3.0, 5.0)
@@ -122,7 +128,10 @@ public class BasicAuto extends PurpleOpMode
                 .onComplete(() -> vaccum.stop());
 
         PurplePath path5 = new PurplePath("op the en", DriveOpen2, 3.0, 5.0)
-                .onComplete(() -> vaccum.shootFull());
+                .onComplete(() -> {
+                    DebugUtil.logAdd("path5 complete: calling vaccum.shootFull()");
+                    vaccum.shootFull();
+                });
 
         PurplePath path6 = new PurplePath("Drive outta da trangle", RankMove, 3.0, 5.0)
                 .onComplete(() -> DebugUtil.logAdd("path2 completed"));
@@ -209,18 +218,20 @@ public class BasicAuto extends PurpleOpMode
     }
 
     private void beginMatch () {
-        explosher.setAimPoint(12, 135);
-        if (shootTimer.seconds() == 2) {
-            vaccum.shootFull();
-        }
-        vaccum.setPower(0.5);
+        explosher.setAimPoint(15, 130);
+        
+        // previous logic tried to gate by an exact timer value which almost
+        // never happened, so shootFull() was effectively never executed.
+        DebugUtil.logAdd("beginMatch: calling vaccum.shootFull()");
+        vaccum.shootFull();
+        vaccum.setPower(-Vaccum.DEFAULT_POW);
     }
 
     private void pickupPrep () {
-        if (shootTimer.seconds() == 1) {
-            vaccum.shootFull();
-        }
-        vaccum.setPower(0.5);
+        // fire immediately when called rather than relying on a timer
+        DebugUtil.logAdd("pickupPrep: calling vaccum.shootFull()");
+        vaccum.shootFull();
+        vaccum.setPower(-Vaccum.DEFAULT_POW);
     }
 
     private void teleInfo ()

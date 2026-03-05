@@ -11,6 +11,7 @@ import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
@@ -116,13 +117,36 @@ public class TeleOp extends PurpleOpMode
 //			}
 //		}
 
+		// estimate robot position from limelight distance reading
 		double dist = LimeUtil.getTd();
 
-		double botY = 130 + Math.abs((Math.sqrt(2 * Math.pow(dist, 4) - 1 + Math.abs((Math.sqrt(1 - 4 * Math.pow(dist, 4) + 4 * Math.pow(dist, 2)))))) / 2);
-		double botX = 128 + Math.abs((Math.sqrt(Math.pow(dist, 2) - Math.pow((130 - botY), 2))));
+		// only perform the calculation when we actually have a valid, sane distance
+		double botX = Double.NaN;
+		double botY = Double.NaN;
+		if (LimeUtil.hasValidTarget() && !Double.isNaN(dist) && dist > 0)
+		{
+			// inner term for the nested square root; must be non‑negative to avoid NaN
+			double inner = 1 - 4 * Math.pow(dist, 4) + 4 * Math.pow(dist, 2);
+			if (inner >= 0)
+			{
+				botY = 130 + Math.abs((Math.sqrt(2 * Math.pow(dist, 4) - 1 + Math.abs(Math.sqrt(inner)))) / 2);
+				double inner2 = Math.pow(dist, 2) - Math.pow((130 - botY), 2);
+				if (inner2 >= 0)
+				{
+					botX = 128 + Math.abs(Math.sqrt(inner2));
+				}
+			}
+		}
 
-		DebugUtil.logAdd("[ESTIMATE] BOT X: " + botX);
-		DebugUtil.logAdd("[ESTIMATE] BOT Y: " + botY);
+		if (!Double.isNaN(botX) && !Double.isNaN(botY))
+		{
+			DebugUtil.logAdd("[ESTIMATE] BOT X: " + botX);
+			DebugUtil.logAdd("[ESTIMATE] BOT Y: " + botY);
+		}
+		else
+		{
+			DebugUtil.logAdd("[ESTIMATE] BOT X/Y unavailable (dist=" + dist + ")");
+		}
 
 		DebugUtil.logAdd("Distance from tag: " + explosher.getDistanceToTarget());
 		DebugUtil.logAdd("EXPLO DEGREE: " + explosher.getExploringDeg());
@@ -132,7 +156,7 @@ public class TeleOp extends PurpleOpMode
 
 		DebugUtil.logAdd("[LIME] POSE: " + LimeUtil.getRobotPose());
 		DebugUtil.logAdd("[FOLLOWER] POSE: " + follower.getPose());
-		DebugUtil.logAdd("[MEMORY] CURRENT BALLS: " + PurpleMemory.Instance.curBalls());
+		DebugUtil.logAdd("[MEMORY] CURRENT BALLS: " + Arrays.toString(PurpleMemory.Instance.curBalls()));
 
 		DebugUtil.update();
 	}
