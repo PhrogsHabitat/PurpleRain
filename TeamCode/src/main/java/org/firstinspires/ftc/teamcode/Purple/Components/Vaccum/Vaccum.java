@@ -33,6 +33,7 @@ public class Vaccum
     private int shootQueueIndex = 0;
     private int activeShootFinger = -1;
     private boolean shootInProgress = false;
+    private boolean shootFullInProgress = false;
     private double currentPower = 0.0;
 
     public Vaccum(HardwareMap hardwareMap)
@@ -203,13 +204,51 @@ public class Vaccum
         shootQueueSize = 0;
         shootQueueIndex = 0;
         activeShootFinger = -1;
+        shootFullInProgress = true;
 
+        queueNextFullShootBall();
+        shootInProgress = shootQueueSize > 0;
+        updateShootSequence();
+    }
+
+    /**
+     * Ejects all balls in a default pattern without relying on color sensor data.
+     * This method is intended as a fallback when the color sensors or memory
+     * system are not available. It simply queues every finger in physical order
+     * (0, 1, 2) and runs the normal shoot sequence.
+     */
+    public void eject()
+    {
+        // reset queue state
+        shootQueueSize = 0;
+        shootQueueIndex = 0;
+        activeShootFinger = -1;
+
+        // default pattern is sequential finger order
+        enqueueAllFingers();
+
+        shootInProgress = shootQueueSize > 0;
+        updateShootSequence();
+    }
+
+    /**
+     * Queues the next ball to shoot in full shoot mode based on current memory state.
+     * Re-checks the memory after each shot to handle cases where a ball wasn't expelled.
+     */
+    private void queueNextFullShootBall()
+    {
         PurpleMemory memory = PurpleMemory.Instance;
         if (memory == null)
         {
-            enqueueAllFingers();
-            shootInProgress = shootQueueSize > 0;
-            updateShootSequence();
+            // If memory is null, fall back to unordered shooting
+            for (int slot = 0; slot < FINGER_COUNT; slot++)
+            {
+                if (fingerStates[slot] == FingerState.READY)
+                {
+                    enqueueFinger(slot);
+                    return;
+                }
+            }
             return;
         }
 
@@ -217,6 +256,7 @@ public class Vaccum
         Ball[] desiredOrder = getDesiredOrder(memory.curMotif());
         boolean[] usedSlots = new boolean[FINGER_COUNT];
 
+        // First pass: try to find a ball matching the desired order
         for (Ball desiredBall : desiredOrder)
         {
             int slotIndex = findUnassignedSlot(currentBalls, usedSlots, desiredBall);
@@ -224,19 +264,22 @@ public class Vaccum
             {
                 usedSlots[slotIndex] = true;
                 enqueueFinger(slotIndex);
+                return;
             }
         }
 
+        // Second pass: queue any remaining ball
         for (int slot = 0; slot < FINGER_COUNT; slot++)
         {
-            if (!usedSlots[slot] && currentBalls[slot] != Ball.NONE)
+            if (currentBalls[slot] != Ball.NONE)
             {
                 enqueueFinger(slot);
+                return;
             }
         }
 
-        shootInProgress = shootQueueSize > 0;
-        updateShootSequence();
+        // No more balls to shoot
+        shootFullInProgress = false;
     }
 
     private boolean startFlick(int index)
@@ -291,12 +334,19 @@ public class Vaccum
                 return;
             }
 
+            // After a finger finishes, if we're in full shoot mode, queue the next ball
+            if (shootFullInProgress)
+            {
+                queueNextFullShootBall();
+            }
+
             activeShootFinger = -1;
         }
 
         if (shootQueueIndex >= shootQueueSize)
         {
             shootInProgress = false;
+            shootFullInProgress = false;
             return;
         }
 

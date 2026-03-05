@@ -35,6 +35,8 @@ public class TeleOp extends PurpleOpMode
 	private static final String DRIVER_2_VACUUM_IN = "a";
 	private static final String DRIVER_2_VACUUM_OUT = "b";
 	private static final String DRIVER_2_VACUUM_SHOOT = "right_trigger";
+	private static final String DRIVER_2_VACUUM_EJECT = "right_bumper";
+
 	private static final long POSE_CORRECTION_INTERVAL_MS = 1000; // once per second
 	public static Pose startingPose;
 	private final List<double[]> debugRpmDataset = new ArrayList<>();
@@ -114,6 +116,14 @@ public class TeleOp extends PurpleOpMode
 //			}
 //		}
 
+		double dist = LimeUtil.getTd();
+
+		double botY = 130 + Math.abs((Math.sqrt(2 * Math.pow(dist, 4) - 1 + Math.abs((Math.sqrt(1 - 4 * Math.pow(dist, 4) + 4 * Math.pow(dist, 2)))))) / 2);
+		double botX = 128 + Math.abs((Math.sqrt(Math.pow(dist, 2) - Math.pow((130 - botY), 2))));
+
+		DebugUtil.logAdd("[ESTIMATE] BOT X: " + botX);
+		DebugUtil.logAdd("[ESTIMATE] BOT Y: " + botY);
+
 		DebugUtil.logAdd("Distance from tag: " + explosher.getDistanceToTarget());
 		DebugUtil.logAdd("EXPLO DEGREE: " + explosher.getExploringDeg());
 		DebugUtil.logAdd("TARGET DEGREE: " + explosher.getExploringTargetDeg());
@@ -122,6 +132,7 @@ public class TeleOp extends PurpleOpMode
 
 		DebugUtil.logAdd("[LIME] POSE: " + LimeUtil.getRobotPose());
 		DebugUtil.logAdd("[FOLLOWER] POSE: " + follower.getPose());
+		DebugUtil.logAdd("[MEMORY] CURRENT BALLS: " + PurpleMemory.Instance.curBalls());
 
 		DebugUtil.update();
 	}
@@ -163,7 +174,7 @@ public class TeleOp extends PurpleOpMode
 
 		boolean manualRpmDebugAdjust = Constants.DEBUG_MODE && (driver2.isPressed(DRIVER_2_RPM_STEP_UP) || driver2.isPressed(DRIVER_2_RPM_STEP_DOWN));
 
-		boolean useRegressionTarget = true;
+		boolean useRegressionTarget = !Constants.DEBUG_MODE;
 		if (manualRpmDebugAdjust)
 		{
 			useRegressionTarget = false;
@@ -355,6 +366,12 @@ public class TeleOp extends PurpleOpMode
 		if (driver2.justPressed(DRIVER_2_VACUUM_SHOOT))
 		{
 			vaccum.shoot();
+		}
+
+		// eject is a manual override pattern for when the color sensors fail
+		if (driver2.justPressed(DRIVER_2_VACUUM_EJECT))
+		{
+			vaccum.eject();
 		}
 
 		if (driver2.isPressed(DRIVER_2_VACUUM_IN))

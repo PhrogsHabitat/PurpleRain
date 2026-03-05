@@ -20,7 +20,7 @@ public class Constants
 			.forwardZeroPowerAcceleration(-32.52225256705156)
 			.lateralZeroPowerAcceleration(-50.2725693616272);
 
-	public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
+	public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, .1, 5);
 
 	public static MecanumConstants driveConstants = new MecanumConstants()
 			.maxPower(1)
@@ -38,8 +38,8 @@ public class Constants
 			.useBrakeModeInTeleOp(true);
 
 	public static PinpointConstants localizerConstants = new PinpointConstants()
-			.forwardPodY(-8.0)
-			.strafePodX(1.5)
+			.forwardPodY(7.5)
+			.strafePodX(-2.3)
 			.distanceUnit(DistanceUnit.INCH)
 			.hardwareMapName("odo")
 			.encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)

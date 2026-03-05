@@ -20,11 +20,11 @@ public class Explosher
 	public static final double HOOD_SMOOTHING_ALPHA = 0.2;
 
 	private static final double[][] RPM_CALIBRATION_POINTS = {
-			{101.8, 2400},
-			{112, 2500},
-			{78, 2400},
-			{147, 3100},
-			{57, 1700}
+			{101.8, 2600},
+			{112, 2700},
+			{78, 2600},
+			{147, 3300},
+			{57, 1900}
 	};
 
 	private static final double[][] HOOD_CALIBRATION_POINTS = {
@@ -37,20 +37,21 @@ public class Explosher
 
 	private static final double EXPLORE_TICKS_PER_DEG = 1200.0 / 180.0;
 	private static final double DEFAULT_EXPLORE_DEG_POW = 1.0;
-	private static final double PID_KP = 0.036; // 36
-	private static final double PID_KI = 0.0015;
-	private static final double PID_KD = 0.0020;
+	private static final double PID_KP = 0.050;
+	private static final double PID_KI = 0.02;
+	private static final double PID_KD = 0.002; // 0.002
+
 	private static final double PID_DEAD = 0.1;
 	private static final double PID_MAX_POW = 1.0;
 	private static final double PID_MAX_SLEW = 6.0;
 	private static final double PID_INT_LIM = 90.0;
-	private static final double PID_DER_A = 0.2;
+	private static final double PID_DER_A = 0.6;
 	private static final double PID_FLIP_ERR = 80.0;
 	private static final double PID_FLIP_POW = 1.0;
 	private static final double PID_FLIP_SLEW = 14.0;
 	private static final double AIM_WARMUP_S = 0.20;
-	private static final double AIM_TARGET_ALPHA = 0.24;
-	private static final double AIM_TARGET_NOISE_DEG = 0.45;
+	private static final double AIM_TARGET_ALPHA = 1.0;
+	private static final double AIM_TARGET_NOISE_DEG = 0.0;
 	private static final double MIN_DEG = -180.0;
 	private static final double MAX_DEG = 180.0;
 	private static final double AIM_ZERO_FROM_FRONT_DEG = 180.0;

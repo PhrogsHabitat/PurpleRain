@@ -28,18 +28,19 @@ public class UpdatedBlueAuto extends PurpleOpMode
 	private static final double EXPLOSHER_DEFAULT_RPM = 2800.0;
 	private static final double EXPLOSHER_COAST_ALPHA = 0.08;
 	private static final Pose DEFAULT_AUTO_START_POSE = new Pose(72, 72, Math.toRadians(0.0));
-	public static PathConstraints defaultConstraints = new PathConstraints(0.995, 0.1, 0.1, 0.007, 100, 1, 10, 1);
-	private final Pose startPose = new Pose(21, 125, Math.toRadians(235));
-	private final Pose shootPose = new Pose(47, 100, Math.toRadians(0));
-	private final Pose Pickup1 = new Pose(23.7, 73, Math.toRadians(180));
-	private final Pose Open1 = new Pose(17, 66, Math.toRadians(180));
-	private final Pose Pickup2 = new Pose(24, 59.2, Math.toRadians(180));
+
+	public static PathConstraints defaultConstraints = new PathConstraints(0.995, 0.1, 0.1, 0.007, 100, .1, 10, .4);
+	private final Pose startPose = new Pose(21, 127, Math.toRadians(235));
+	private final Pose shootPose = new Pose(54, 80, Math.toRadians(180));
+	private final Pose Pickup1 = new Pose(26, 83, Math.toRadians(180));
+	private final Pose Open1 = new Pose(17, 75.5, Math.toRadians(180));
+	private final Pose Pickup2 = new Pose(27, 59, Math.toRadians(180));
 	private final Pose GrabCurve = new Pose(50, 52);
-	private final Pose Open2 = new Pose(14, 66, Math.toRadians(180));
+	private final Pose Open2 = new Pose(17, 66, Math.toRadians(180));
 	private final Pose OpenGrab = new Pose(13, 60, Math.toRadians(150));
-	private final Pose FirstCurve = new Pose(92, 70);
+	private final Pose FirstCurve = new Pose(68, 78);
 	private final Pose OpenGrabCurve = new Pose(27.7, 51);
-	private final Pose rankPose = new Pose(53.6, 60, Math.toRadians(150));
+	private final Pose rankPose = new Pose(53, 60, Math.toRadians(150));
 	private final ArrayList<Pose> Pick2 = new ArrayList<>(Arrays.asList(shootPose, GrabCurve, Pickup2));
 	private final ArrayList<Pose> loop = new ArrayList<>(Arrays.asList(shootPose, OpenGrabCurve, OpenGrab));
 	private final ArrayList<Pose> Pick1 = new ArrayList<>(Arrays.asList(startPose, FirstCurve, Pickup1));
@@ -71,7 +72,8 @@ public class UpdatedBlueAuto extends PurpleOpMode
 
 		explosher = new Explosher(hardwareMap);
 
-//        explosher.setTarget(132, 135);
+//        explosher.setTarget(12, 135);
+		explosher.setAimPoint(12, 135);
 
 		explosher.setRegressionEnabled(true);
 
@@ -112,21 +114,21 @@ public class UpdatedBlueAuto extends PurpleOpMode
 				.build();
 
 		// Create the PurplePath objects
-		PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 3.0, 2.0);
+		PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 5.0, 2.0);
 
-		PurplePath path2 = new PurplePath("OPEN THE GATE", DriveOpen1, 3.0, 2.0);
+		PurplePath path2 = new PurplePath("OPEN THE GATE", DriveOpen1, 5.0, 2.0);
 
-		PurplePath path3 = new PurplePath("shoot", DriveOpenShoot1, 3.0, 2.0);
+		PurplePath path3 = new PurplePath("shoot", DriveOpenShoot1, 5.0, 2.0);
 
-		PurplePath path4 = new PurplePath("pick the up", DriveShootPickup, 3.0, 2.0);
+		PurplePath path4 = new PurplePath("pick the up", DriveShootPickup, 5.0, 2.0);
 
-		PurplePath path5 = new PurplePath("op the en", DriveOpen2, 3.0, 2.0);
+		PurplePath path5 = new PurplePath("op the en", DriveOpen2, 5.0, 2.0);
 
-		PurplePath path6 = new PurplePath("shoot 2: electric boogaloo", DriveOpenShoot2, 3.0, 2.0);
+		PurplePath path6 = new PurplePath("shoot 2: electric boogaloo", DriveOpenShoot2, 5.0, 2.0);
 
-		PurplePath path7 = new PurplePath("Drive Back to shoot again", DriveOpenPickup, 3.0, 2.0);
+		PurplePath path7 = new PurplePath("Drive Back to shoot again", DriveOpenPickup, 5.0, 2.0);
 
-		PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 3.0, 2.0)
+		PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 5.0, 2.0)
 				.onComplete(() -> DebugUtil.logAdd("path2 completed"));
 
 		// Create the PurpleChain object
