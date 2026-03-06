@@ -174,16 +174,16 @@ public class TeleOp extends PurpleOpMode
 						Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
 
 				if (!manual)
-					explosher.setRPM(smoothedTargetRPM);
+					explosher.setRPM(-smoothedTargetRPM);
 			}
 			else if (!manual)
 			{
-				explosher.setRPM(swagShitClose); // fallback if tag briefly drops
+				explosher.setRPM(-swagShitClose); // fallback if tag briefly drops
 			}
 		}
 		else if (leftStickY < -Constants.JOYSTICK_DEADZONE)
 		{
-			explosher.setRPM(-4000);
+			explosher.setRPM(4000);
 		}
 		else
 		{
