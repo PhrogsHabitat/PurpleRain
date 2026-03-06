@@ -37,9 +37,9 @@ public class Explosher
 
 	private static final double EXPLORE_TICKS_PER_DEG = 1200.0 / 180.0;
 	private static final double DEFAULT_EXPLORE_DEG_POW = 1.0;
-	private static final double PID_KP = 0.045;
-	private static final double PID_KI = 0.02;
-	private static final double PID_KD = 0.003; // 0.002
+	private static final double PID_KP = 0.020; //0.015
+	private static final double PID_KI = 0.0026; // 0.002
+	private static final double PID_KD = 0.002; // 0.003
 
 	private static final double PID_DEAD = 0.1;
 	private static final double PID_MAX_POW = 1.0;

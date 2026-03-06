@@ -54,6 +54,8 @@ public class BasicAuto extends PurpleOpMode
     private Follower follower;
     private Explosher explosher;
     private Vaccum vaccum;
+    private long CurTime = System.currentTimeMillis();
+    private long TarTime = 2;
     private double desiredExplosherRPM = EXPLOSHER_DEFAULT_RPM;
     private double rememberedRegressedRPM = EXPLOSHER_DEFAULT_RPM;
     private double rememberedRegressedHood = Constants.FINGER_STOP_POSITION;
@@ -84,6 +86,10 @@ public class BasicAuto extends PurpleOpMode
         vaccum = new Vaccum(hardwareMap);
 
         // Path Chain Presets
+        PathChain DriveDoFuckingNothing = follower.pathBuilder()
+                .addPath(new BezierLine(startPose, startPose))
+                .setLinearHeadingInterpolation(startPose.getHeading(), startPose.getHeading())
+                .build();
         PathChain DriveStartPickup = follower.pathBuilder()
                 .addPath(new BezierLine(startPose, between))
                 .setLinearHeadingInterpolation(startPose.getHeading(), between.getHeading())
@@ -110,34 +116,29 @@ public class BasicAuto extends PurpleOpMode
                 .build();
 
         // Create the PurplePath objects
-        PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 5.0, 5.0)
-                .onComplete(() -> {
-                    explosher.setAimPoint(15, 130);
-                    DebugUtil.logAdd("beginMatch: calling vaccum.shootFull()");
-                    vaccum.shootFull();
-                    vaccum.setPower(-Vaccum.DEFAULT_POW);
-                });
+        PurplePath path1 = new PurplePath("Do genuinly fucking nothing", DriveDoFuckingNothing, 0.0, 0.0)
+                .onComplete(() -> shootTimer.reset());
 
-        PurplePath path2 = new PurplePath("second pickup", DriveBetween, 3.0, 5.0)
+        PurplePath path2 = new PurplePath("first pickup", DriveStartPickup, 5.0, 5.0)
+                .onComplete(() -> beginMatch());
+
+        PurplePath path3 = new PurplePath("second pickup", DriveBetween, 3.0, 5.0)
                 .onComplete(() -> vaccum.stop());
 
-        PurplePath path3 = new PurplePath("OPEN THE GATE", DriveOpen1, 3.0, 5.0)
-                .onComplete(() -> pickupPrep());
+        PurplePath path4 = new PurplePath("OPEN THE GATE", DriveOpen1, 3.0, 5.0)
+                .onComplete(() -> vaccum.setPower(0.5));
 
-        PurplePath path4 = new PurplePath("pick the up", DriveShootPickup, 3.0, 5.0)
+        PurplePath path5 = new PurplePath("pick the up", DriveShootPickup, 3.0, 5.0)
                 .onComplete(() -> vaccum.stop());
 
-        PurplePath path5 = new PurplePath("op the en", DriveOpen2, 3.0, 5.0)
-                .onComplete(() -> {
-                    DebugUtil.logAdd("path5 complete: calling vaccum.shootFull()");
-                    vaccum.shootFull();
-                });
+        PurplePath path6 = new PurplePath("op the en", DriveOpen2, 3.0, 5.0)
+                .onComplete(() -> vaccum.shootFull());
 
-        PurplePath path6 = new PurplePath("Drive outta da trangle", RankMove, 3.0, 5.0)
+        PurplePath path7 = new PurplePath("Drive outta da trangle", RankMove, 3.0, 5.0)
                 .onComplete(() -> DebugUtil.logAdd("path2 completed"));
 
         // Create the PurpleChain object
-        PurpleChain chain = new PurpleChain(path1, path2, path3, path4, path5)
+        PurpleChain chain = new PurpleChain(path1, path2, path3, path4, path5, path6, path7)
                 .onComplete(() -> DebugUtil.logAdd("Chain fully finished"));
 
         // Start the chain. holdEnd = true (follower will hold at end of each path)
@@ -219,19 +220,14 @@ public class BasicAuto extends PurpleOpMode
 
     private void beginMatch () {
         explosher.setAimPoint(15, 130);
-        
-        // previous logic tried to gate by an exact timer value which almost
-        // never happened, so shootFull() was effectively never executed.
-        DebugUtil.logAdd("beginMatch: calling vaccum.shootFull()");
-        vaccum.shootFull();
-        vaccum.setPower(-Vaccum.DEFAULT_POW);
+        if (shootTimer.seconds() == 1) {
+            vaccum.shootFull();
+        }
+        vaccum.setPower(0.5);
     }
 
     private void pickupPrep () {
-        // fire immediately when called rather than relying on a timer
-        DebugUtil.logAdd("pickupPrep: calling vaccum.shootFull()");
-        vaccum.shootFull();
-        vaccum.setPower(-Vaccum.DEFAULT_POW);
+//        vaccum.shootFull();
     }
 
     private void teleInfo ()
