@@ -138,10 +138,10 @@ public class TeleOp extends PurpleOpMode
 			double turn = driver1.getRightStickX();
 
 			double[] powers = MotorUtil.normalizePowers(new double[]{
-					(-forward - strafe - turn),
-					(-forward + strafe - turn),
+					(forward + strafe - turn),
 					(forward - strafe - turn),
-					(forward + strafe - turn)
+					(forward + strafe + turn),
+					(forward - strafe + turn)
 			});
 
 			fl.setPower(powers[0] * powerScale);
