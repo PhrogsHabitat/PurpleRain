@@ -27,7 +27,7 @@ public final class Constants
 
 	// Note: MotorConfig instances will be created in the opmodes with HardwareMap
 	// Debug mode toggle
-	public static final boolean DEBUG_MODE = false;
+	public static final boolean DEBUG_MODE = true;
 
 	private Constants ()
 	{

@@ -159,7 +159,7 @@ public class TeleOp extends PurpleOpMode
 		{
 			if (Constants.DEBUG_MODE && manual)
 			{
-				explosher.setRPM(debugManualRPM);
+				explosher.setRPM(-debugManualRPM);
 			}
 			else if (LimeUtil.hasValidTarget())
 			{
@@ -258,11 +258,11 @@ public class TeleOp extends PurpleOpMode
 	private void calculateRegression()
 	{
 		double[][] calibrationPoints = {
-				{59, 3100},
-				{65, 3050},
-				{77, 3200},
-				{80, 3400},
-				{94, 3300}
+				{123, -4900},
+				{80, -4100},
+				{54, -3900},
+				{47, -3700},
+				{157, -5000}
 		};
 
 		int n = calibrationPoints.length;
