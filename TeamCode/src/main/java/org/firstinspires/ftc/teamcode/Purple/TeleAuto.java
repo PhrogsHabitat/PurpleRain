@@ -226,7 +226,7 @@ public class TeleAuto extends PurpleOpMode
 
                 if (!manual)
                 {
-                    explosher.setRPM(smoothedTargetRPM);
+                    explosher.setRPM(-smoothedTargetRPM);
                 }
             } else if (!manual)
             {
@@ -234,11 +234,11 @@ public class TeleAuto extends PurpleOpMode
             }
         } else if (leftStickY < -Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
         {
-            explosher.setRPM(-4000);
+            explosher.setRPM(4000);
             vaccum.setPower(-Vaccum.DEFAULT_POW);
         } else if (driver2.isPressed("b"))
         {
-            explosher.setRPM(-4000);
+            explosher.setRPM(4000);
             vaccum.swagReverse(-Vaccum.DEFAULT_POW);
         } else
         {
@@ -255,11 +255,11 @@ public class TeleAuto extends PurpleOpMode
     {
 
         double[][] calibrationPoints = {
-                {59, 2900},
-                {65, 2850},
-                {77, 3000},
-                {80, 3200},
-                {94, 3100}
+                {123, -4900},
+                {80, -4100},
+                {54, -3900},
+                {47, -3700},
+                {157, -5000}
         };
 
         int n = calibrationPoints.length;
@@ -341,13 +341,13 @@ public class TeleAuto extends PurpleOpMode
         {
             manual = true;
             swagShitClose += 100;
-            explosher.setRPM(swagShitClose);
+            explosher.setRPM(-swagShitClose);
         }
         if (driver2.justPressed("dpad_down") && Constants.DEBUG_MODE)
         {
             manual = true;
             swagShitClose -= 100;
-            explosher.setRPM(swagShitClose);
+            explosher.setRPM(-swagShitClose);
         }
         if (driver2.justPressed("dpad_left") && Constants.DEBUG_MODE)
         {
