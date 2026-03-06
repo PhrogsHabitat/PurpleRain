@@ -15,13 +15,14 @@ import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 public class TeleOp extends PurpleOpMode
 {
 	private static final long TAG_TIMEOUT_MS = 500;
+	private Pose startPose = new Pose(72, 72, 3 * Math.PI / 4);
 	private static final double RPM_SMOOTHING_ALPHA = 0.2;
 	private static final double THRESHOLD = 3;
 
 	public double swagShitClose = Explosher.CLOSE_SWEET;
 	public double swagShitFar = Explosher.FAR_SWEET;
 	public double dist;
-	public boolean manual = false;
+	public boolean manual = true;
 
 	private Controls driver1;
 	private Controls driver2;
@@ -41,12 +42,19 @@ public class TeleOp extends PurpleOpMode
 	private double regressionSlope;
 	private double regressionIntercept;
 	private double smoothedTargetRPM = 0;
+	private double debugManualRPM = 0;
+
+	public Follower follower;
+
 
 	@Override
 	public void create()
 	{
 		driver1 = new Controls(gamepad1);
 		driver2 = new Controls(gamepad2);
+
+		follower = org.firstinspires.ftc.teamcode.pedroPathing.Constants.createFollower(hardwareMap);
+		follower.setPose(startPose);
 
 		fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.76, 312)
 				.disableVelocityControl().build();
@@ -63,7 +71,7 @@ public class TeleOp extends PurpleOpMode
 		explosher = new Explosher(hardwareMap, Constants.FINGER_SERVO_CONFIG);
 		vaccum = new Vaccum(hardwareMap);
 
-		calculateRegression();   // 🔥 THIS FIXES YOUR SHOOTER
+		calculateRegression();
 
 		DebugUtil.setTelemetry(telemetry);
 	}
@@ -73,16 +81,19 @@ public class TeleOp extends PurpleOpMode
 	{
 		driver1.update();
 		driver2.update();
+		follower.update();
+
 		updateAllSystems();
 	}
 
 	private void updateAllSystems()
 	{
-		LimeUtil.update();
+		LimeUtil.update(follower.getHeading());
 		explosher.update();
 		vaccum.update();
 
 		updateAprilTagFeedback();
+		updateDebugRpmControl();
 		updateExplosher();
 		updateVaccum();
 		teleInfo();
@@ -146,7 +157,11 @@ public class TeleOp extends PurpleOpMode
 
 		if (leftStickY > Constants.JOYSTICK_DEADZONE)
 		{
-			if (LimeUtil.hasValidTarget())
+			if (Constants.DEBUG_MODE && manual)
+			{
+				explosher.setRPM(debugManualRPM);
+			}
+			else if (LimeUtil.hasValidTarget())
 			{
 				dist = LimeUtil.getTargetDistance();
 
@@ -178,6 +193,40 @@ public class TeleOp extends PurpleOpMode
 		if (driver2.justPressed(("right_bumper")))
 		{
 			explosher.cycleFingerState();
+		}
+	}
+
+	private void updateDebugRpmControl()
+	{
+		if (!Constants.DEBUG_MODE)
+		{
+			manual = false;
+			return;
+		}
+
+		if (driver2.justPressed("dpad_up"))
+		{
+			if (!manual)
+			{
+				debugManualRPM = explosher.getTargetRPM();
+			}
+			manual = true;
+			debugManualRPM = Math.min(explosher.getMaxRPM(), debugManualRPM + 100);
+		}
+
+		if (driver2.justPressed("dpad_down"))
+		{
+			if (!manual)
+			{
+				debugManualRPM = explosher.getTargetRPM();
+			}
+			manual = true;
+			debugManualRPM = Math.max(0, debugManualRPM - 100);
+		}
+
+		if (driver2.justPressed("dpad_left"))
+		{
+			manual = false;
 		}
 	}
 
@@ -271,10 +320,15 @@ public class TeleOp extends PurpleOpMode
 
 	private void teleInfo()
 	{
+		DebugUtil.logAdd("[MT1] BotPose - " + LimeUtil.getResult().getBotpose());
+		DebugUtil.logAdd("[MT2] BotPose - " + LimeUtil.getResult().getBotpose_MT2());
+
 		DebugUtil.logAdd("TX: " + LimeUtil.getTx());
 		DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
 		DebugUtil.logAdd("Explosher Target RPM: " + explosher.getTargetRPM());
 		DebugUtil.logAdd("Explosher Current RPM: " + explosher.getCurrentRPM());
+		DebugUtil.logAdd("Manual RPM Mode: " + (manual ? "ON" : "OFF"));
+		DebugUtil.logAdd("Manual RPM Setpoint: " + debugManualRPM);
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
 
 		DebugUtil.update();

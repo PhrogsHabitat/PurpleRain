@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
@@ -12,6 +13,7 @@ import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
 
+@Configurable
 public class Explosher
 {
 	
@@ -31,6 +33,8 @@ public class Explosher
 	private double debugFingerPosition = Constants.FINGER_STOP_POSITION;
 	private double targetRPM = 0;
 	public double smoothedTargetRPM = 0;
+	public static double kP = 0.000005, kV = 0.00018, kS = 0.02;
+
 
 	public enum FingerState
 	{
@@ -50,10 +54,13 @@ public class Explosher
 	public Explosher (HardwareMap hardwareMap, ServoConfig fingerConfig)
 	{
 		this.motor = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
+		this.motor.setVelocityDirectionReversed(true);
 		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
 
 		// Stop everything and zero
+		// 30435
+
 		stop();
 		setFingerState(FingerState.STOP);
 
@@ -65,6 +72,9 @@ public class Explosher
 	 */
 	public void update ()
 	{
+		this.motor.setVelocityCoefficients(kP,0,0); // i: 45
+		this.motor.setFeedforwardCoefficients(kS,kV,0);
+
 		motor.update();
 
 		if (shouldRegress)
@@ -94,7 +104,7 @@ public class Explosher
 	public void setRPM (double rpm)
 	{
 		this.targetRPM = rpm;
-		motor.setTargetRPM(rpm);
+		motor.setPower(calcPID(rpm, getCurrentRPM()));
 	}
 
 	/**
@@ -104,7 +114,7 @@ public class Explosher
 	 */
 	public double getCurrentRPM ()
 	{
-		return motor.getCurrentRPM();
+		return motor.getRPM();
 	}
 
 	/**
@@ -266,5 +276,10 @@ public class Explosher
 
 		regressionSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
 		regressionIntercept = (sumY - regressionSlope * sumX) / n;
+	}
+
+	public double calcPID(double target, double current)
+	{
+		return kP * (target - current) + kV * target + kS;
 	}
 }

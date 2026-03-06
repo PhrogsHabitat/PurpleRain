@@ -76,7 +76,7 @@ public class Vaccum
 	public double getIntakeCurrentRPM ()
 	{
 
-		return intakeMotor.getCurrentRPM();
+		return intakeMotor.getRPM();
 	}
 
 	/**
@@ -87,7 +87,7 @@ public class Vaccum
 	public double getMidtakeCurrentRPM ()
 	{
 
-		return midtakeMotor.getCurrentRPM();
+		return midtakeMotor.getRPM();
 	}
 
 	/**

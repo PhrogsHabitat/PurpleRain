@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Lime;
 
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
@@ -9,6 +10,9 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 
@@ -71,10 +75,13 @@ public class SourOp extends OpMode
 
 			// Bruh we had this method the whole time?
 			double dist = llResult.getBotposeAvgDist() * 39.3701;
+			Pose3D MT1 = llResult.getBotpose();
+			Pose3D MT2 = llResult.getBotpose_MT2();
 
 			telemetry.addData("Target Dist", dist);
 
-		} else
+		}
+		else
 		{
 
 		}

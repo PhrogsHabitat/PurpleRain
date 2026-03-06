@@ -1,11 +1,13 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Lime;
 
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 public final class LimeUtil
@@ -50,6 +52,12 @@ public final class LimeUtil
 		double yaw = orientation.getYaw(AngleUnit.DEGREES);
 
 		limelight.updateRobotOrientation(yaw);
+	}
+
+	public static void update (double heading)
+	{
+
+		limelight.updateRobotOrientation(heading);
 	}
 
 	/**
@@ -172,6 +180,10 @@ public final class LimeUtil
 
 		LLResult result = getResult();
 		return (result != null && result.isValid()) ? result.getBotposeAvgDist() * 39.3701 : 0;
+	}
+
+	private Pose pedroFromFTC(Pose3D pose) {
+		return new Pose(pose.getPosition().y * 0.03937 +  72, pose.getPosition().x * 0.03937 + 72, pose.getOrientation().getYaw(AngleUnit.RADIANS) - Math.PI/2);
 	}
 
 	/**
