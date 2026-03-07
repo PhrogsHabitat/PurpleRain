@@ -1,9 +1,11 @@
 package org.firstinspires.ftc.teamcode.Purple.Auto;
 
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
+import com.pedropathing.paths.PathConstraints;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -17,8 +19,11 @@ import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-@Autonomous(name = "RedAuto", group = "Purple")
-public class RedAuto extends OpMode
+import java.util.ArrayList;
+import java.util.Arrays;
+
+@Autonomous(name = "UpdatedRedAuto", group = "Purple")
+public class UpdatedRedAuto extends OpMode
 {
 
     private Follower follower;
@@ -40,22 +45,26 @@ public class RedAuto extends OpMode
 
     private boolean shouldShoot = false;
 
+    private boolean shootDone = true;
+
     // sample poses (adjust to your field/layout)
-    private final Pose startPose = new Pose(123, 125, Math.toRadians(44));
+    public static PathConstraints defaultConstraints = new PathConstraints(0.995, 0.1, 0.1, 0.007, 100, 1, 10, 1);
+    private final Pose startPose = new Pose(124, 124, Math.toRadians(36));
 
-    private final Pose shootPose = new Pose(90, 94.5, Math.toRadians(44));
-
-    private final Pose shootPoseScuff = new Pose(90, 94.5, Math.toRadians(40));
-
-    private final Pose Pickup_First_Halflife1Pose = new Pose(100, 83.5, Math.toRadians(10));
-
-    private final Pose Pickup_First_Halflife2Pose = new Pose(126, 83.5, Math.toRadians(10));
-
-    private final Pose Pickup_Second_Halflife1Pose = new Pose(100, 61, Math.toRadians(10));
-
-    private final Pose Pickup_Second_Halflife2Pose = new Pose(126, 61, Math.toRadians(10));
-
-    private final Pose rankPose = new Pose(100, 60, Math.toRadians(90));
+    private final Pose betweenPose = new Pose(87, 83, Math.toRadians(50));
+    private final Pose shootPose = new Pose(90, 80, Math.toRadians(0));
+    private final Pose Pickup1 = new Pose(120, 83.7, Math.toRadians(0));
+    private final Pose Open1 = new Pose(127, 75.5, Math.toRadians(0));
+    private final Pose Pickup2 = new Pose(120, 59.2, Math.toRadians(0));
+    private final Pose GrabCurve = new Pose(103.6, 55.5);
+    private final Pose Open2 = new Pose(127, 66, Math.toRadians(0));
+    private final Pose OpenGrab = new Pose(131, 60, Math.toRadians(30));
+    private final Pose FirstCurve = new Pose(74, 88);
+//    private final Pose OpenGrabCurve = new Pose(116.3, 51);
+    private final Pose rankPose = new Pose(90.4, 60, Math.toRadians(30));
+    private final ArrayList<Pose> Pick2 = new ArrayList<>(Arrays.asList(shootPose, GrabCurve, Pickup2));
+//    private final ArrayList<Pose> loop = new ArrayList<>(Arrays.asList(shootPose, OpenGrabCurve, OpenGrab));
+    private final ArrayList<Pose> Pick1 = new ArrayList<>(Arrays.asList(startPose, FirstCurve, Pickup1));
     private PurplePathing pathManager;
 
     @Override
@@ -90,34 +99,38 @@ public class RedAuto extends OpMode
 
 
         // Path Chain Presets
-        PathChain DriveStartShoot = follower.pathBuilder()
-                .addPath(new BezierLine(startPose, shootPose))
-                .setLinearHeadingInterpolation(startPose.getHeading(), shootPose.getHeading())
+        PathChain DriveStartPickup = follower.pathBuilder()
+                .addPath(new BezierLine(startPose, betweenPose))
+                .setLinearHeadingInterpolation(startPose.getHeading(), betweenPose.getHeading())
                 .build();
-        PathChain DriveToHalfLife1 = follower.pathBuilder()
-                .addPath(new BezierLine(shootPose, Pickup_First_Halflife1Pose))
-                .setLinearHeadingInterpolation(shootPose.getHeading(), Pickup_First_Halflife1Pose.getHeading())
+        PathChain DriveBetween = follower.pathBuilder()
+                .addPath(new BezierLine(betweenPose, Pickup1))
+                .setLinearHeadingInterpolation(betweenPose.getHeading(), Pickup1.getHeading())
                 .build();
-        PathChain DriveHalfLife1 = follower.pathBuilder()
-                .addPath(new BezierLine(Pickup_First_Halflife1Pose, Pickup_First_Halflife2Pose))
-                .setLinearHeadingInterpolation(Pickup_First_Halflife1Pose.getHeading(), Pickup_First_Halflife2Pose.getHeading())
+        PathChain DriveOpen1 = follower.pathBuilder()
+                .addPath(new BezierLine(Pickup1, Open1))
+                .setLinearHeadingInterpolation(Pickup1.getHeading(), Open1.getHeading())
                 .build();
-        PathChain DrivePickupShoot1 = follower.pathBuilder()
-                .addPath(new BezierLine(Pickup_First_Halflife2Pose, shootPoseScuff))
-                .setLinearHeadingInterpolation(Pickup_First_Halflife2Pose.getHeading(), shootPoseScuff.getHeading())
+        PathChain DriveOpenShoot1 = follower.pathBuilder()
+                .addPath(new BezierLine(Open1, shootPose))
+                .setLinearHeadingInterpolation(Open1.getHeading(), shootPose.getHeading())
                 .build();
-        PathChain DriveToHalfLife2 = follower.pathBuilder()
-                .addPath(new BezierLine(shootPose, Pickup_Second_Halflife1Pose))
-                .setLinearHeadingInterpolation(shootPose.getHeading(), Pickup_Second_Halflife1Pose.getHeading())
+        PathChain DriveShootPickup = follower.pathBuilder()
+                .addPath(new BezierCurve(Pick2, defaultConstraints))
+                .setLinearHeadingInterpolation(shootPose.getHeading(), Pickup2.getHeading())
                 .build();
-        PathChain DriveHalfLife2 = follower.pathBuilder()
-                .addPath(new BezierLine(Pickup_Second_Halflife1Pose, Pickup_Second_Halflife2Pose))
-                .setLinearHeadingInterpolation(Pickup_Second_Halflife1Pose.getHeading(), Pickup_Second_Halflife2Pose.getHeading())
+        PathChain DriveOpen2 = follower.pathBuilder()
+                .addPath(new BezierLine(Pickup2, Open2))
+                .setLinearHeadingInterpolation(Pickup2.getHeading(), Open2.getHeading())
                 .build();
-        PathChain DrivePickupShoot2 = follower.pathBuilder()
-                .addPath(new BezierLine(Pickup_Second_Halflife2Pose, shootPoseScuff))
-                .setLinearHeadingInterpolation(Pickup_Second_Halflife2Pose.getHeading(), shootPoseScuff.getHeading())
+        PathChain DriveOpenShoot2 = follower.pathBuilder()
+                .addPath(new BezierLine(Open2, shootPose))
+                .setLinearHeadingInterpolation(Open2.getHeading(), shootPose.getHeading())
                 .build();
+//        PathChain DriveOpenPickup = follower.pathBuilder()
+//                .addPath(new BezierCurve(loop, defaultConstraints))
+//                .setLinearHeadingInterpolation(shootPose.getHeading(), OpenGrab.getHeading())
+//                .build();
         PathChain RankMove = follower.pathBuilder()
                 .addPath(new BezierLine(shootPose, rankPose))
                 .setLinearHeadingInterpolation(shootPose.getHeading(), rankPose.getHeading())
@@ -126,28 +139,27 @@ public class RedAuto extends OpMode
 
 
         // Create the PurplePath objects
-        PurplePath path1 = new PurplePath("Drive Back", DriveStartShoot, 1.0, 6.5)
+        PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 5.0, 2.0)
                 .onComplete(() -> flagShoot());
 
-        PurplePath path2 = new PurplePath("Drive back smore", DriveToHalfLife1, 1, 0.0)
+        PurplePath path2 = new PurplePath("second pickup", DriveBetween, 5.0, 2.0)
                 .onComplete(() -> pickupBalls(true));
 
-        PurplePath path3 = new PurplePath("pickup BALLS =]", DriveHalfLife1, 2.0, 0)
+        PurplePath path3 = new PurplePath("OPEN THE GATE", DriveOpen1, 5.0, 2.0)
                 .onComplete(() -> pickupBalls(false));
 
-        PurplePath path4 = new PurplePath("Drive back to shoot", DrivePickupShoot1, 1, 6.5)
-                .onComplete(() -> flagShoot());
+        PurplePath path4 = new PurplePath("shoot", DriveOpenShoot1, 5.0, 2.0)
+                .onComplete(() -> doBoth(true));
 
-        PurplePath path5 = new PurplePath("Drive back smlot", DriveToHalfLife2, 2.0, 0.0)
-                .onComplete(() -> pickupBalls(true));
+        PurplePath path5 = new PurplePath("pick the up", DriveShootPickup, 5.0, 2.0);
 
-        PurplePath path6 = new PurplePath("pickup BALLS =] 2: electric boogaloo", DriveHalfLife2, 1, 0.0)
-                .onComplete(() -> pickupBalls(false));
+        PurplePath path6 = new PurplePath("op the en", DriveOpen2, 5.0, 2.0);
 
-        PurplePath path7 = new PurplePath("Drive Back to shoot again", DrivePickupShoot2, 2.0, 6.5)
-                .onComplete(() -> flagShoot());
+        PurplePath path7 = new PurplePath("shoot 2: electric boogaloo", DriveOpenShoot2, 5.0, 2.0);
 
-        PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 1, 0.0)
+//        PurplePath path7 = new PurplePath("Drive Back to shoot again", DriveOpenPickup, 5.0, 2.0);
+
+        PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 5.0, 2.0)
                 .onComplete(() -> DebugUtil.logAdd("path2 completed"));
 
         // Create the PurpleChain object
@@ -192,6 +204,18 @@ public class RedAuto extends OpMode
         explosher.setFingerState(Explosher.FingerState.STOP);
     }
 
+    private void doBoth(boolean should) {
+        shouldShoot = true;
+        shootDone = false;
+        shootTimer.reset();
+        shootTimer.startTime();
+        if (shootDone) {
+            exploSwag(false, "forward");
+            toggleY(should);
+            explosher.setFingerState(Explosher.FingerState.STOP);
+        }
+    }
+
     private void shootFull() {
         // Start Stuff
 
@@ -234,6 +258,7 @@ public class RedAuto extends OpMode
             toggleY(false);
             exploSwag(false, "Forward");
             shouldShoot = false;
+            shootDone = true;
             explosher.setFingerState(Explosher.FingerState.STOP);
         }
     }
