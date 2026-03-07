@@ -248,11 +248,11 @@ public class BlueAuto extends OpMode
                     double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
                     smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
                     smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
-                    explosher.setRPM(smoothedTargetRPM);
+                    explosher.setRPM(-smoothedTargetRPM);
                 }
             }
             else if (Explostate == "Back") {
-                explosher.setRPM(-4000);
+                explosher.setRPM(4000);
             }
         }
         else {
@@ -294,7 +294,7 @@ public class BlueAuto extends OpMode
     private void toggleY(boolean should)
     {
         double pow = should ? Vaccum.DEFAULT_POW : 0;
-        vaccum.setPower(pow);
+        vaccum.setPower(-pow);
     }
 
     private void toggleX(boolean should)

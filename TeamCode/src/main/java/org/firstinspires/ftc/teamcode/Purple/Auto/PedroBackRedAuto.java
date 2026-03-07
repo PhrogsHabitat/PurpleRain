@@ -10,18 +10,14 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
-import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorConfig;
-import org.firstinspires.ftc.teamcode.Purple.Components.Motors.MotorUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
-import org.firstinspires.ftc.teamcode.Purple.Controls;
-import org.firstinspires.ftc.teamcode.Purple.Names;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurpleChain;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePath;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-@Autonomous(name = "PedroBackRedAuto", group = "Purple")
+@Autonomous(name = "DontuseAuto", group = "Purple")
 public class PedroBackRedAuto extends OpMode
 {
 
@@ -38,43 +34,26 @@ public class PedroBackRedAuto extends OpMode
 
     public double dist;
 
-    private static final long TAG_TIMEOUT_MS = 500;
-
     private static final double RPM_SMOOTHING_ALPHA = 0.2;
 
     private double smoothedTargetRPM = 0;
 
     private boolean shouldShoot = false;
-    private static final double THRESHOLD = 3;
-
-    public boolean manual = false;
-    private Controls driver1;
-    private Controls driver2;
-    private MotorConfig fl, fr, bl, br;
-    private double powerScale = org.firstinspires.ftc.teamcode.Purple.Constants.DRIVE_POWER_SCALE;
-
-    private boolean wasAligned = false;
-    private boolean wasTagDetected = false;
-    private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
-    private boolean autoAlignActive = false;
-    private long lastTagSeenTime = 0;
 
     // sample poses (adjust to your field/layout)
-    private final Pose startPose = new Pose(81, 8, Math.toRadians(90));
+    private final Pose startPose = new Pose(81.5, 8, Math.toRadians(90));
 
-    private final Pose shootPose = new Pose(81, 23, Math.toRadians(63));
+    private final Pose shootPose = new Pose(81.5, 23, Math.toRadians(118));
 
-    private final Pose Pickup_First_Halflife1Pose = new Pose(90, 35.5, Math.toRadians(0));
+    private final Pose Pickup_First_Halflife1Pose = new Pose(96, 35.5, Math.toRadians(180));
 
-    private final Pose Pickup_First_Halflife2Pose = new Pose(120, 35.5, Math.toRadians(0));
+    private final Pose Pickup_First_Halflife2Pose = new Pose(119, 35.5, Math.toRadians(180));
 
-    private final Pose Pickup_Second_Halflife1Pose = new Pose(90, 60, Math.toRadians(0));
+    private final Pose Pickup_Second_Halflife1Pose = new Pose(96, 61, Math.toRadians(180));
 
-    private final Pose Pickup_Second_Halflife2Pose = new Pose(122, 60, Math.toRadians(0));
+    private final Pose Pickup_Second_Halflife2Pose = new Pose(119, 60, Math.toRadians(180));
 
-    private final Pose rankPose = new Pose(90, 35.5, Math.toRadians(90));
-
-
+    private final Pose rankPose = new Pose(94, 62.93312604141928, Math.toRadians(90));
     private PurplePathing pathManager;
 
     @Override
@@ -87,14 +66,12 @@ public class PedroBackRedAuto extends OpMode
     @Override
     public void loop ()
     {
+
         onUpdate();
     }
 
     private void onCreate ()
     {
-        driver1 = new Controls(gamepad1);
-        driver2 = new Controls(gamepad2);
-
         // create follower and purple path manager
         follower = Constants.createFollower(hardwareMap);
         follower.setPose(startPose);
@@ -108,8 +85,6 @@ public class PedroBackRedAuto extends OpMode
         LimeUtil.setPipeline(0);
         explosher = new Explosher(hardwareMap, org.firstinspires.ftc.teamcode.Purple.Constants.FINGER_SERVO_CONFIG);
         vaccum = new Vaccum(hardwareMap);
-
-        initializeMotors();
 
 
         // Path Chain Presets
@@ -191,7 +166,6 @@ public class PedroBackRedAuto extends OpMode
         pathManager.update();
         explosher.update();
         vaccum.update();
-        updateAllSystems();
 
         if (shouldShoot)
         {
@@ -220,12 +194,10 @@ public class PedroBackRedAuto extends OpMode
         // Start Stuff
 
         if (shootTimer.seconds() <= 0 ) {
-            autoAlignActive = true;
             explosher.setFingerState(Explosher.FingerState.STOP);
         }
         if (shootTimer.seconds() > 2) {
             explosher.setFingerState(Explosher.FingerState.PASS);
-            autoAlignActive = false;
         }
         if (shootTimer.seconds() > 0 && shootTimer.seconds() < 6.5) {
             exploSwag(true, "Forward");
@@ -274,29 +246,16 @@ public class PedroBackRedAuto extends OpMode
                     double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
                     smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
                     smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
-                    explosher.setRPM(smoothedTargetRPM);
+                    explosher.setRPM(-smoothedTargetRPM);
                 }
             }
             else if (Explostate == "Back") {
-                explosher.setRPM(-4000);
+                explosher.setRPM(4000);
             }
         }
         else {
             explosher.stop();
         }
-    }
-
-    private void initializeMotors ()
-    {
-
-        fl = new MotorConfig.Builder(hardwareMap, Names.FRONTLEFT, MotorConfig.Position.FRONT_LEFT, 2150.76, 312)
-                .disableVelocityControl().build();
-        fr = new MotorConfig.Builder(hardwareMap, Names.FRONTRIGHT, MotorConfig.Position.FRONT_RIGHT, 2150.76, 312)
-                .disableVelocityControl().build();
-        bl = new MotorConfig.Builder(hardwareMap, Names.BACKLEFT, MotorConfig.Position.BACK_LEFT, 2150.76, 312)
-                .disableVelocityControl().build();
-        br = new MotorConfig.Builder(hardwareMap, Names.BACKRIGHT, MotorConfig.Position.BACK_RIGHT, 2150.76, 312)
-                .disableVelocityControl().build();
     }
 
     private void calculateRegression ()
@@ -330,182 +289,6 @@ public class PedroBackRedAuto extends OpMode
         DebugUtil.logAdd("RPM = " + String.format("%.3f", regressionSlope) + " * dist + " + String.format("%.3f", regressionIntercept));
     }
 
-    private void updateAprilTagFeedback ()
-    {
-
-        boolean tagDetected = LimeUtil.hasValidTarget();
-
-        if (tagDetected)
-        {
-            lastTagSeenTime = System.currentTimeMillis();
-        }
-
-        if (tagDetected && !wasTagDetected)
-        {
-            driver1.vibrate(150);
-            driver2.vibrate(org.firstinspires.ftc.teamcode.Purple.Constants.VIBRATION_TAG_DETECTED);
-        }
-
-        wasTagDetected = tagDetected;
-    }
-
-//    private void updateSubsystems ()
-//    {
-//
-//        explosher.update();
-//        vaccum.update();
-//    }
-
-    private void updateDebug ()
-    {
-
-        DebugUtil.logAdd("Finger State: " + fingerState);
-        DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
-    }
-
-    private void updateDrive (String dir)
-    {
-
-        if (dir == "L")
-        {
-            double forward = 0;
-            double strafe = 0;
-            double turn = -0.15;
-
-            double[] powers = MotorUtil.normalizePowers(new double[]{
-                    (-forward - strafe - turn),
-                    (-forward + strafe - turn),
-                    (forward - strafe - turn),
-                    (forward + strafe - turn)
-            });
-
-            fl.setPower(powers[0] * powerScale);
-            bl.setPower(powers[1] * powerScale);
-            fr.setPower(powers[2] * powerScale);
-            br.setPower(powers[3] * powerScale);
-        }
-        else if (dir == "R")
-        {
-            double forward = 0;
-            double strafe = 0;
-            double turn = 0.15;
-
-            double[] powers = MotorUtil.normalizePowers(new double[]{
-                    (-forward - strafe - turn),
-                    (-forward + strafe - turn),
-                    (forward - strafe - turn),
-                    (forward + strafe - turn)
-            });
-
-            fl.setPower(powers[0] * powerScale);
-            bl.setPower(powers[1] * powerScale);
-            fr.setPower(powers[2] * powerScale);
-            br.setPower(powers[3] * powerScale);
-        }
-        else
-        {
-            double forward = driver1.getLeftStickY();
-            double strafe = driver1.getLeftStickX();
-            double turn = driver1.getRightStickX();
-
-            double[] powers = MotorUtil.normalizePowers(new double[]{
-                    (-forward - strafe - turn),
-                    (-forward + strafe - turn),
-                    (forward - strafe - turn),
-                    (forward + strafe - turn)
-            });
-
-            fl.setPower(powers[0] * powerScale);
-            bl.setPower(powers[1] * powerScale);
-            fr.setPower(powers[2] * powerScale);
-            br.setPower(powers[3] * powerScale);
-        }
-    }
-
-    private void updateTelemetry ()
-    {
-        DebugUtil.logAdd("TX: " + LimeUtil.getTx());
-        DebugUtil.logAdd("Target Distance: " + LimeUtil.getTargetDistance());
-        DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
-        DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
-        DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
-        DebugUtil.logAdd("Finger State: " + fingerState);
-        DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
-
-        if (LimeUtil.hasValidTarget())
-        {
-            DebugUtil.logAdd("AprilTag - Dist: " + String.format("%.1f", LimeUtil.getTargetDistance()) +
-                    "in, Angle: " + String.format("%.1f", LimeUtil.getTx()) + "°");
-            DebugUtil.logAdd("Aligned: " + (isFullyAligned() ? "YES" : "NO"));
-        } else
-        {
-            DebugUtil.logAdd("AprilTag: No target");
-        }
-
-        DebugUtil.update();
-    }
-
-    private boolean isFullyAligned ()
-    {
-
-        if (!hasRecentTarget()) return false;
-
-        double tx = LimeUtil.getTx();
-        double distance = LimeUtil.getTargetDistance();
-        double distanceError = Math.abs(distance - org.firstinspires.ftc.teamcode.Purple.Constants.DESIRED_TAG_DISTANCE);
-
-        return Math.abs(tx) < org.firstinspires.ftc.teamcode.Purple.Constants.ALIGN_ANGLE_TOLERANCE &&
-                distanceError < org.firstinspires.ftc.teamcode.Purple.Constants.ALIGN_DISTANCE_TOLERANCE;
-    }
-
-    private boolean hasRecentTarget ()
-    {
-
-        return LimeUtil.hasValidTarget() &&
-                (System.currentTimeMillis() - lastTagSeenTime) < TAG_TIMEOUT_MS;
-    }
-
-//    private void updateExplosherControl ()
-//    {
-//
-//        double leftStickY = driver2.getLeftStickY();
-//
-//        if (leftStickY > org.firstinspires.ftc.teamcode.Purple.Constants.JOYSTICK_DEADZONE)
-//        {
-//            if (LimeUtil.getTargetDistance() != 0)
-//            {
-//                dist = LimeUtil.getTargetDistance();
-//                double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
-//                smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
-//                smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
-//
-//                if (!manual)
-//                {
-//                    explosher.setRPM(smoothedTargetRPM);
-//                }
-//            } else if (!manual)
-//            {
-//                explosher.stop();
-//            }
-//        } else if (leftStickY < -org.firstinspires.ftc.teamcode.Purple.Constants.JOYSTICK_DEADZONE && driver2.isPressed("x"))
-//        {
-//            explosher.setRPM(-4000);
-//            vaccum.setPower(-Vaccum.DEFAULT_POW);
-//        } else if (driver2.isPressed("b"))
-//        {
-//            explosher.setRPM(-4000);
-//            vaccum.swagReverse(-Vaccum.DEFAULT_POW);
-//        } else
-//        {
-//            explosher.stop();
-//        }
-//
-//        if (driver2.isPressed("x"))
-//        {
-//            vaccum.setPower(-Vaccum.DEFAULT_POW);
-//        }
-//    }
-
     private void toggleY(boolean should)
     {
         double pow = should ? Vaccum.DEFAULT_POW : 0;
@@ -532,49 +315,5 @@ public class PedroBackRedAuto extends OpMode
         double pow = should ? -.50 : 0;
         exploSwag(should, should ? "Back" : "Off");
         vaccum.swagReverse(pow);
-    }
-
-    private void updateAllSystems ()
-    {
-
-        LimeUtil.update();
-        updateAprilTagFeedback();
-//        updateSubsystems();
-
-        if (org.firstinspires.ftc.teamcode.Purple.Constants.DEBUG_MODE)
-        {
-            updateDebug();
-        }
-
-        if (autoAlignActive)
-        {
-            if (Math.abs(LimeUtil.getTx()) > THRESHOLD)
-            {
-                if(LimeUtil.getTx() < 0)
-                {
-                    updateDrive("L");
-                }
-                else if(LimeUtil.getTx() > 0)
-                {
-                    updateDrive("R");
-                }
-                else
-                {
-                    updateDrive("def");
-                }
-            }
-            else
-            {
-                driver1.vibrate(150);
-                updateDrive("def");
-            }
-        }
-        else
-        {
-            updateDrive("def");
-        }
-
-//        updateExplosherControl();
-        updateTelemetry();
     }
 }
