@@ -370,7 +370,7 @@ public final class MotorConfig
 		private final double cpr;
 
 		private boolean inverted = false;
-		private Motor.ZeroPowerBehavior zeroPowerBehavior = Motor.ZeroPowerBehavior.FLOAT;
+		private Motor.ZeroPowerBehavior zeroPowerBehavior = Motor.ZeroPowerBehavior.BRAKE;
 		private ControlMode controlMode;
 		private boolean runWithEncoder;
 		private double ticksPerRevolution;

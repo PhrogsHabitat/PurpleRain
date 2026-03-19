@@ -238,12 +238,9 @@ public class RedAuto extends OpMode
         }
     }
 
-    public void exploSwag(boolean should, String Explostate)
-    {
-        if (should)
-        {
-            if (Explostate == "Forward")
-            {
+    public void exploSwag(boolean should, String Explostate) {
+        if (should) {
+            if (Explostate == "Forward") {
                 if (LimeUtil.getTargetDistance() != 0) {
                     dist = LimeUtil.getTargetDistance();
                     double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
@@ -251,13 +248,12 @@ public class RedAuto extends OpMode
                     smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
                     explosher.setRPM(-smoothedTargetRPM);
                 }
-            }
-            else if (Explostate == "Back") {
+            } else if (Explostate == "Back") {
                 explosher.setRPM(4000);
             }
-        }
-        else {
+        } else {
             explosher.stop();
+
         }
     }
 

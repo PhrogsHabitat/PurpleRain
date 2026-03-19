@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Purple.Components.Explosher;
 
+import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -55,6 +56,7 @@ public class Explosher
 	{
 		this.motor = new MotorConfig.Builder(hardwareMap, Names.EXPLOSHER, MotorConfig.Position.EXPLOSHER, 28, 6000).build();
 		this.motor.setVelocityDirectionReversed(true);
+		this.motor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
 		this.finger = hardwareMap.get(Servo.class, fingerConfig.getName());
 		this.fingerConfig = fingerConfig;
 

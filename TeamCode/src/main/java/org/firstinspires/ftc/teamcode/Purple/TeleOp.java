@@ -138,10 +138,10 @@ public class TeleOp extends PurpleOpMode
 			double turn = driver1.getRightStickX();
 
 			double[] powers = MotorUtil.normalizePowers(new double[]{
-					(forward + strafe - turn),
-					(forward - strafe - turn),
 					(forward + strafe + turn),
-					(forward - strafe + turn)
+					(forward - strafe + turn),
+					(forward - strafe - turn),
+					(forward + strafe - turn)
 			});
 
 			fl.setPower(powers[0] * powerScale);
@@ -155,11 +155,11 @@ public class TeleOp extends PurpleOpMode
 	{
 		double leftStickY = driver2.getLeftStickY();
 
-		if (leftStickY > Constants.JOYSTICK_DEADZONE)
+		if (leftStickY > Constants.JOYSTICK_DEADZONE && driver2.justPressed("x"))
 		{
 			if (Constants.DEBUG_MODE && manual)
 			{
-				explosher.setRPM(-debugManualRPM);
+				explosher.setRPM(--debugManualRPM);
 			}
 			else if (LimeUtil.hasValidTarget())
 			{
@@ -174,23 +174,23 @@ public class TeleOp extends PurpleOpMode
 						Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
 
 				if (!manual)
-					explosher.setRPM(-smoothedTargetRPM);
+					explosher.setRPM(--smoothedTargetRPM);
 			}
 			else if (!manual)
 			{
-				explosher.setRPM(-swagShitClose); // fallback if tag briefly drops
+				explosher.setRPM(--swagShitClose); // fallback if tag briefly drops
 			}
 		}
 		else if (leftStickY < -Constants.JOYSTICK_DEADZONE)
 		{
-			explosher.setRPM(4000);
+			explosher.setRPM(-4000);
 		}
 		else
 		{
 			explosher.stop();
 		}
 		// Finger Control
-		if (driver2.justPressed(("right_bumper")))
+		if (driver2.justPressed(("left_trigger")))
 		{
 			explosher.cycleFingerState();
 		}
@@ -239,6 +239,8 @@ public class TeleOp extends PurpleOpMode
 		else if (driver2.isPressed("b"))
 		{
 			vaccum.swagReverse(-Vaccum.DEFAULT_POW);
+			explosher.setRPM(-4000);
+			vaccum.intakeMotor.setRPM(-Vaccum.DEFAULT_POW);
 		}
 		else if (driver2.isPressed("y"))
 		{
