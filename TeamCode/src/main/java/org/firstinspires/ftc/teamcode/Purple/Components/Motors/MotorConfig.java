@@ -15,6 +15,7 @@ public final class MotorConfig
     private final MotorEx motor;
     private final double maxRPM;
     private final double cpr;
+    private double velocitySign = 1.0;
 
     private ControlMode controlMode = ControlMode.RAW_POWER;
     private double targetRPM = 0.0;
@@ -113,7 +114,7 @@ public final class MotorConfig
         if (controlMode == ControlMode.VELOCITY_CONTROL && maxRPM > 0)
         {
             // Convert RPM to ticks per second and set velocity
-            double tps = rpmToTps(rpm);
+            double tps = applyVelocityDirection(rpmToTps(rpm));
             motor.setVelocity(tps);
         } else
         {
@@ -158,9 +159,35 @@ public final class MotorConfig
      */
     public double getCurrentRPM ()
     {
-        // Use MotorEx's getVelocity() which returns ticks per second
-        double tps = motor.getVelocity();
+        double tps = getVelocity();
         return tpsToRpm(tps);
+    }
+
+    /**
+     * Gets the current encoder velocity in ticks per second.
+     *
+     * @return Current velocity corrected for encoder direction.
+     */
+    public double getVelocity ()
+    {
+        return applyVelocityDirection(motor.getVelocity());
+    }
+
+    /**
+     * Reverses the encoder velocity frame without changing motor power direction.
+     * This is useful when a shooter spins the right way on positive power but the
+     * encoder reports negative velocity for that same motion.
+     *
+     * @param reversed True to flip reported and commanded velocity sign.
+     */
+    public void setVelocityDirectionReversed (boolean reversed)
+    {
+        velocitySign = reversed ? -1.0 : 1.0;
+    }
+
+    public boolean isVelocityDirectionReversed ()
+    {
+        return velocitySign < 0.0;
     }
 
     /**
@@ -421,6 +448,11 @@ public final class MotorConfig
             }
         }
         // MotorEx handles velocity control updates internally
+    }
+
+    private double applyVelocityDirection (double value)
+    {
+        return value * velocitySign;
     }
 
     // ==================== ENUMS ====================

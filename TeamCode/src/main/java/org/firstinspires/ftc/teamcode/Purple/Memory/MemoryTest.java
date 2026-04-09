@@ -3,10 +3,8 @@ package org.firstinspires.ftc.teamcode.Purple.Memory;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
-import java.util.Arrays;
-
 /**
- * Test teleop for ball memory system using PurpleOpMode structure
+ * Test teleop for shared memory position/persist state using PurpleOpMode structure.
  */
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "Memory Test", group = "Purple")
 public class MemoryTest extends PurpleOpMode
@@ -23,19 +21,15 @@ public class MemoryTest extends PurpleOpMode
 		DebugUtil.setTelemetry(telemetry);
 
 		DebugUtil.logAdd("=== Memory Test Initialized ===");
-		DebugUtil.logAdd("Place balls in slots to test detection");
-		DebugUtil.logAdd("Slot 1, 2, 3 correspond to color sensors");
+		DebugUtil.logAdd("Position memory smoke test");
 		DebugUtil.update();
 	}
 
 	@Override
 	public void update ()
 	{
-		// Update ball detection
 		memory.update();
 
-		DebugUtil.logAdd("Motif: " + memory.curMotif());
-		DebugUtil.logAdd("Balls: " + Arrays.toString(memory.curBalls()));
 		DebugUtil.logAdd(String.format(
 				"Position: x=%.2f y=%.2f h=%.2f",
 				memory.curPos().getX(),
@@ -52,10 +46,7 @@ public class MemoryTest extends PurpleOpMode
 	{
 
 		DebugUtil.logAdd("=== Memory Test Complete ===");
-		DebugUtil.logAdd("Stopping ball detection system");
+		DebugUtil.logAdd("Stopping shared memory test");
 		DebugUtil.update();
-
-		// Clean up resources if needed
-		// (The Balls class currently doesn't have a cleanup method)
 	}
 }

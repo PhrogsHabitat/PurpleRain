@@ -4,9 +4,6 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
-import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Ball;
-import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Balls;
-import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Motif;
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Persist;
 import org.firstinspires.ftc.teamcode.Purple.Memory.Components.Position;
 
@@ -17,8 +14,6 @@ public class PurpleMemory
 {
 	public static PurpleMemory Instance;
 
-	private final Balls balls;
-	private final Motif motif;
 	private final Persist persist;
 	private final Position position;
 
@@ -36,9 +31,6 @@ public class PurpleMemory
 	 */
 	public PurpleMemory (HardwareMap hardwareMap, Follower follower)
 	{
-
-		balls = new Balls(hardwareMap);
-		motif = new Motif();
 		persist = new Persist(hardwareMap);
 		// Keep a lightweight position object only for API compatibility.
 		// Live drivetrain localization should come from Pedro follower pose.
@@ -71,28 +63,7 @@ public class PurpleMemory
 	 */
 	public void update ()
 	{
-
 		position.update();
-		balls.update();
-		motif.update();
-	}
-
-	/**
-	 * Gets current ball states for the 3 slots.
-	 */
-	public Ball[] curBalls ()
-	{
-
-		return balls.curBalls();
-	}
-
-	/**
-	 * Gets the currently detected motif.
-	 */
-	public Motif.Type curMotif ()
-	{
-
-		return motif.curMotif();
 	}
 
 	/**
