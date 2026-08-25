@@ -25,11 +25,13 @@ public class Explosher
 	public static double RPM_STOP_DEADBAND = 1.0;
 
 	public static double[][] RPM_CALIBRATION_POINTS = {
-			{57, 1900},
-			{78, 2600},
-			{101.8, 6000},
-			{112, 6000},
-			{147, 6000},
+			{84, 4500},
+			{45, 3700},
+			{57, 4000},
+			{93, 4400},
+			{91, 4500},
+			{116, 4900}
+
 	};
 
 	public static double AIM_X = 128;

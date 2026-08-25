@@ -12,7 +12,7 @@ public final class Names
 
 	public static final String INTAKE = "FE";
 
-	public static final String MIDITAKE = "BE";
+	public static final String MIDITAKE = "BE"; // MIDINTAKE mispelled X_X
 
 	// Servo names
 	public static final String BLOCKER = "FINN";

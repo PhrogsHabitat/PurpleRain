@@ -8,7 +8,7 @@ public final class Constants
 	// Blocker servo configuration values
 	public static final double BLOCKER_MIN = 0.38;
 	public static final double BLOCKER_MAX = 1.0;
-	public static final double GATE_STOP_POSITION = 0.48;
+	public static final double GATE_STOP_POSITION = 1.0;
 	public static final double GATE_PASS_POSITION = 0.69;
 
 	// Drive settings
@@ -28,6 +28,6 @@ public final class Constants
 	public static final int VIBRATION_ALIGNED = 100;
 
 	// Debug mode toggle
-	public static final boolean DEBUG_MODE = true;
+	public static final boolean DEBUG_MODE = false;
 
 }

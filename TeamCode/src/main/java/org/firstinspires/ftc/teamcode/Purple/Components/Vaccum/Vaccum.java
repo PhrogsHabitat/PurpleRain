@@ -10,9 +10,9 @@ public class Vaccum
 {
 	public static final double DEFAULT_POW = 1.0;
 
-	private final MotorConfig intakeMotor;
+	public final MotorConfig intakeMotor;
 
-	private final MotorConfig midtakeMotor;
+	public final MotorConfig midtakeMotor;
 	private double currentPower = 0.0;
 
 	public Vaccum (HardwareMap hardwareMap)
@@ -21,7 +21,6 @@ public class Vaccum
 				.disableVelocityControl()
 				.build();
 
-		stop();
 		midtakeMotor = new MotorConfig.Builder(hardwareMap, Names.MIDITAKE, MotorConfig.Position.MIDTAKE)
 				.disableVelocityControl()
 				.build();

@@ -24,8 +24,9 @@ public class TeleOp extends PurpleOpMode
 	private static final String DRIVER_2_GATE_TOGGLE = "left_trigger";
 	private static final String DRIVER_2_RPM_STEP_UP = "dpad_up";
 	private static final String DRIVER_2_RPM_STEP_DOWN = "dpad_down";
-	private static final String DRIVER_2_VACUUM_IN = "a";
-	private static final String DRIVER_2_VACUUM_OUT = "b";
+	private static final String DRIVER_2_VACUUM_IN = "y";
+	private static final String DRIVER_2_VACUUM_OUT = "x";
+	private static final String DRIVER_2_VACUUM_SAFE_OUT = "b";
 
 	public static Pose startingPose;
 
@@ -130,8 +131,8 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateExplosher ()
 	{
-		boolean manualRpmAdjust = Constants.DEBUG_MODE &&
-				(driver2.isPressed(DRIVER_2_RPM_STEP_UP) || driver2.isPressed(DRIVER_2_RPM_STEP_DOWN));
+		boolean manualRpmAdjust = Constants.DEBUG_MODE;
+//				(driver2.justPressed(DRIVER_2_RPM_STEP_UP) || driver2.justPressed(DRIVER_2_RPM_STEP_DOWN));
 		boolean useRegressionTarget = !manualRpmAdjust;
 
 		explosher.setRegressionEnabled(useRegressionTarget);
@@ -199,6 +200,11 @@ public class TeleOp extends PurpleOpMode
 		else if (driver2.isPressed(DRIVER_2_VACUUM_OUT))
 		{
 			vaccum.setPower(-Vaccum.DEFAULT_POW);
+		}
+		else if (driver2.isPressed(DRIVER_2_VACUUM_SAFE_OUT))
+		{
+			vaccum.intakeMotor.setPower(Vaccum.DEFAULT_POW - 0.3);
+			vaccum.midtakeMotor.setPower(-Vaccum.DEFAULT_POW);
 		}
 		else
 		{
