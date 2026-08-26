@@ -172,7 +172,7 @@ public class BackBluePedroAuto extends OpMode
 
 		exploSwag(false, "forward");
 		toggleY(should);
-		explosher.setFingerState(Explosher.FingerState.STOP);
+		explosher.setGateState(Explosher.GateState.STOP);
 	}
 
 	private void shootFull ()
@@ -181,11 +181,11 @@ public class BackBluePedroAuto extends OpMode
 
 		if (shootTimer.seconds() <= 0)
 		{
-			explosher.setFingerState(Explosher.FingerState.STOP);
+			explosher.setGateState(Explosher.GateState.STOP);
 		}
 		if (shootTimer.seconds() > 2)
 		{
-			explosher.setFingerState(Explosher.FingerState.PASS);
+			explosher.setGateState(Explosher.GateState.PASS);
 		}
 		if (shootTimer.seconds() > 0 && shootTimer.seconds() < 6.5)
 		{
@@ -228,7 +228,7 @@ public class BackBluePedroAuto extends OpMode
 			toggleY(false);
 			exploSwag(false, "Forward");
 			shouldShoot = false;
-			explosher.setFingerState(Explosher.FingerState.STOP);
+			explosher.setGateState(Explosher.GateState.STOP);
 		}
 	}
 

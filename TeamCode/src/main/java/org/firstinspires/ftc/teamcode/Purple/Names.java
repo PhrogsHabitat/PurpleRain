@@ -9,25 +9,16 @@ public final class Names
 	public static final String BACKLEFT = "BL";
 
 	public static final String EXPLOSHER = "EXPLO";
-	public static final String EXPLOSHER_2 = "EXPLO2";
-	public static final String EXPLORING = "EXPLORING";
 
 	public static final String INTAKE = "FE";
 
+	public static final String MIDITAKE = "BE"; // MIDINTAKE mispelled X_X
+
 	// Servo names
-	public static final String HOOD = "FINN";
-	public static final String FINGER_1 = "FIN1";
-	public static final String FINGER_2 = "FIN2";
-	public static final String FINGER_3 = "FIN3";
+	public static final String BLOCKER = "FINN";
 
 	// Sensor names
 	public static final String LIME = "SwagLime";
-	public static final String COLOR1 = "cs1";
-	public static final String COLOR2 = "cs2";
-	public static final String COLOR3 = "cs3";
-	public static final String COLOR4 = "cs4";
-	public static final String COLOR5 = "cs5";
-	public static final String COLOR6 = "cs6";
 
 	private Names ()
 	{

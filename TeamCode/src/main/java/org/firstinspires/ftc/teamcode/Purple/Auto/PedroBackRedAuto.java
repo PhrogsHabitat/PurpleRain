@@ -52,7 +52,7 @@ public class PedroBackRedAuto extends OpMode
 	private double powerScale = org.firstinspires.ftc.teamcode.Purple.Constants.DRIVE_POWER_SCALE;
 	private boolean wasAligned = false;
 	private boolean wasTagDetected = false;
-	private Explosher.FingerState fingerState = Explosher.FingerState.STOP;
+	private Explosher.GateState gateState = Explosher.GateState.STOP;
 	private boolean autoAlignActive = false;
 	private long lastTagSeenTime = 0;
 	private PurplePathing pathManager;
@@ -195,7 +195,7 @@ public class PedroBackRedAuto extends OpMode
 
 		exploSwag(false, "forward");
 		toggleY(should);
-		explosher.setFingerState(Explosher.FingerState.STOP);
+		explosher.setGateState(Explosher.GateState.STOP);
 	}
 
 	private void shootFull ()
@@ -205,11 +205,11 @@ public class PedroBackRedAuto extends OpMode
 		if (shootTimer.seconds() <= 0)
 		{
 			autoAlignActive = true;
-			explosher.setFingerState(Explosher.FingerState.STOP);
+			explosher.setGateState(Explosher.GateState.STOP);
 		}
 		if (shootTimer.seconds() > 2)
 		{
-			explosher.setFingerState(Explosher.FingerState.PASS);
+			explosher.setGateState(Explosher.GateState.PASS);
 			autoAlignActive = false;
 		}
 		if (shootTimer.seconds() > 0 && shootTimer.seconds() < 6.5)
@@ -253,7 +253,7 @@ public class PedroBackRedAuto extends OpMode
 			toggleY(false);
 			exploSwag(false, "Forward");
 			shouldShoot = false;
-			explosher.setFingerState(Explosher.FingerState.STOP);
+			explosher.setGateState(Explosher.GateState.STOP);
 		}
 	}
 
@@ -357,8 +357,9 @@ public class PedroBackRedAuto extends OpMode
 	private void updateDebug ()
 	{
 
-		DebugUtil.logAdd("Finger State: " + fingerState);
-		DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
+		gateState = explosher.getGateState();
+		DebugUtil.logAdd("Gate State: " + gateState);
+		DebugUtil.logAdd("Gate Position: " + String.format("%.3f", explosher.getGatePosition()));
 	}
 
 	private void updateDrive (String dir)
@@ -428,8 +429,9 @@ public class PedroBackRedAuto extends OpMode
 		DebugUtil.logAdd("Explosher Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 		DebugUtil.logAdd("Explosher Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
 		DebugUtil.logAdd("Auto-Align: " + (autoAlignActive ? "ACTIVE" : "INACTIVE"));
-		DebugUtil.logAdd("Finger State: " + fingerState);
-		DebugUtil.logAdd("Finger Position: " + String.format("%.3f", explosher.getFingerPosition()));
+		gateState = explosher.getGateState();
+		DebugUtil.logAdd("Gate State: " + gateState);
+		DebugUtil.logAdd("Gate Position: " + String.format("%.3f", explosher.getGatePosition()));
 
 		if (LimeUtil.hasValidTarget())
 		{

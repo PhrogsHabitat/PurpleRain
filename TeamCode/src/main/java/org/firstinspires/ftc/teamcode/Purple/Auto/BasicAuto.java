@@ -12,52 +12,50 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
-import org.firstinspires.ftc.teamcode.Purple.Constants;
 import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurpleChain;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePath;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 
-@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "UpdatedBlueAuto", group = "Purple")
-public class UpdatedBlueAuto extends PurpleOpMode
+@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "BasicBlueAuto", group = "Purple")
+public class BasicAuto extends PurpleOpMode
 {
 	private static final double EXPLOSHER_DEFAULT_RPM = 2800.0;
 	private static final double EXPLOSHER_COAST_ALPHA = 0.08;
-	private static final Pose DEFAULT_AUTO_START_POSE = new Pose(72, 72, Math.toRadians(0.0));
+	private static final double SHOT_SPINUP_SECONDS = 0.75;
+	private static final double SHOT_FEED_SECONDS = 1.10;
+	private static final double SHOT_FINISH_SECONDS = 1.40;
 
 	public static PathConstraints defaultConstraints = new PathConstraints(0.995, 0.1, 0.1, 0.007, 100, .1, 10, .4);
+
 	private final Pose startPose = new Pose(21, 127, Math.toRadians(235));
 	private final Pose shootPose = new Pose(54, 80, Math.toRadians(180));
-	private final Pose Pickup1 = new Pose(26, 83, Math.toRadians(180));
-	private final Pose Open1 = new Pose(17, 75.5, Math.toRadians(180));
-	private final Pose Pickup2 = new Pose(27, 59, Math.toRadians(180));
-	private final Pose GrabCurve = new Pose(50, 52);
-	private final Pose Open2 = new Pose(17, 66, Math.toRadians(180));
-	private final Pose OpenGrab = new Pose(13, 60, Math.toRadians(150));
-	private final Pose FirstCurve = new Pose(68, 78);
-	private final Pose OpenGrabCurve = new Pose(27.7, 51);
+	private final Pose between = new Pose(57, 83, Math.toRadians(180));
+	private final Pose pickup1 = new Pose(26, 83, Math.toRadians(180));
+	private final Pose pickup2 = new Pose(27, 59, Math.toRadians(180));
+	private final Pose grabCurve = new Pose(50, 52);
+	private final Pose firstCurve = new Pose(68, 78);
 	private final Pose rankPose = new Pose(53, 60, Math.toRadians(150));
-	private final ArrayList<Pose> Pick2 = new ArrayList<>(Arrays.asList(shootPose, GrabCurve, Pickup2));
-	private final ArrayList<Pose> loop = new ArrayList<>(Arrays.asList(shootPose, OpenGrabCurve, OpenGrab));
-	private final ArrayList<Pose> Pick1 = new ArrayList<>(Arrays.asList(startPose, FirstCurve, Pickup1));
-	// make the lists
+	private final ArrayList<Pose> pick2 = new ArrayList<>(Arrays.asList(shootPose, grabCurve, pickup2));
+	private final ArrayList<Pose> pick1 = new ArrayList<>(Arrays.asList(startPose, firstCurve, pickup1));
+
 	public ElapsedTime shootTimer;
-	public double dist;
+
 	private Follower follower;
 	private Explosher explosher;
 	private Vaccum vaccum;
 	private double desiredExplosherRPM = EXPLOSHER_DEFAULT_RPM;
 	private double rememberedRegressedRPM = EXPLOSHER_DEFAULT_RPM;
-	private Explosher.GateState gateState = Explosher.GateState.STOP;
 	private PurplePathing pathManager;
+	private boolean shotActive = false;
 
 	@Override
 	public void create ()
 	{
-
 		follower = org.firstinspires.ftc.teamcode.pedroPathing.Constants.createFollower(hardwareMap);
 		follower.setPose(startPose);
 		pathManager = new PurplePathing(follower);
@@ -69,82 +67,73 @@ public class UpdatedBlueAuto extends PurpleOpMode
 		shootTimer = new ElapsedTime();
 
 		explosher = new Explosher(hardwareMap);
-
-//        explosher.setTarget(12, 135);
-		explosher.setAimPoint(12, 135);
-
+		explosher.setAimPoint(72, 144);
 		explosher.setRegressionEnabled(true);
 
 		vaccum = new Vaccum(hardwareMap);
 
-		// Path Chain Presets
-		PathChain DriveStartPickup = follower.pathBuilder()
-				.addPath(new BezierCurve(Pick1, defaultConstraints))
-				.setLinearHeadingInterpolation(startPose.getHeading(), Pickup1.getHeading())
+		PathChain driveIdle = follower.pathBuilder()
+				.addPath(new BezierLine(startPose, startPose))
+				.setLinearHeadingInterpolation(startPose.getHeading(), startPose.getHeading())
 				.build();
-		PathChain DriveOpen1 = follower.pathBuilder()
-				.addPath(new BezierLine(Pickup1, Open1))
-				.setLinearHeadingInterpolation(Pickup1.getHeading(), Open1.getHeading())
+		PathChain driveStartPickup = follower.pathBuilder()
+				.addPath(new BezierLine(startPose, between))
+				.setLinearHeadingInterpolation(startPose.getHeading(), between.getHeading())
 				.build();
-		PathChain DriveOpenShoot1 = follower.pathBuilder()
-				.addPath(new BezierLine(Open1, shootPose))
-				.setLinearHeadingInterpolation(Open1.getHeading(), shootPose.getHeading())
+		PathChain driveBetween = follower.pathBuilder()
+				.addPath(new BezierLine(between, pickup1))
+				.setLinearHeadingInterpolation(between.getHeading(), pickup1.getHeading())
 				.build();
-		PathChain DriveShootPickup = follower.pathBuilder()
-				.addPath(new BezierCurve(Pick2, defaultConstraints))
-				.setLinearHeadingInterpolation(shootPose.getHeading(), Pickup2.getHeading())
+		PathChain driveOpen1 = follower.pathBuilder()
+				.addPath(new BezierLine(pickup1, shootPose))
+				.setLinearHeadingInterpolation(pickup1.getHeading(), shootPose.getHeading())
 				.build();
-		PathChain DriveOpen2 = follower.pathBuilder()
-				.addPath(new BezierLine(Pickup2, Open2))
-				.setLinearHeadingInterpolation(Pickup2.getHeading(), Open2.getHeading())
+		PathChain driveShootPickup = follower.pathBuilder()
+				.addPath(new BezierCurve(pick2, defaultConstraints))
+				.setLinearHeadingInterpolation(shootPose.getHeading(), pickup2.getHeading())
 				.build();
-		PathChain DriveOpenShoot2 = follower.pathBuilder()
-				.addPath(new BezierLine(Open2, shootPose))
-				.setLinearHeadingInterpolation(Open2.getHeading(), shootPose.getHeading())
+		PathChain driveOpen2 = follower.pathBuilder()
+				.addPath(new BezierLine(pickup2, shootPose))
+				.setLinearHeadingInterpolation(pickup2.getHeading(), shootPose.getHeading())
 				.build();
-		PathChain DriveOpenPickup = follower.pathBuilder()
-				.addPath(new BezierCurve(loop, defaultConstraints))
-				.setLinearHeadingInterpolation(shootPose.getHeading(), OpenGrab.getHeading())
-				.build();
-		PathChain RankMove = follower.pathBuilder()
+		PathChain rankMove = follower.pathBuilder()
 				.addPath(new BezierLine(shootPose, rankPose))
 				.setLinearHeadingInterpolation(shootPose.getHeading(), rankPose.getHeading())
 				.build();
 
-		// Create the PurplePath objects
-		PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 5.0, 2.0);
+		PurplePath path1 = new PurplePath("Idle", driveIdle, 0.0, 0.0)
+				.onComplete(shootTimer::reset);
 
-		PurplePath path2 = new PurplePath("OPEN THE GATE", DriveOpen1, 5.0, 2.0);
+		PurplePath path2 = new PurplePath("first pickup", driveStartPickup, 5.0, 5.0)
+				.onComplete(this::beginMatch);
 
-		PurplePath path3 = new PurplePath("shoot", DriveOpenShoot1, 5.0, 2.0);
+		PurplePath path3 = new PurplePath("second pickup", driveBetween, 3.0, 5.0)
+				.onComplete(vaccum::stop);
 
-		PurplePath path4 = new PurplePath("pick the up", DriveShootPickup, 5.0, 2.0);
+		PurplePath path4 = new PurplePath("return to shoot", driveOpen1, 3.0, 5.0)
+				.onComplete(() -> vaccum.setPower(0.5));
 
-		PurplePath path5 = new PurplePath("op the en", DriveOpen2, 5.0, 2.0);
+		PurplePath path5 = new PurplePath("pick the up", driveShootPickup, 3.0, 5.0)
+				.onComplete(vaccum::stop);
 
-		PurplePath path6 = new PurplePath("shoot 2: electric boogaloo", DriveOpenShoot2, 5.0, 2.0);
+		PurplePath path6 = new PurplePath("shoot", driveOpen2, 3.0, 5.0)
+				.onComplete(this::beginTimedShot);
 
-		PurplePath path7 = new PurplePath("Drive Back to shoot again", DriveOpenPickup, 5.0, 2.0);
-
-		PurplePath path8 = new PurplePath("Drive outta da trangle", RankMove, 5.0, 2.0)
+		PurplePath path7 = new PurplePath("rank", rankMove, 3.0, 5.0)
 				.onComplete(() -> DebugUtil.logAdd("path2 completed"));
 
-		// Create the PurpleChain object
-		PurpleChain chain = new PurpleChain(path1, path2, path3, path4, path5, path6, path7, path8)
+		PurpleChain chain = new PurpleChain(path1, path2, path3, path4, path5, path6, path7)
 				.onComplete(() -> DebugUtil.logAdd("Chain fully finished"));
 
-		// Start the chain. holdEnd = true (follower will hold at end of each path)
 		pathManager.startChain(chain, true, () -> DebugUtil.logAdd("startChain() provided onComplete"));
 
 		shootTimer.reset();
-
 		DebugUtil.setTelemetry(telemetry);
 	}
 
 	@Override
 	public void update ()
 	{
-
 		follower.update();
 		LimeUtil.update();
 		PurpleMemory.Instance.update();
@@ -153,9 +142,8 @@ public class UpdatedBlueAuto extends PurpleOpMode
 		explosher.update();
 		vaccum.update();
 
-		updateDrive();
 		updateExplosher();
-		updateVaccum();
+		updateShotSequence();
 		teleInfo();
 
 		DebugUtil.logAdd("Current Path: " + pathManager.curPath());
@@ -165,21 +153,12 @@ public class UpdatedBlueAuto extends PurpleOpMode
 	@Override
 	public void destroy ()
 	{
-
 		explosher.stop();
 		vaccum.stop();
 	}
 
-	private void updateDrive ()
-	{
-
-		// AutoBase has no manual drive controls.
-		follower.setTeleOpDrive(0.0, 0.0, 0.0, true);
-	}
-
 	private void updateExplosher ()
 	{
-
 		explosher.setRegressionEnabled(true);
 
 		if (explosher.hasRegressionTarget())
@@ -196,16 +175,56 @@ public class UpdatedBlueAuto extends PurpleOpMode
 		explosher.setRPM(desiredExplosherRPM);
 	}
 
-	private void updateVaccum ()
+	private void beginMatch ()
 	{
+		explosher.setAimPoint(15, 130);
+		vaccum.setPower(0.5);
+	}
 
-		// AutoBase has no manual vacuum controls.
+	private void beginTimedShot ()
+	{
+		shotActive = true;
+		shootTimer.reset();
+		explosher.setGateState(Explosher.GateState.STOP);
 		vaccum.stop();
+	}
+
+	private void updateShotSequence ()
+	{
+		if (!shotActive)
+		{
+			return;
+		}
+
+		double elapsedSeconds = shootTimer.seconds();
+		if (elapsedSeconds < SHOT_SPINUP_SECONDS)
+		{
+			explosher.setGateState(Explosher.GateState.STOP);
+			vaccum.stop();
+			return;
+		}
+
+		if (elapsedSeconds < SHOT_FEED_SECONDS)
+		{
+			explosher.setGateState(Explosher.GateState.PASS);
+			vaccum.setPower(0.65);
+			return;
+		}
+
+		if (elapsedSeconds < SHOT_FINISH_SECONDS)
+		{
+			explosher.setGateState(Explosher.GateState.PASS);
+			vaccum.stop();
+			return;
+		}
+
+		explosher.setGateState(Explosher.GateState.STOP);
+		vaccum.stop();
+		shotActive = false;
 	}
 
 	private void teleInfo ()
 	{
-
 		DebugUtil.logAdd("============== [LIME]");
 		DebugUtil.logAdd(" ");
 		DebugUtil.logAdd("POSE: " + LimeUtil.getResult().getBotpose());
@@ -220,22 +239,16 @@ public class UpdatedBlueAuto extends PurpleOpMode
 		DebugUtil.logAdd("Smoothed Regress: " + explosher.getSmoothedTargetRPM());
 		Double odoDistInches = explosher.getDistanceToTarget();
 		DebugUtil.logAdd("[ODOMETRY] Target Dist: " + (odoDistInches == null ? "N/A" : odoDistInches));
-		DebugUtil.logAdd(" ");
-
-		DebugUtil.logAdd("============== [GATE]");
-		DebugUtil.logAdd(" ");
-		gateState = explosher.getGateState();
-		DebugUtil.logAdd("Gate State: " + gateState);
+		DebugUtil.logAdd("Gate State: " + explosher.getGateState());
 		DebugUtil.logAdd("Gate Position: " + String.format("%.3f", explosher.getGatePosition()));
-		DebugUtil.logAdd("Intake Power: " + String.format("%.2f", vaccum.getPower()));
+		DebugUtil.logAdd("Shot Active: " + shotActive);
 		DebugUtil.logAdd(" ");
 
 		Pose followerPose = follower.getPose();
 		DebugUtil.logAdd("[POSITION] HEADING: " + Math.toDegrees(followerPose.getHeading()));
 		DebugUtil.logAdd("[POSITION] X: " + PurpleMemory.Instance.curPos().getX());
 		DebugUtil.logAdd("[POSITION] Y: " + PurpleMemory.Instance.curPos().getY());
+		DebugUtil.logAdd("Intake Power: " + String.format("%.2f", vaccum.getPower()));
 		DebugUtil.logAdd(" ");
-
-		DebugUtil.update();
 	}
 }

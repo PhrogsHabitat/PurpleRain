@@ -7,7 +7,8 @@ import com.pedropathing.paths.PathChain;
  * - a human-readable name
  * - expected duration (seconds) used as a safety timeout
  * - waitTime (seconds) to wait AFTER this path completes before starting the next path
- * - an optional onComplete runnable that will be executed once the path finishes (or times out)
+ * - an optional onComplete runnable that will be executed once the path and its
+ *   waitTime have both finished (or the path has timed out)
  */
 public class PurplePath
 {

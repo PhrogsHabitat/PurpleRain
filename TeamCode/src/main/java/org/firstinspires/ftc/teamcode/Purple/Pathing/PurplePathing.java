@@ -11,6 +11,8 @@ import com.pedropathing.util.Timer;
  * - start chains of paths (startChain)
  * - enforce a safety timeout per-path (durationSec)
  * - wait the configured waitTimeSec between paths
+ * - **ensure onComplete callbacks are executed only after a path has
+ *   finished and its associated waitTime has elapsed**
  * - run per-path onComplete and chain-level onComplete
  * <p>
  * Usage:
@@ -34,7 +36,10 @@ public class PurplePathing
 	// single path control
 	private PurplePath currentPath = null;
 	private boolean pathActive = false;
-	private boolean waitingBetweenPaths = false;
+	// true when we've finished a path and are delaying until the
+	// associated waitTime has expired; this flag is used for both chains
+	// and standalone paths.
+	private boolean waitingAfterPath = false;
 	private boolean currentHoldEnd = true;
 
 	// chain control
@@ -56,7 +61,10 @@ public class PurplePathing
 
 	/**
 	 * Start following a single PurplePath.
-	 * When the path finishes (or times out), its onComplete will run.
+	 * The provided path's onComplete callback will be invoked **after the path
+	 * completes (or times out) and its configured waitTime has elapsed**.  This
+	 * makes the behaviour consistent with chains and avoids firing callbacks as
+	 * soon as the follower begins moving.
 	 *
 	 * @param path    the PurplePath to follow
 	 * @param holdEnd whether to hold the drivetrain at the end of the path (passed to follower.followPath)
@@ -72,9 +80,9 @@ public class PurplePathing
 	}
 
 	/**
-	 * Start a PurpleChain. The chain's paths are executed in order. After each path finishes,
-	 * the path's onComplete is run and then the manager waits the configured waitTime before
-	 * starting the next path. When the chain finishes, chainOnComplete runs.
+	 * Start a PurpleChain. The chain's paths are executed in order. After each path finishes
+	 * the manager waits the configured waitTime before invoking that path's onComplete and
+	 * then starting the next path. When the chain finishes, chainOnComplete runs.
 	 *
 	 * @param chain           the PurpleChain to run
 	 * @param holdEnd         whether each path should be started with holdEnd (passed to follower.followPath)
@@ -106,64 +114,66 @@ public class PurplePathing
 
 		if (pathActive && currentPath != null)
 		{
-			boolean followerDone = !follower.isBusy();
-			boolean timedOut = pathTimer.getElapsedTimeSeconds() >= currentPath.getDurationSec();
-
-			if (followerDone || timedOut)
+			// ensure that the expected duration has elapsed before considering the
+			// path complete. the Pedro follower may report itself "not busy" very
+			// quickly (sometimes immediately), which in the old version caused
+			// onComplete to fire right away. requiring the timer to reach
+			// durationSec guarantees callbacks happen after the intended period.
+			// if the follower is still busy when the timer expires we treat it as a
+			// timeout and move on anyway.
+			double elapsed = pathTimer.getElapsedTimeSeconds();
+			if (elapsed >= currentPath.getDurationSec())
 			{
-				// path finished
 				pathActive = false;
-				currentPath.runOnComplete();
-
-				// If we are running a chain, start waiting between paths (if any remain)
-				if (chainActive && currentChain != null)
-				{
-					// start wait (could be zero)
-					waitingBetweenPaths = true;
-					waitTimer.resetTimer();
-				} else
-				{
-					// single path finished, clear currentPath (chain not running)
-					currentPath = null;
-
-					// if there was a stand-alone followPath call and it had an onComplete, we already called it.
-				}
+				waitingAfterPath = true;
+				waitTimer.resetTimer();
 			}
-		} else if (waitingBetweenPaths && currentChain != null)
+		} else if (waitingAfterPath && currentPath != null)
 		{
 			double waited = waitTimer.getElapsedTimeSeconds();
-			double waitFor = currentPath == null ? 0.0 : currentPath.getWaitTimeSec(); // last path's waitTime
+			double waitFor = currentPath.getWaitTimeSec();
 
 			if (waited >= waitFor)
 			{
-				// proceed to next path in chain
-				waitingBetweenPaths = false;
-				currentChainIndex++;
+				// the post‑path delay has finished; now run the per‑path callback.
+				currentPath.runOnComplete();
 
-				if (currentChainIndex >= currentChain.getPaths().size())
+				// proceed based on whether we're in a chain or a standalone path
+				if (chainActive && currentChain != null)
 				{
-					// chain finished
-					chainActive = false;
-					PurpleChain finishedChain = currentChain;
-					currentChain = null;
-					currentPath = null;
-					if (chainOnComplete != null)
+					// move to the next path in the active chain
+					waitingAfterPath = false;
+					currentChainIndex++;
+
+					if (currentChainIndex >= currentChain.getPaths().size())
 					{
-						try
+						// entire chain finished
+						chainActive = false;
+						PurpleChain finishedChain = currentChain;
+						currentChain = null;
+						currentPath = null;
+						if (chainOnComplete != null)
 						{
-							chainOnComplete.run();
-						} catch (Exception e)
-						{
-							e.printStackTrace();
+							try
+							{
+								chainOnComplete.run();
+							} catch (Exception e)
+							{
+								e.printStackTrace();
+							}
 						}
+						finishedChain.runOnComplete();
+					} else
+					{
+						// start the next path in the chain
+						PurplePath next = currentChain.getPaths().get(currentChainIndex);
+						startPathInternal(next, currentHoldEnd);
 					}
-					// run chain-level onComplete stored in chain itself as well
-					finishedChain.runOnComplete();
 				} else
 				{
-					// start next
-					PurplePath next = currentChain.getPaths().get(currentChainIndex);
-					startPathInternal(next, currentHoldEnd);
+					// single path finished; clear currentPath
+					currentPath = null;
+					waitingAfterPath = false;
 				}
 			}
 		}
@@ -174,7 +184,7 @@ public class PurplePathing
 
 		this.currentPath = path;
 		this.pathActive = true;
-		this.waitingBetweenPaths = false;
+		this.waitingAfterPath = false;
 		this.pathTimer.resetTimer();
 
 		// send to Pedro follower
