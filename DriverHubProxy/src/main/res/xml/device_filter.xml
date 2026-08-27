@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <usb-device vendor-id="1356" product-id="2508" /> <!-- DualSense -->
+    <usb-device vendor-id="1356" product-id="3570" /> <!-- DualSense Edge -->
+    <usb-device vendor-id="1356" product-id="1476" /> <!-- DS4 -->
+    <usb-device vendor-id="1356" product-id="2508" /> <!-- DS4 Slim -->
+</resources>
