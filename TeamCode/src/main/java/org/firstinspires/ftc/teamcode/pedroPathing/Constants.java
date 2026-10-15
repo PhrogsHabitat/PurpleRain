@@ -17,15 +17,15 @@ public class Constants
 
 	public static FollowerConstants followerConstants = new FollowerConstants()
 			.mass(17.8)
-			.forwardZeroPowerAcceleration(-32.52225256705156)
-			.lateralZeroPowerAcceleration(-50.2725693616272);
+			.forwardZeroPowerAcceleration(-27.775195443276083)
+			.lateralZeroPowerAcceleration(-56.30049389816956);
 
 	public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, .1, 5);
 
 	public static MecanumConstants driveConstants = new MecanumConstants()
 			.maxPower(1)
-			.xVelocity(68.47436859851749)
-			.yVelocity(54.857007124292565)
+			.xVelocity(64.69473290631153)
+			.yVelocity(50.010922890009844)
 
 			.rightFrontMotorName("FR")
 			.rightRearMotorName("BR")
@@ -44,7 +44,7 @@ public class Constants
 			.hardwareMapName("odo")
 			.encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)
 			.forwardEncoderDirection(GoBildaPinpointDriver.EncoderDirection.REVERSED)
-			.strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.REVERSED);
+			.strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD);
 
 	public static Follower createFollower (HardwareMap hardwareMap)
 	{

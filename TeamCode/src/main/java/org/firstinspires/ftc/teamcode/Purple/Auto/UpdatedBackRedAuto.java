@@ -31,6 +31,7 @@ public class UpdatedBackRedAuto extends PurpleOpMode
 	private final Pose startPose = new Pose(100, 8.8, Math.toRadians(0));
 	private final Pose shootPose = new Pose(82.3, 23.1, Math.toRadians(20));
 	private final Pose PlayerPose = new Pose(135, 8.8, Math.toRadians(0));
+
 	private final Pose Pickup1 = new Pose(120, 60, Math.toRadians(0));
 	private final Pose Open = new Pose(128, 69.7, Math.toRadians(0));
 	private final Pose altShootPose = new Pose(85, 72, Math.toRadians(0));
@@ -165,14 +166,6 @@ public class UpdatedBackRedAuto extends PurpleOpMode
 		PurpleMemory.Instance.update();
 		pathManager.update();
 
-		explosher.update();
-		vaccum.update();
-
-		updateDrive();
-		updateExplosher();
-		updateVaccum();
-		teleInfo();
-
 		DebugUtil.logAdd("Current Path: " + pathManager.curPath());
 		DebugUtil.update();
 	}
@@ -218,39 +211,4 @@ public class UpdatedBackRedAuto extends PurpleOpMode
 		vaccum.stop();
 	}
 
-	private void teleInfo ()
-	{
-
-		DebugUtil.logAdd("============== [LIME]");
-		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("POSE: " + LimeUtil.getResult().getBotpose_MT2());
-		DebugUtil.logAdd("Target X: " + LimeUtil.getTx());
-		DebugUtil.logAdd("Target D: " + LimeUtil.getTd());
-		DebugUtil.logAdd(" ");
-
-		DebugUtil.logAdd("============== [EXPLOSHER]");
-		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("Target RPM: " + explosher.getTargetRPM());
-		DebugUtil.logAdd("Current RPM: " + explosher.getCurrentRPM());
-		DebugUtil.logAdd("Smoothed Regress: " + explosher.getSmoothedTargetRPM());
-		Double odoDistInches = explosher.getDistanceToTarget();
-		DebugUtil.logAdd("[ODOMETRY] Target Dist: " + (odoDistInches == null ? "N/A" : odoDistInches));
-		DebugUtil.logAdd(" ");
-
-		DebugUtil.logAdd("============== [GATE]");
-		DebugUtil.logAdd(" ");
-		gateState = explosher.getGateState();
-		DebugUtil.logAdd("Gate State: " + gateState);
-		DebugUtil.logAdd("Gate Position: " + String.format("%.3f", explosher.getGatePosition()));
-		DebugUtil.logAdd("Intake Power: " + String.format("%.2f", vaccum.getPower()));
-		DebugUtil.logAdd(" ");
-
-		Pose followerPose = follower.getPose();
-		DebugUtil.logAdd("[POSITION] HEADING: " + Math.toDegrees(followerPose.getHeading()));
-		DebugUtil.logAdd("[POSITION] X: " + PurpleMemory.Instance.curPos().getX());
-		DebugUtil.logAdd("[POSITION] Y: " + PurpleMemory.Instance.curPos().getY());
-		DebugUtil.logAdd(" ");
-
-		DebugUtil.update();
-	}
 }

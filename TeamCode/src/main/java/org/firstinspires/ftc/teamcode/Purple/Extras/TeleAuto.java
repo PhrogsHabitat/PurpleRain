@@ -10,7 +10,7 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
 import org.firstinspires.ftc.teamcode.Purple.Constants;
 import org.firstinspires.ftc.teamcode.Purple.Controls;
 import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
-import org.firstinspires.ftc.teamcode.Purple.Utils.AutoRotateController;
+import org.firstinspires.ftc.teamcode.Purple.Utils.RotationUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleAuto", group = "Purple")
@@ -22,7 +22,7 @@ public class TeleAuto extends PurpleOpMode
 	private Controls driver2;
 	private Follower follower;
 	private Explosher explosher;
-	private AutoRotateController autoRotateController;
+	private RotationUtil rotationUtil;
 	private Vaccum vaccum;
 
 	@Override
@@ -40,11 +40,11 @@ public class TeleAuto extends PurpleOpMode
 		LimeUtil.start(hardwareMap, 60);
 		LimeUtil.setPipeline(0);
 
-		autoRotateController = new AutoRotateController();
-		autoRotateController.registerWithPanels();
+		rotationUtil = new RotationUtil();
+		rotationUtil.registerWithPanels();
 
 		explosher = new Explosher(hardwareMap);
-		explosher.setAimPoint(autoRotateController.getAimX(), autoRotateController.getAimY());
+		explosher.setAimPoint(rotationUtil.getAimX(), rotationUtil.getAimY());
 		vaccum = new Vaccum(hardwareMap);
 
 		DebugUtil.setTelemetry(telemetry);
@@ -59,7 +59,7 @@ public class TeleAuto extends PurpleOpMode
 		LimeUtil.update();
 		PurpleMemory.Instance.update();
 
-		explosher.setAimPoint(autoRotateController.getAimX(), autoRotateController.getAimY());
+		explosher.setAimPoint(rotationUtil.getAimX(), rotationUtil.getAimY());
 		updateDrive();
 		updateShooter();
 		updateIntake();
@@ -68,8 +68,8 @@ public class TeleAuto extends PurpleOpMode
 		vaccum.update();
 
 		DebugUtil.logAdd("TeleAuto Pose: " + follower.getPose());
-		DebugUtil.logAdd("TeleAuto Aim Error: " + String.format("%.2f", autoRotateController.getLastHeadingErrorDeg()));
-		DebugUtil.logAdd("TeleAuto Aim Turn: " + String.format("%.3f", autoRotateController.getLastTurnPower()));
+		DebugUtil.logAdd("TeleAuto Aim Error: " + String.format("%.2f", rotationUtil.getLastHeadingErrorDeg()));
+		DebugUtil.logAdd("TeleAuto Aim Turn: " + String.format("%.3f", rotationUtil.getLastTurnPower()));
 		DebugUtil.logAdd("TeleAuto RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
 		DebugUtil.logAdd("TeleAuto Gate: " + explosher.getGateState());
 		DebugUtil.logAdd("TeleAuto Intake: " + String.format("%.2f", vaccum.getPower()));
@@ -84,11 +84,11 @@ public class TeleAuto extends PurpleOpMode
 
 		if (driver1.isPressed("right_bumper"))
 		{
-			turn = autoRotateController.updateTurn(follower.getPose());
+			turn = rotationUtil.updateTurn(follower.getPose());
 		}
 		else
 		{
-			autoRotateController.reset();
+			rotationUtil.reset();
 		}
 
 		follower.setTeleOpDrive(forward, strafe, turn, true);

@@ -4,74 +4,86 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
-import com.pedropathing.paths.PathConstraints;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Purple.Components.Explosher.Explosher;
 import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
-import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
-import org.firstinspires.ftc.teamcode.Purple.Constants;
-import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurpleChain;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePath;
 import org.firstinspires.ftc.teamcode.Purple.Pathing.PurplePathing;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "TestAuto", group = "Purple")
-public class TestAuto extends PurpleOpMode
+@Autonomous(name = "TestAuto", group = "Purple")
+public class TestAuto extends OpMode
 {
-	private static final double EXPLOSHER_DEFAULT_RPM = 2800.0;
-	private static final double EXPLOSHER_COAST_ALPHA = 0.08;
-	private static final Pose DEFAULT_AUTO_START_POSE = new Pose(72, 72, Math.toRadians(0.0));
-	public static PathConstraints defaultConstraints = new PathConstraints(0.995, 0.1, 0.1, 0.007, 100, 1, 10, 1);
-	private final Pose startPose = new Pose(87, 8.5, Math.toRadians(90));
-	private final Pose rankPose = new Pose(87, 43, Math.toRadians(90));
-	// make the lists
+
+	private static final double RPM_SMOOTHING_ALPHA = 0.2;
+	// sample poses (adjust to your field/layout)
+	private final Pose startPose = new Pose(15, 84, Math.toRadians(90));
+	private final Pose shootPose = new Pose(54, 84, Math.toRadians(90));
+
+	public Explosher explosher;
+	public Vaccum vaccum;
 	public ElapsedTime shootTimer;
 	public double dist;
 	private Follower follower;
-	private Explosher explosher;
-	private Vaccum vaccum;
-	private double desiredExplosherRPM = EXPLOSHER_DEFAULT_RPM;
-
-//    private final ArrayList<Pose> Pick2 = new ArrayList<>(Arrays.asList(shootPose, GrabCurve, Pickup2));
-	private double rememberedRegressedRPM = EXPLOSHER_DEFAULT_RPM;
-	private Explosher.GateState gateState = Explosher.GateState.STOP;
+	private double regressionSlope;
+	private double regressionIntercept;
+	private double smoothedTargetRPM = 0;
+	private boolean shouldShoot = false;
 	private PurplePathing pathManager;
 
 	@Override
-	public void create ()
+	public void init ()
 	{
 
-		follower = org.firstinspires.ftc.teamcode.pedroPathing.Constants.createFollower(hardwareMap);
+		onCreate();
+	}
+
+	@Override
+	public void loop ()
+	{
+
+		onUpdate();
+	}
+
+	private void onCreate ()
+	{
+		// create follower and purple path manager
+		follower = Constants.createFollower(hardwareMap);
 		follower.setPose(startPose);
 		pathManager = new PurplePathing(follower);
 
-		PurpleMemory.initialize(hardwareMap, follower);
-		LimeUtil.start(hardwareMap, 60);
-		LimeUtil.setPipeline(0);
-
 		shootTimer = new ElapsedTime();
 
-		explosher = new Explosher(hardwareMap);
-//        explosher.setTarget(132, 135);
-		explosher.setRegressionEnabled(true);
+		calculateRegression();
 
+		LimeUtil.start(hardwareMap, 60);
+		LimeUtil.setPipeline(0);
+		explosher = new Explosher(hardwareMap);
 		vaccum = new Vaccum(hardwareMap);
 
 		// Path Chain Presets
-		PathChain DriveStartPickup = follower.pathBuilder()
-				.addPath(new BezierLine(startPose, rankPose))
-				.setLinearHeadingInterpolation(startPose.getHeading(), rankPose.getHeading())
+		PathChain DriveStartShoot = follower.pathBuilder()
+				.addPath(new BezierLine(startPose, shootPose))
+				.setLinearHeadingInterpolation(startPose.getHeading(), shootPose.getHeading())
+				.build();
+		PathChain DriveToHalfLife1 = follower.pathBuilder()
+				.addPath(new BezierLine(shootPose, startPose))
+				.setLinearHeadingInterpolation(shootPose.getHeading(), startPose.getHeading())
 				.build();
 
 		// Create the PurplePath objects
-		PurplePath path1 = new PurplePath("first pickup", DriveStartPickup, 5.0, 2)
-				.onComplete(() -> DebugUtil.logAdd("path2 completed"));
+		PurplePath path1 = new PurplePath("Drive Back", DriveStartShoot, 2.0, 1.0);
+
+		PurplePath path2 = new PurplePath("Drive back smore", DriveToHalfLife1, 1.0, 0.0);
 
 		// Create the PurpleChain object
-		PurpleChain chain = new PurpleChain(path1)
+		PurpleChain chain = new PurpleChain(path1, path2)
 				.onComplete(() -> DebugUtil.logAdd("Chain fully finished"));
 
 		// Start the chain. holdEnd = true (follower will hold at end of each path)
@@ -82,101 +94,182 @@ public class TestAuto extends PurpleOpMode
 		DebugUtil.setTelemetry(telemetry);
 	}
 
-	@Override
-	public void update ()
+	private void onUpdate ()
 	{
-
-		follower.update();
-		LimeUtil.update();
-		PurpleMemory.Instance.update();
+		// update the manager (must be called every loop)
 		pathManager.update();
-
 		explosher.update();
 		vaccum.update();
 
-		updateDrive();
-		updateExplosher();
-		updateVaccum();
-		teleInfo();
+		if (shouldShoot)
+		{
+			shootFull();
+		}
 
+		// logging
 		DebugUtil.logAdd("Current Path: " + pathManager.curPath());
 		DebugUtil.update();
 	}
 
-	@Override
-	public void destroy ()
+	private void flagShoot ()
 	{
 
-		explosher.stop();
-		vaccum.stop();
+		shouldShoot = true;
+		shootTimer.reset();
+		shootTimer.startTime();
 	}
 
-	private void updateDrive ()
+	private void pickupBalls (boolean should)
 	{
 
-		// AutoBase has no manual drive controls.
-		follower.setTeleOpDrive(0.0, 0.0, 0.0, true);
+		exploSwag(false, "forward");
+		toggleY(should);
+		explosher.setGateState(Explosher.GateState.STOP);
 	}
 
-	private void updateExplosher ()
+	private void shootFull ()
 	{
+		// Start Stuff
 
-		explosher.setRegressionEnabled(true);
-
-		if (explosher.hasRegressionTarget())
+		if (shootTimer.seconds() <= 0)
 		{
-			rememberedRegressedRPM = explosher.getSmoothedTargetRPM();
-			desiredExplosherRPM = rememberedRegressedRPM;
+			explosher.setGateState(Explosher.GateState.STOP);
+		}
+		if (shootTimer.seconds() > 2)
+		{
+			explosher.setGateState(Explosher.GateState.PASS);
+		}
+		if (shootTimer.seconds() > 0 && shootTimer.seconds() < 6.5)
+		{
+			exploSwag(true, "Forward");
+		}
+		if (shootTimer.seconds() > 3.5 && shootTimer.seconds() < 3.6)
+		{
+			toggleY(true);
+			DebugUtil.logAdd("first push on");
+		}
+		if (shootTimer.seconds() > 3.6 && shootTimer.seconds() < 4.1)
+		{
+			toggleY(false);
+			DebugUtil.logAdd("first push off");
+		}
+		if (shootTimer.seconds() > 5 && shootTimer.seconds() < 5.5)
+		{
+			toggleY(true);
+			DebugUtil.logAdd("first push on");
+		}
+		if (shootTimer.seconds() == 5.5)
+		{
+			toggleY(false);
+			DebugUtil.logAdd("first push off");
+		}
+		if (shootTimer.seconds() > 5.5 && shootTimer.seconds() < 6)
+		{
+			toggleX(true);
+		}
+		if (shootTimer.seconds() == 6)
+		{
+			toggleX(false);
+		}
+		if (shootTimer.seconds() > 6 && shootTimer.seconds() < 6.5)
+		{
+			toggleY(true);
+		}
+		if (shootTimer.seconds() >= 6.5)
+		{
+			toggleY(false);
+			exploSwag(false, "Forward");
+			shouldShoot = false;
+			explosher.setGateState(Explosher.GateState.STOP);
+		}
+	}
+
+	public void exploSwag (boolean should, String Explostate)
+	{
+
+		if (should)
+		{
+			if (Explostate == "Forward")
+			{
+				if (LimeUtil.getTd() != 0)
+				{
+					dist = LimeUtil.getTd();
+					double rawTargetRPM = (regressionSlope * dist) + regressionIntercept;
+					smoothedTargetRPM += RPM_SMOOTHING_ALPHA * (rawTargetRPM - smoothedTargetRPM);
+					smoothedTargetRPM = Math.max(0, Math.min(smoothedTargetRPM, explosher.getMaxRPM()));
+					explosher.setRPM(smoothedTargetRPM);
+				}
+			}
+			else if (Explostate == "Back")
+			{
+				explosher.setRPM(-4000);
+			}
 		}
 		else
 		{
-			desiredExplosherRPM += EXPLOSHER_COAST_ALPHA * (EXPLOSHER_DEFAULT_RPM - desiredExplosherRPM);
+			explosher.stop();
+		}
+	}
+
+	private void calculateRegression ()
+	{
+
+		double[][] calibrationPoints = {
+				{59, 2600},
+				{65, 2700},
+				{77, 2750},
+				{80, 2900},
+				{94, 2750}
+		};
+
+		int n = calibrationPoints.length;
+		double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+
+		for (double[] point : calibrationPoints)
+		{
+			double distance = point[0];
+			double rpm = point[1];
+			sumX += distance;
+			sumY += rpm;
+			sumXY += distance * rpm;
+			sumX2 += distance * distance;
 		}
 
-		desiredExplosherRPM = Math.max(0.0, Math.min(desiredExplosherRPM, explosher.getMaxRPM()));
-		explosher.setRPM(desiredExplosherRPM);
+		regressionSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+		regressionIntercept = (sumY - regressionSlope * sumX) / n;
+
+		DebugUtil.logAdd("Regression Calculated!");
+		DebugUtil.logAdd("RPM = " + String.format("%.3f", regressionSlope) + " * dist + " + String.format("%.3f", regressionIntercept));
 	}
 
-	private void updateVaccum ()
+	private void toggleY (boolean should)
 	{
 
-		// AutoBase has no manual vacuum controls.
-		vaccum.stop();
+		double pow = should ? 1.0 : 0;
+		vaccum.setPower(pow);
 	}
 
-	private void teleInfo ()
+	private void toggleX (boolean should)
 	{
 
-		DebugUtil.logAdd("============== [LIME]");
-		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("POSE: " + LimeUtil.getResult().getBotpose());
-		DebugUtil.logAdd("Target X: " + LimeUtil.getTx());
-		DebugUtil.logAdd("Target D: " + LimeUtil.getTd());
-		DebugUtil.logAdd(" ");
+		double pow = should ? -.15 : 0;
+		vaccum.setPower(pow);
+	}
 
-		DebugUtil.logAdd("============== [EXPLOSHER]");
-		DebugUtil.logAdd(" ");
-		DebugUtil.logAdd("Target RPM: " + explosher.getTargetRPM());
-		DebugUtil.logAdd("Current RPM: " + explosher.getCurrentRPM());
-		DebugUtil.logAdd("Smoothed Regress: " + explosher.getSmoothedTargetRPM());
-		Double odoDistInches = explosher.getDistanceToTarget();
-		DebugUtil.logAdd("[ODOMETRY] Target Dist: " + (odoDistInches == null ? "N/A" : odoDistInches));
-		DebugUtil.logAdd(" ");
+	private void toggleSuperX (boolean should)
+	{
 
-		DebugUtil.logAdd("============== [GATE]");
-		DebugUtil.logAdd(" ");
-		gateState = explosher.getGateState();
-		DebugUtil.logAdd("Gate State: " + gateState);
-		DebugUtil.logAdd("Gate Position: " + String.format("%.3f", explosher.getGatePosition()));
-		DebugUtil.logAdd("Intake Power: " + String.format("%.2f", vaccum.getPower()));
-		DebugUtil.logAdd(" ");
+		double rpm = should ? -4000 : 0.0;
+		double pow = should ? -1.0 : 0;
+		exploSwag(should, should ? "Back" : "Off");
+		vaccum.setPower(pow);
+	}
 
-		Pose followerPose = follower.getPose();
-		DebugUtil.logAdd("[POSITION] HEADING: " + Math.toDegrees(followerPose.getHeading()));
-		DebugUtil.logAdd("[POSITION] X: " + PurpleMemory.Instance.curPos().getX());
-		DebugUtil.logAdd("[POSITION] Y: " + PurpleMemory.Instance.curPos().getY());
-		DebugUtil.logAdd(" ");
+	private void toggleB (boolean should)
+	{
 
-		DebugUtil.update();
+		double rpm = should ? -4000 : 0.0;
+		double pow = should ? -.50 : 0;
+		exploSwag(should, should ? "Back" : "Off");
 	}
 }

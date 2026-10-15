@@ -1,3 +1,5 @@
+apply plugin: 'com.android.application'
+
 //
 // build.gradle in TeamCode
 //
@@ -8,7 +10,6 @@
 // please think carefully as to whether such customizations are really necessary
 // before doing so.
 
-
 // Custom definitions may go here
 
 // Include common definitions from above.
@@ -18,21 +19,12 @@ apply from: '../build.dependencies.gradle'
 android {
     namespace = 'org.firstinspires.ftc.teamcode'
 
-    compileSdk 35
-    defaultConfig {
-        minSdk 24
-    }
-
     packagingOptions {
         jniLibs.useLegacyPackaging true
     }
 }
 
+
 dependencies {
     implementation project(':FtcRobotController')
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.7'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.4.21'
-    implementation 'org.ftclib.ftclib:vision:2.1.0' // vision
-    implementation 'org.ftclib.ftclib:core:2.1.1' // core
-    implementation "com.bylazar:fullpanels:1.0.12"
 }

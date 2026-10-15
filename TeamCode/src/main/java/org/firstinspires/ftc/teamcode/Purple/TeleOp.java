@@ -9,7 +9,8 @@ import org.firstinspires.ftc.teamcode.Purple.Components.Lime.LimeUtil;
 import org.firstinspires.ftc.teamcode.Purple.Components.OpMode.PurpleOpMode;
 import org.firstinspires.ftc.teamcode.Purple.Components.Vaccum.Vaccum;
 import org.firstinspires.ftc.teamcode.Purple.Memory.PurpleMemory;
-import org.firstinspires.ftc.teamcode.Purple.Utils.AutoRotateController;
+import org.firstinspires.ftc.teamcode.Purple.Utils.MathUtil;
+import org.firstinspires.ftc.teamcode.Purple.Utils.RotateUtil;
 import org.firstinspires.ftc.teamcode.Purple.Utils.DebugUtil;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "PurpleTeleOp", group = "Purple")
@@ -18,7 +19,7 @@ public class TeleOp extends PurpleOpMode
 {
 	public static double EXPLOSHER_DEFAULT_RPM = 2800.0;
 	public static double EXPLOSHER_COAST_ALPHA = 0.08;
-	private static final Pose DEFAULT_TELEOP_START_POSE = new Pose(72, 72, Math.toRadians(0.0));
+	private static final Pose DEFAULT_TELEOP_START_POSE = new Pose(125, 125, Math.toRadians(35.0));
 
 	private static final String DRIVER_1_AUTO_ROTATE = "right_bumper";
 	private static final String DRIVER_2_GATE_TOGGLE = "left_trigger";
@@ -36,7 +37,7 @@ public class TeleOp extends PurpleOpMode
 	
 	public Explosher explosher;
 
-	private AutoRotateController autoRotateController;
+	private RotateUtil rotateUtil;
 	private Vaccum vaccum;
 	private double desiredExplosherRPM = EXPLOSHER_DEFAULT_RPM;
 	private double rememberedRegressedRPM = EXPLOSHER_DEFAULT_RPM;
@@ -58,11 +59,11 @@ public class TeleOp extends PurpleOpMode
 		LimeUtil.start(hardwareMap, 60);
 		LimeUtil.setPipeline(0);
 
-		autoRotateController = new AutoRotateController();
-		autoRotateController.registerWithPanels();
+		rotateUtil = new RotateUtil();
+		rotateUtil.registerWithPanels();
 
 		explosher = new Explosher(hardwareMap);
-		explosher.setAimPoint(autoRotateController.getAimX(), autoRotateController.getAimY());
+		explosher.setAimPoint(rotateUtil.getAimX(), rotateUtil.getAimY());
 		explosher.setRegressionEnabled(false);
 
 		vaccum = new Vaccum(hardwareMap);
@@ -78,7 +79,7 @@ public class TeleOp extends PurpleOpMode
 		LimeUtil.update();
 		PurpleMemory.Instance.update();
 
-		explosher.setAimPoint(autoRotateController.getAimX(), autoRotateController.getAimY());
+		explosher.setAimPoint(rotateUtil.getAimX(), rotateUtil.getAimY());
 		explosher.update();
 		vaccum.update();
 
@@ -113,17 +114,38 @@ public class TeleOp extends PurpleOpMode
 
 	private void updateDrive ()
 	{
-		double forward = -gamepad1.left_stick_y * Constants.DRIVE_POWER_SCALE;
-		double strafe = -gamepad1.left_stick_x * Constants.DRIVE_POWER_SCALE;
-		double turn = -gamepad1.right_stick_x * Constants.DRIVE_POWER_SCALE;
+		double forward = driver1.getTouchY() != 0 ? driver1.getTouchY() : -gamepad1.left_stick_y * Constants.DRIVE_POWER_SCALE;
+		double strafe = driver1.getTouchX() != 0 ? -driver1.getTouchX() : -gamepad1.left_stick_x * Constants.DRIVE_POWER_SCALE;
+		double turn = driver1.getSecondTouchX() != 0 ? -driver1.getSecondTouchX() : 0;
 
-		if (driver1.isPressed(DRIVER_1_AUTO_ROTATE))
+		if (driver1.getRightStickX() != 0 && driver1.getRightStickY() != 0)
 		{
-			turn = autoRotateController.updateTurn(follower.getPose());
+			double targetDeg = Math.atan2(driver1.getRightStickY(), driver1.getRightStickX());
+			double curDeg = follower.getHeading();
+			double turnDeg = targetDeg - curDeg;
+			double swagDeg = 0;
+
+			if (turnDeg < 0) //Normalizing difference when turnDeg negative
+			{
+				turnDeg += 360;
+			}
+			else if (turnDeg > 0) //Normalizing difference when turnDeg positive
+			{
+				turnDeg -= 360;
+			}
+
+			swagDeg = MathUtil.clamp(turnDeg, -1.0, 1.0);
+
+			turn = swagDeg;
+
 		}
-		else
+		else if (driver1.isPressed(DRIVER_1_AUTO_ROTATE))
 		{
-			autoRotateController.reset();
+			turn = rotateUtil.updateTurn(follower.getPose());
+		}
+		else if (turn == 0)
+		{
+			rotateUtil.reset();
 		}
 
 		follower.setTeleOpDrive(forward, strafe, turn, false);
@@ -217,10 +239,10 @@ public class TeleOp extends PurpleOpMode
 		Pose pose = follower.getPose();
 
 		DebugUtil.logAdd("Distance to target: " + explosher.getDistanceToTarget());
-		DebugUtil.logAdd("Auto Rotate Error: " + String.format("%.2f", autoRotateController.getLastHeadingErrorDeg()));
-		DebugUtil.logAdd("Auto Rotate Turn: " + String.format("%.3f", autoRotateController.getLastTurnPower()));
-		DebugUtil.logAdd("Auto Rotate Target: " + String.format("(%.1f, %.1f)", autoRotateController.getAimX(), autoRotateController.getAimY()));
-		DebugUtil.logAdd("Auto Rotate Heading: " + String.format("%.2f", autoRotateController.getLastTargetHeadingDeg()));
+		DebugUtil.logAdd("Auto Rotate Error: " + String.format("%.2f", rotateUtil.getLastHeadingErrorDeg()));
+		DebugUtil.logAdd("Auto Rotate Turn: " + String.format("%.3f", rotateUtil.getLastTurnPower()));
+		DebugUtil.logAdd("Auto Rotate Target: " + String.format("(%.1f, %.1f)", rotateUtil.getAimX(), rotateUtil.getAimY()));
+		DebugUtil.logAdd("Auto Rotate Heading: " + String.format("%.2f", rotateUtil.getLastTargetHeadingDeg()));
 		DebugUtil.logAdd("Target RPM: " + String.format("%.1f", explosher.getTargetRPM()));
 		DebugUtil.logAdd("Current RPM: " + String.format("%.1f", explosher.getCurrentRPM()));
 		DebugUtil.logAdd("Smoothed RPM: " + String.format("%.1f", explosher.getSmoothedTargetRPM()));
@@ -229,5 +251,7 @@ public class TeleOp extends PurpleOpMode
 		DebugUtil.logAdd("Intake Power: " + String.format("%.2f", vaccum.getPower()));
 		DebugUtil.logAdd("[FOLLOWER] POSE: " + pose);
 		DebugUtil.logAdd("[LIME] TARGET: " + LimeUtil.hasValidTarget());
+
+//		MathUtil.clamp();
 	}
 }

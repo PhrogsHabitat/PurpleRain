@@ -6,7 +6,7 @@ import com.bylazar.configurables.annotations.IgnoreConfigurable;
 import com.pedropathing.geometry.Pose;
 
 @Configurable
-public class AutoRotateController
+public class RotateUtil
 {
 	public double aimX = 128.0;
 	public double aimY = 130.0;

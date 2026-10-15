@@ -31,6 +31,17 @@ public class PlayStationController
 	private UsbEndpoint outputEndpoint;
 	private boolean isDualSense = false;
 
+	public enum TriggerMode
+	{
+		OFF(0),
+		FEEDBACK(1),
+		WEAPON(2),
+		VIBRATION(3);
+
+		public final int value;
+		TriggerMode(int value) { this.value = value; }
+	}
+
 	public PlayStationController (UsbManager usbManager)
 	{
 		this.usbManager = usbManager;
@@ -197,31 +208,36 @@ public class PlayStationController
 	/**
 	 * Send adaptive trigger effect (DualSense only)
 	 *
-	 * @param trigger        0=left, 1=right
-	 * @param mode           0=off, 1=resistance, 2=weapon, 3=vibration
-	 * @param startPosition  0-255 trigger start position
-	 * @param effectStrength 0-255 effect intensity
+	 * @param trigger 0=left, 1=right
+	 * @param mode    TriggerMode
+	 * @param params  Additional parameters for the mode
 	 */
-	public void sendTriggerEffect (int trigger, int mode, int startPosition, int effectStrength)
+	public void sendTriggerEffect (int trigger, TriggerMode mode, int... params)
 	{
 		if (!isDualSense || connection == null) return;
 
-		byte[] report = createTriggerEffectReport(trigger, mode, startPosition, effectStrength);
+		byte[] report = createTriggerEffectReport(trigger, mode.value, params);
 		connection.bulkTransfer(outputEndpoint, report, report.length, 0);
 	}
 
-	private byte[] createTriggerEffectReport (int trigger, int mode, int start, int strength)
+	private byte[] createTriggerEffectReport (int trigger, int mode, int[] params)
 	{
 		byte[] report = new byte[48];
 		report[0] = DUAL_SENSE_OUTPUT_REPORT_ID;
 		report[1] = 0x02;
 
 		// Trigger effect positions in DualSense report
+		// Based on original simplified implementation
 		int triggerOffset = trigger == 0 ? 0x02 : 0x08;
 
 		report[triggerOffset] = (byte) (mode & 0xFF);
-		report[triggerOffset + 1] = (byte) (start & 0xFF);
-		report[triggerOffset + 2] = (byte) (strength & 0xFF);
+		if (params != null)
+		{
+			for (int i = 0; i < params.length && i < 5; i++)
+			{
+				report[triggerOffset + 1 + i] = (byte) (params[i] & 0xFF);
+			}
+		}
 
 		return report;
 	}
